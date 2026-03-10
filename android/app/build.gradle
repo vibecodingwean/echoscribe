@@ -1,0 +1,74 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+// Keystore einlesen (optional, aber üblich)
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+android {
+    namespace "com.echoscribe.app"
+
+    // compile/target: für Edge-to-Edge-Verhalten ab 35 relevant
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "com.echoscribe.app"
+        // Flutter gibt diese Werte vor – so bleibt's konsistent mit pubspec.yaml
+        minSdkVersion flutter.minSdkVersion
+        targetSdkVersion 35
+        versionCode flutter.versionCode
+        versionName flutter.versionName
+        multiDexEnabled true
+    }
+
+    signingConfigs {
+        release {
+            if (keystoreProperties["storeFile"]) {
+                storeFile file(keystoreProperties["storeFile"])
+                storePassword keystoreProperties["storePassword"]
+                keyAlias keystoreProperties["keyAlias"]
+                keyPassword keystoreProperties["keyPassword"]
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // Wenn kein Keystore konfiguriert ist, crasht der Build nicht
+            signingConfig signingConfigs.release
+            // Bis R8/ProGuard gewollt ist:
+            minifyEnabled false
+            shrinkResources false
+        }
+        debug {
+            // Debug bleibt unberührt
+        }
+    }
+
+    // Java/Kotlin auf 17 – das ist Flutter-Standard seit längerem
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    // (Optional) wenn du ViewBinding/Compose brauchst:
+    // buildFeatures { viewBinding true }
+}
+
+flutter {
+    source = "../.."
+}
+
+dependencies {
+    implementation "androidx.core:core-ktx:1.13.1"
+    // (activity-ktx ist nicht mehr nötig)
+}
