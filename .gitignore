@@ -1,0 +1,65 @@
+# Miscellaneous
+.claude/
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+.vscode/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .flutter-plugins-dependencies file should be excluded from source control
+.flutter-plugins-dependencies
+
+# Android related
+**/android/**/generated/
+**/android/gen/
+**/android/out/
+**/android/local.properties
+**/android/key.properties
+**/android/app/upload-keystore.jks
+**/android/app/google-services.json
+.gradle/
+build/
+
+# iOS related
+**/ios/Flutter/AppFrameworkInfo.plist
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.podspec
+**/ios/Pods/
+**/ios/.generated/
+Podfile.lock
+
+# Web related
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+
+# Built application files
+*.exe
+*.dll
+*.so
+*.dylib
+*.apk
+*.aab
+*.app
+*.ipa
+
+# Symbolication related
+*.pdb
+*.dsp
+
+# Project specific
+_dev_tools/
