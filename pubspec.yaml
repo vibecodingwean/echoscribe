@@ -1,0 +1,41 @@
+name: echoscribe
+description: "EchoSribe: Your API key, your data! Summarize and convert spoken words into text, ready to paste with a single tap."
+publish_to: "none"
+version: 1.0.29+36
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  audioplayers: ^6.0.0
+  crypto: ^3.0.0
+  shared_preferences: ^2.0.0
+  permission_handler: ^12.0.0
+  share_handler: 0.0.25
+  share_plus: ^12.0.1
+  flutter_secure_storage: ^10.0.0
+  path_provider: ^2.1.4
+  record: '>=5.1.2'
+  http: ^1.0.0
+  flutter:
+    sdk: flutter
+  google_fonts: ^8.0.2
+  flutter_markdown_plus: ^1.0.7
+  html: ^0.15.6
+  flutter_svg: ^2.2.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/images/logo.png
+  remove_alpha_ios: true
