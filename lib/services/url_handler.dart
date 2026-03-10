@@ -203,9 +203,12 @@ class UrlHandler {
       final ai = aiFactory.create(settings.provider);
 
       String getModelForSummary() {
-        if (settings.provider == AiProviderType.gemini) return AiModelConfig.geminiSummary(pro: settings.geminiPro);
-        if (settings.provider == AiProviderType.anthropic) return AiModelConfig.anthropicSummary(pro: settings.anthropicPro);
-        return AiModelConfig.openAiSummary(pro: settings.openAiPro);
+        switch (settings.provider) {
+          case AiProviderType.gemini: return AiModelConfig.geminiSummary(pro: settings.geminiPro);
+          case AiProviderType.anthropic: return AiModelConfig.anthropicSummary(pro: settings.anthropicPro);
+          case AiProviderType.xai: return AiModelConfig.xaiSummary(pro: settings.xaiPro);
+          case AiProviderType.openai: return AiModelConfig.openAiSummary(pro: settings.openAiPro);
+        }
       }
 
       final model = getModelForSummary();

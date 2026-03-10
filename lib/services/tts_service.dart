@@ -128,6 +128,46 @@ class TtsService {
     throw Exception(reason);
   }
 
+  // xAI TTS: returns MP3 bytes (beta endpoint)
+  Future<Uint8List> generateSpeechXai({
+    required String apiKey,
+    required String text,
+    String voice = 'Eve',
+    String responseFormat = 'mp3',
+  }) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return Uint8List(0);
+
+    final uri = Uri.parse('https://api.x.ai/v1/tts');
+    final headers = {
+      'Authorization': 'Bearer $apiKey',
+      'Content-Type': 'application/json',
+    };
+    final body = json.encode({
+      'text': trimmed,
+      'voice': voice,
+      'response_format': responseFormat,
+    });
+
+    final sw = Stopwatch()..start();
+    DebugConsole.logApiStart(method: 'POST', url: uri, requestBytes: utf8.encode(body).length, note: 'xAI TTS');
+    final res = await http.post(uri, headers: headers, body: body);
+    sw.stop();
+    DebugConsole.logApiEnd(status: res.statusCode, elapsedMs: sw.elapsedMilliseconds, responseBytes: res.bodyBytes.length);
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return Uint8List.fromList(res.bodyBytes);
+    }
+
+    String reason = 'xAI TTS failed (${res.statusCode})';
+    try {
+      final data = json.decode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+      final msg = data['error']?['message'];
+      if (msg is String && msg.isNotEmpty) reason = msg;
+    } catch (_) {}
+    throw Exception(reason);
+  }
+
   // Build a minimal WAV header for PCM L16 data
   List<int> _addWavHeader(List<int> pcmData, {
     required int sampleRate,

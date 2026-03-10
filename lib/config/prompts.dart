@@ -80,4 +80,14 @@ class AiModelConfig {
 
   static String anthropicSummary({required bool pro}) => pro ? anthropicSummaryPro : anthropicSummaryFast;
   static String anthropicTranslation({required bool pro}) => pro ? anthropicTranslationPro : anthropicTranslationFast;
+
+  // ---------- xAI (Grok) ----------
+  static const String xaiSummaryPro = 'grok-4';
+  static const String xaiTranslationPro = 'grok-4';
+
+  static const String xaiSummaryFast = 'grok-4.1-fast';
+  static const String xaiTranslationFast = 'grok-4.1-fast';
+
+  static String xaiSummary({required bool pro}) => pro ? xaiSummaryPro : xaiSummaryFast;
+  static String xaiTranslation({required bool pro}) => pro ? xaiTranslationPro : xaiTranslationFast;
 }

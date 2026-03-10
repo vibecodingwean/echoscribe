@@ -24,6 +24,8 @@ class SecureStorageService {
   static const _keyAnthropicPro = 'anthropic_pro_enabled';
   static const _keyAppFetchUrl = 'app_fetch_url_enabled';
   static const _keyAnthropic = 'anthropic_api_key';
+  static const _keyXai = 'xai_api_key';
+  static const _keyXaiPro = 'xai_pro_enabled';
 
   // 2. WICHTIG: resetOnError: true verhindert dauerhafte Abstürze/leere Daten bei Key-Problemen
   static const AndroidOptions _androidOptions = AndroidOptions(
@@ -142,4 +144,13 @@ class SecureStorageService {
 
   Future<void> saveAppFetchUrl(bool enabled) => _safeWrite(_keyAppFetchUrl, enabled ? '1' : '0');
   Future<bool> readAppFetchUrl() async => (await _safeRead(_keyAppFetchUrl, fallback: '0')) == '1';
-  }
+
+  // xAI Key
+  Future<void> saveXaiKey(String key) => _safeWrite(_keyXai, key);
+  Future<String> readXaiKey() async => _safeRead(_keyXai);
+  Future<void> deleteXaiKey() => _safeDelete(_keyXai);
+
+  // xAI Pro
+  Future<void> saveXaiPro(bool enabled) => _safeWrite(_keyXaiPro, enabled ? '1' : '0');
+  Future<bool> readXaiPro() async => (await _safeRead(_keyXaiPro, fallback: '0')) == '1';
+}
