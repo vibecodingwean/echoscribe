@@ -47,9 +47,12 @@ class HomeController extends ChangeNotifier {
   }
 
   String _getModelForSummary() {
-    if (settings.provider == AiProviderType.gemini) return AiModelConfig.geminiSummary(pro: settings.geminiPro);
-    if (settings.provider == AiProviderType.anthropic) return AiModelConfig.anthropicSummary(pro: settings.anthropicPro);
-    return AiModelConfig.openAiSummary(pro: settings.openAiPro);
+    switch (settings.provider) {
+      case AiProviderType.gemini: return AiModelConfig.geminiSummary(pro: settings.geminiPro);
+      case AiProviderType.anthropic: return AiModelConfig.anthropicSummary(pro: settings.anthropicPro);
+      case AiProviderType.xai: return AiModelConfig.xaiSummary(pro: settings.xaiPro);
+      case AiProviderType.openai: return AiModelConfig.openAiSummary(pro: settings.openAiPro);
+    }
   }
 
   String _getModelForTranscription() {
@@ -58,12 +61,21 @@ class HomeController extends ChangeNotifier {
   }
 
   String _getModelForTranslation() {
-    if (settings.provider == AiProviderType.gemini) return AiModelConfig.geminiTranslation(pro: settings.geminiPro);
-    if (settings.provider == AiProviderType.anthropic) return AiModelConfig.anthropicTranslation(pro: settings.anthropicPro);
-    return AiModelConfig.openAiTranslation(pro: settings.openAiPro);
+    switch (settings.provider) {
+      case AiProviderType.gemini: return AiModelConfig.geminiTranslation(pro: settings.geminiPro);
+      case AiProviderType.anthropic: return AiModelConfig.anthropicTranslation(pro: settings.anthropicPro);
+      case AiProviderType.xai: return AiModelConfig.xaiTranslation(pro: settings.xaiPro);
+      case AiProviderType.openai: return AiModelConfig.openAiTranslation(pro: settings.openAiPro);
+    }
   }
 
-  String get _ttsVoice => settings.provider == AiProviderType.gemini ? "Zephyr" : "alloy";
+  String get _ttsVoice {
+    switch (settings.provider) {
+      case AiProviderType.gemini: return "Zephyr";
+      case AiProviderType.xai: return "Eve";
+      default: return "alloy";
+    }
+  }
 
   Future<String> _transcribeAudio(String path, String filename, String mimeType, {int? fileSizeBytes}) async {
     if (fileSizeBytes != null) {
@@ -167,8 +179,8 @@ class HomeController extends ChangeNotifier {
     required String mimeType,
     required String mode,
   }) async {
-    if (settings.provider == AiProviderType.anthropic) {
-      showError('Claude does not support audio files - Please select GPT or Gemini.');
+    if (!settings.provider.supportsAudio) {
+      showError('${settings.provider.brandName} does not support audio files - Please select GPT or Gemini.');
       return;
     }
 
@@ -251,8 +263,8 @@ class HomeController extends ChangeNotifier {
   }
 
   Future<void> startRecording() async {
-    if (settings.provider == AiProviderType.anthropic) {
-      showError('Claude does not support audio files - Please select GPT or Gemini.');
+    if (!settings.provider.supportsAudio) {
+      showError('${settings.provider.brandName} does not support audio files - Please select GPT or Gemini.');
       return;
     }
     try {
@@ -375,7 +387,7 @@ class HomeController extends ChangeNotifier {
       return;
     }
     
-    if (playback.canResumeCurrentAudio(content.currentSummaryValue, settings.provider, openAiVoice: "alloy", geminiVoice: "Zephyr")) {
+    if (playback.canResumeCurrentAudio(content.currentSummaryValue, settings.provider, openAiVoice: "alloy", geminiVoice: "Zephyr", xaiVoice: "Eve")) {
       await playback.resumeAudio();
     } else {
       final cached = playback.hasCachedSummaryAudio(content.currentSummaryValue, settings.provider, voice: _ttsVoice);
@@ -383,9 +395,7 @@ class HomeController extends ChangeNotifier {
         hideProgressToast();
       } else {
         showProgressToast(
-          settings.provider == AiProviderType.gemini
-              ? "Sending via API to Gemini TTS Service"
-              : "Sending via API to GPT TTS Service",
+          "Sending via API to ${settings.provider.brandName} TTS Service",
         );
         Future.delayed(const Duration(milliseconds: 700)).then((_) {
           if (playback.isAudioLoading) {
@@ -400,10 +410,11 @@ class HomeController extends ChangeNotifier {
         activeApiKey: settings.activeApiKey,
         openAiVoice: "alloy",
         geminiVoice: "Zephyr",
+        xaiVoice: "Eve",
       );
       hideProgressToast();
     }
-    final size = playback.cachedSummaryAudioSize(content.currentSummaryValue, settings.provider, openAiVoice: "alloy", geminiVoice: "Zephyr");
+    final size = playback.cachedSummaryAudioSize(content.currentSummaryValue, settings.provider, openAiVoice: "alloy", geminiVoice: "Zephyr", xaiVoice: "Eve");
     if (size != null && size > 0) {
       final mb = size / (1024 * 1024);
       showSuccess("Playing ${mb.toStringAsFixed(2)} MB Audio ...");

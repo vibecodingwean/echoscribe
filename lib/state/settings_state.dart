@@ -8,9 +8,11 @@ class SettingsState extends ChangeNotifier {
   String _openAiKey = "";
   String _geminiKey = "";
   String _anthropicKey = "";
+  String _xaiKey = "";
   bool _openAiPro = false;
   bool _geminiPro = false;
   bool _anthropicPro = false;
+  bool _xaiPro = false;
   bool _appFetchUrl = false;
   String _targetLanguageCode = "auto";
   String _summaryPrompt = kDefaultSummaryPrompt;
@@ -31,28 +33,34 @@ class SettingsState extends ChangeNotifier {
   String get openAiKey => _openAiKey;
   String get geminiKey => _geminiKey;
   String get anthropicKey => _anthropicKey;
-  
+  String get xaiKey => _xaiKey;
+
   void setOpenAiKey(String key) { _openAiKey = key.trim(); notifyListeners(); }
   void setGeminiKey(String key) { _geminiKey = key.trim(); notifyListeners(); }
   void setAnthropicKey(String key) { _anthropicKey = key.trim(); notifyListeners(); }
+  void setXaiKey(String key) { _xaiKey = key.trim(); notifyListeners(); }
 
   String get activeApiKey {
     if (_provider == AiProviderType.gemini) return _geminiKey;
     if (_provider == AiProviderType.anthropic) return _anthropicKey;
+    if (_provider == AiProviderType.xai) return _xaiKey;
     return _openAiKey;
   }
   bool get hasActiveApiKey => activeApiKey.isNotEmpty;
   bool get hasOpenAiKey => _openAiKey.isNotEmpty;
   bool get hasGeminiKey => _geminiKey.isNotEmpty;
   bool get hasAnthropicKey => _anthropicKey.isNotEmpty;
+  bool get hasXaiKey => _xaiKey.isNotEmpty;
 
   bool get openAiPro => _openAiPro;
   bool get geminiPro => _geminiPro;
   bool get anthropicPro => _anthropicPro;
-  
+  bool get xaiPro => _xaiPro;
+
   void setOpenAiPro(bool enabled) { _openAiPro = enabled; notifyListeners(); }
   void setGeminiPro(bool enabled) { _geminiPro = enabled; notifyListeners(); }
   void setAnthropicPro(bool enabled) { _anthropicPro = enabled; notifyListeners(); }
+  void setXaiPro(bool enabled) { _xaiPro = enabled; notifyListeners(); }
 
   bool get appFetchUrl => _appFetchUrl;
   void setAppFetchUrl(bool enabled) { _appFetchUrl = enabled; notifyListeners(); }

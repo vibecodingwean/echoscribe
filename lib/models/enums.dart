@@ -1,7 +1,8 @@
 enum AiProviderType {
   openai,
   gemini,
-  anthropic;
+  anthropic,
+  xai;
 
   /// Menschenlesbarer Markenname für Logs und UI
   String get brandName {
@@ -9,6 +10,31 @@ enum AiProviderType {
       case AiProviderType.openai: return 'GPT';
       case AiProviderType.gemini: return 'Gemini';
       case AiProviderType.anthropic: return 'Claude';
+      case AiProviderType.xai: return 'Grok';
+    }
+  }
+
+  /// Whether this provider supports audio recording/transcription
+  bool get supportsAudio {
+    switch (this) {
+      case AiProviderType.openai:
+      case AiProviderType.gemini:
+        return true;
+      case AiProviderType.anthropic:
+      case AiProviderType.xai:
+        return false;
+    }
+  }
+
+  /// Whether this provider supports text-to-speech playback
+  bool get supportsTts {
+    switch (this) {
+      case AiProviderType.openai:
+      case AiProviderType.gemini:
+      case AiProviderType.xai:
+        return true;
+      case AiProviderType.anthropic:
+        return false;
     }
   }
 
@@ -17,6 +43,7 @@ enum AiProviderType {
     switch (s) {
       case 'gemini': return AiProviderType.gemini;
       case 'anthropic': return AiProviderType.anthropic;
+      case 'xai': return AiProviderType.xai;
       default: return AiProviderType.openai;
     }
   }

@@ -191,6 +191,68 @@ class SummaryService {
     }
   }
 
+  // xAI (Grok) summary via OpenAI-compatible Chat Completions
+  Future<String> summarizeXai({
+    required String apiKey,
+    required String text,
+    String model = AiModelConfig.xaiSummaryFast,
+    String targetLanguageCode = 'auto',
+    String? summaryPrompt,
+  }) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return trimmed;
+
+    final langHint = _languageDirective(targetLanguageCode);
+    final basePrompt = summaryPrompt?.trim().isNotEmpty == true
+        ? summaryPrompt!.trim()
+        : kDefaultSummaryPrompt;
+    final prompt = _buildPrompt(basePrompt: basePrompt, langHint: langHint, text: trimmed);
+
+    final uri = Uri.parse('https://api.x.ai/v1/chat/completions');
+    final headers = {
+      'Authorization': 'Bearer $apiKey',
+      'Content-Type': 'application/json',
+    };
+    final body = json.encode({
+      'model': model,
+      'messages': [
+        {
+          'role': 'system',
+          'content': 'You are a precise summarizer. Follow the language rule strictly. Output only the summary, no preface or labels.'
+        },
+        {
+          'role': 'user',
+          'content': prompt,
+        }
+      ],
+    });
+
+    final sw = Stopwatch()..start();
+    DebugConsole.logApiStart(method: 'POST', url: uri, requestBytes: utf8.encode(body).length, note: 'xAI summary');
+    DebugConsole.logApiRequest(method: 'POST', url: uri, headers: headers, body: body);
+    final res = await http.post(uri, headers: headers, body: body);
+    sw.stop();
+    DebugConsole.logApiEnd(status: res.statusCode, elapsedMs: sw.elapsedMilliseconds, responseBytes: res.bodyBytes.length);
+    DebugConsole.logApiResponse(status: res.statusCode, headers: res.headers, body: res.body, title: 'API response (xAI summary)');
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final data = json.decode(res.body) as Map<String, dynamic>;
+      final choices = data['choices'] as List<dynamic>?;
+      final content = choices != null && choices.isNotEmpty
+          ? (choices.first['message']?['content'] ?? '').toString()
+          : '';
+      if (content.trim().isEmpty) throw const EmptyResultException('Empty summary result');
+      return content.trim();
+    }
+
+    String? apiMessage;
+    try {
+      final err = json.decode(res.body) as Map<String, dynamic>;
+      final msg = err['error']?['message'];
+      if (msg is String && msg.isNotEmpty) apiMessage = msg;
+    } catch (_) {}
+    throw AppException.fromHttp(res.statusCode, apiMessage: apiMessage, fallback: 'xAI summary failed');
+  }
+
   Future<String> summarizeAnthropic({
     required String apiKey,
     required String text,
