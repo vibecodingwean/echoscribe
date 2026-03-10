@@ -20,14 +20,18 @@ class _SettingsPageState extends State<SettingsPage> {
   late final TextEditingController _openAiCtrl;
   late final TextEditingController _geminiCtrl;
   late final TextEditingController _anthropicCtrl;
+  late final TextEditingController _xaiCtrl;
+  final _xaiFormKey = GlobalKey<FormState>();
   final _storage = SecureStorageService();
   bool _obscureOpenAi = true;
   bool _obscureGemini = true;
   bool _obscureAnthropic = true;
+  bool _obscureXai = true;
   late bool _debugMode;
   late bool _openAiPro;
   late bool _geminiPro;
   late bool _anthropicPro;
+  late bool _xaiPro;
   Timer? _debounce;
 
   @override
@@ -36,10 +40,12 @@ class _SettingsPageState extends State<SettingsPage> {
     _openAiCtrl = TextEditingController(text: widget.settings.openAiKey);
     _geminiCtrl = TextEditingController(text: widget.settings.geminiKey);
     _anthropicCtrl = TextEditingController(text: widget.settings.anthropicKey);
+    _xaiCtrl = TextEditingController(text: widget.settings.xaiKey);
     _debugMode = widget.settings.debugMode;
     _openAiPro = widget.settings.openAiPro;
     _geminiPro = widget.settings.geminiPro;
     _anthropicPro = widget.settings.anthropicPro;
+    _xaiPro = widget.settings.xaiPro;
   }
 
   @override
@@ -47,6 +53,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _openAiCtrl.dispose();
     _geminiCtrl.dispose();
     _anthropicCtrl.dispose();
+    _xaiCtrl.dispose();
     super.dispose();
   }
 
@@ -95,16 +102,20 @@ class _SettingsPageState extends State<SettingsPage> {
     final validOpen = _openAiFormKey.currentState?.validate() ?? true;
     final validGem = _geminiFormKey.currentState?.validate() ?? true;
     final validAnt = _anthropicFormKey.currentState?.validate() ?? true;
-    if (!validOpen || !validGem || !validAnt) return;
+    final validXai = _xaiFormKey.currentState?.validate() ?? true;
+    if (!validOpen || !validGem || !validAnt || !validXai) return;
     final openKey = _openAiCtrl.text.trim();
     final gemKey = _geminiCtrl.text.trim();
     final antKey = _anthropicCtrl.text.trim();
+    final xaiKey = _xaiCtrl.text.trim();
     widget.settings.setOpenAiKey(openKey);
     widget.settings.setGeminiKey(gemKey);
     widget.settings.setAnthropicKey(antKey);
+    widget.settings.setXaiKey(xaiKey);
     await _storage.saveOpenAiKey(openKey);
     await _storage.saveGeminiKey(gemKey);
     await _storage.saveAnthropicKey(antKey);
+    await _storage.saveXaiKey(xaiKey);
   }
 
   void _scheduleAutoSaveImmediate() {
@@ -113,12 +124,15 @@ class _SettingsPageState extends State<SettingsPage> {
       final openKey = _openAiCtrl.text.trim();
       final gemKey = _geminiCtrl.text.trim();
       final antKey = _anthropicCtrl.text.trim();
+      final xaiKey = _xaiCtrl.text.trim();
       widget.settings.setOpenAiKey(openKey);
       widget.settings.setGeminiKey(gemKey);
       widget.settings.setAnthropicKey(antKey);
+      widget.settings.setXaiKey(xaiKey);
       await _storage.saveOpenAiKey(openKey);
       await _storage.saveGeminiKey(gemKey);
       await _storage.saveAnthropicKey(antKey);
+      await _storage.saveXaiKey(xaiKey);
     });
   }
 
@@ -200,6 +214,20 @@ class _SettingsPageState extends State<SettingsPage> {
                               setState(() {});
                             },
                           ),
+                          const Divider(height: 1, indent: 56),
+                          _ProviderRadioTile(
+                            value: AiProviderType.xai,
+                            label: 'Grok (no-audio)',
+                            iconPath: 'assets/images/grok-ai-icon.svg',
+                            groupValue: widget.settings.provider,
+                            onChanged: (val) async {
+                              widget.settings.setProvider(val!);
+                              await _storage.saveProvider(val);
+                              widget.settings.setAppFetchUrl(true);
+                              await _storage.saveAppFetchUrl(true);
+                              setState(() {});
+                            },
+                          ),
                         ],
                       ),
                     ),
@@ -270,6 +298,28 @@ class _SettingsPageState extends State<SettingsPage> {
                         formKey: _anthropicFormKey,
                       ),
 
+                    if (widget.settings.provider == AiProviderType.xai)
+                      _ApiKeyCard(
+                        labelText: 'xAI API Key',
+                        hintText: 'xai-...',
+                        controller: _xaiCtrl,
+                        obscure: _obscureXai,
+                        proValue: _xaiPro,
+                        onObscureToggle: () => setState(() => _obscureXai = !_obscureXai),
+                        onChanged: (_) => _scheduleAutoSaveImmediate(),
+                        onProChanged: (val) async {
+                          setState(() => _xaiPro = val);
+                          widget.settings.setXaiPro(val);
+                          await _storage.saveXaiPro(val);
+                        },
+                        onDelete: () async {
+                          await _storage.deleteXaiKey();
+                          widget.settings.setXaiKey('');
+                          _xaiCtrl.clear();
+                        },
+                        formKey: _xaiFormKey,
+                      ),
+
                     const SizedBox(height: 8),
                     Row(
                       children: [
@@ -333,8 +383,8 @@ class _SettingsPageState extends State<SettingsPage> {
                             secondary: const Icon(Icons.cloud_download_outlined, size: 20),
                             title: const Text('App extracts URL content', style: TextStyle(fontSize: 14)),
                             subtitle: const Text('App fetches content locally and sends text to AI', style: TextStyle(fontSize: 12)),
-                            value: widget.settings.provider == AiProviderType.anthropic ? true : widget.settings.appFetchUrl,
-                            onChanged: widget.settings.provider == AiProviderType.anthropic ? null : (val) async {
+                            value: (widget.settings.provider == AiProviderType.anthropic || widget.settings.provider == AiProviderType.xai) ? true : widget.settings.appFetchUrl,
+                            onChanged: (widget.settings.provider == AiProviderType.anthropic || widget.settings.provider == AiProviderType.xai) ? null : (val) async {
                               widget.settings.setAppFetchUrl(val);
                               await _storage.saveAppFetchUrl(val);
                               setState(() {});

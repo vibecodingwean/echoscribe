@@ -15,27 +15,27 @@ class TranslationService {
     required String targetLanguageCode,
     required bool pro,
   }) async {
-    if (provider == AiProviderType.gemini) {
-      return await translateGemini(
-        apiKey: apiKey,
-        text: text,
-        targetLanguageCode: targetLanguageCode,
-        model: AiModelConfig.geminiTranslation(pro: pro),
-      );
-    } else if (provider == AiProviderType.anthropic) {
-      return await translateAnthropic(
-        apiKey: apiKey,
-        text: text,
-        targetLanguageCode: targetLanguageCode,
-        model: AiModelConfig.anthropicTranslation(pro: pro),
-      );
-    } else {
-      return await translateOpenAI(
-        apiKey: apiKey,
-        text: text,
-        targetLanguageCode: targetLanguageCode,
-        model: AiModelConfig.openAiTranslation(pro: pro),
-      );
+    switch (provider) {
+      case AiProviderType.gemini:
+        return await translateGemini(
+          apiKey: apiKey, text: text, targetLanguageCode: targetLanguageCode,
+          model: AiModelConfig.geminiTranslation(pro: pro),
+        );
+      case AiProviderType.anthropic:
+        return await translateAnthropic(
+          apiKey: apiKey, text: text, targetLanguageCode: targetLanguageCode,
+          model: AiModelConfig.anthropicTranslation(pro: pro),
+        );
+      case AiProviderType.xai:
+        return await translateXai(
+          apiKey: apiKey, text: text, targetLanguageCode: targetLanguageCode,
+          model: AiModelConfig.xaiTranslation(pro: pro),
+        );
+      case AiProviderType.openai:
+        return await translateOpenAI(
+          apiKey: apiKey, text: text, targetLanguageCode: targetLanguageCode,
+          model: AiModelConfig.openAiTranslation(pro: pro),
+        );
     }
   }
 
@@ -137,6 +137,61 @@ class TranslationService {
       return out.trim();
     }
     throw AppException.fromHttp(res.statusCode, fallback: 'Gemini translation failed');
+  }
+
+  // xAI (Grok) translation via OpenAI-compatible Chat Completions
+  Future<String> translateXai({
+    required String apiKey,
+    required String text,
+    required String targetLanguageCode,
+    String model = AiModelConfig.xaiTranslationFast,
+  }) async {
+    if (text.trim().isEmpty) return text;
+
+    final uri = Uri.parse('https://api.x.ai/v1/chat/completions');
+    final headers = {
+      'Authorization': 'Bearer $apiKey',
+      'Content-Type': 'application/json',
+    };
+    final body = json.encode({
+      'model': model,
+      'messages': [
+        {
+          'role': 'system',
+          'content': 'You are a precise translation engine. Output only the translated text without additional commentary.'
+        },
+        {
+          'role': 'user',
+          'content': 'Translate the following text to ${_codeToHuman(targetLanguageCode)}. Keep tone and meaning. Text:\n\n$text'
+        }
+      ],
+    });
+
+    final sw = Stopwatch()..start();
+    DebugConsole.logApiStart(method: 'POST', url: uri, requestBytes: utf8.encode(body).length, note: 'xAI translate');
+    DebugConsole.logApiRequest(method: 'POST', url: uri, headers: headers, body: body);
+    final res = await http.post(uri, headers: headers, body: body);
+    sw.stop();
+    DebugConsole.logApiEnd(status: res.statusCode, elapsedMs: sw.elapsedMilliseconds, responseBytes: res.bodyBytes.length);
+    DebugConsole.logApiResponse(status: res.statusCode, headers: res.headers, body: res.body, title: 'API response (xAI translate)');
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final data = json.decode(res.body) as Map<String, dynamic>;
+      final choices = data['choices'] as List<dynamic>?;
+      final content = choices != null && choices.isNotEmpty
+          ? (choices.first['message']?['content'] ?? '').toString()
+          : '';
+      if (content.trim().isEmpty) throw const EmptyResultException('Empty translation result');
+      return content.trim();
+    }
+
+    String? apiMessage;
+    try {
+      final err = json.decode(res.body) as Map<String, dynamic>;
+      final msg = err['error']?['message'];
+      if (msg is String && msg.isNotEmpty) apiMessage = msg;
+    } catch (_) {}
+    throw AppException.fromHttp(res.statusCode, apiMessage: apiMessage, fallback: 'xAI translation failed');
   }
 
   Future<String> translateAnthropic({

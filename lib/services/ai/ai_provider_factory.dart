@@ -2,6 +2,7 @@ import 'package:echoscribe/services/ai/ai_provider.dart';
 import 'package:echoscribe/services/ai/openai_provider.dart';
 import 'package:echoscribe/services/ai/gemini_provider.dart';
 import 'package:echoscribe/services/ai/anthropic_provider.dart';
+import 'package:echoscribe/services/ai/xai_provider.dart';
 import 'package:echoscribe/services/whisper_service.dart';
 import 'package:echoscribe/services/gemini_service.dart';
 import 'package:echoscribe/services/summary_service.dart';
@@ -31,6 +32,11 @@ class AiProviderFactory {
         );
       case AiProviderType.anthropic:
         return AnthropicProvider(
+          summary: summary,
+          translation: translation,
+        );
+      case AiProviderType.xai:
+        return XaiProvider(
           summary: summary,
           translation: translation,
         );

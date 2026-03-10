@@ -103,18 +103,22 @@ class _HomePageState extends State<HomePage> {
       final openAiPro = await secure.readOpenAiPro();
       final geminiPro = await secure.readGeminiPro();
       final anthropicPro = await secure.readAnthropicPro();
+      final xai = await secure.readXaiKey();
+      final xaiPro = await secure.readXaiPro();
       final appFetchUrl = await secure.readAppFetchUrl();
-      
+
       _settings.setProvider(provider);
       if (open.isNotEmpty) _settings.setOpenAiKey(open);
       if (gem.isNotEmpty) _settings.setGeminiKey(gem);
       if (ant.isNotEmpty) _settings.setAnthropicKey(ant);
+      if (xai.isNotEmpty) _settings.setXaiKey(xai);
       if (prompt.isNotEmpty) _settings.setSummaryPrompt(prompt);
       if (urlPrompt.isNotEmpty) _settings.setUrlSummaryPrompt(urlPrompt);
       _settings.setDebugMode(dbg);
       _settings.setOpenAiPro(openAiPro);
       _settings.setGeminiPro(geminiPro);
       _settings.setAnthropicPro(anthropicPro);
+      _settings.setXaiPro(xaiPro);
       _settings.setAppFetchUrl(appFetchUrl);
     } catch (_) {}
   }
@@ -320,7 +324,7 @@ class _HomePageState extends State<HomePage> {
                 isLoading: _content.isTranscribing,
                 isRecording: _content.isRecording,
                 recordDurationNotifier: _content.recordDuration,
-                maxRecordDuration: _settings.provider == AiProviderType.openai ? const Duration(minutes: 25) : (_settings.provider == AiProviderType.gemini ? const Duration(minutes: 10) : const Duration(minutes: 5)),
+                maxRecordDuration: _settings.provider == AiProviderType.openai ? const Duration(minutes: 25) : (_settings.provider == AiProviderType.gemini ? const Duration(minutes: 10) : const Duration(minutes: 5)),  // N/A for no-audio providers
                 isSummaryMode: _content.isSummaryMode,
                 isDebugMode: _settings.debugMode,
                 onCopy: () async {
@@ -403,10 +407,10 @@ class _HomePageState extends State<HomePage> {
                             child: (_content.isSummaryMode && _content.currentSummaryValue.trim().isNotEmpty)
                                 ? StopButton(
                                     enabled: !_playback.isAudioLoading,
-                                    isAnthropic: _settings.provider == AiProviderType.anthropic,
+                                    isAnthropic: !_settings.provider.supportsTts,
                                     onPressed: () async {
-                                      if (_settings.provider == AiProviderType.anthropic) {
-                                        _showError("Claude is a text-only provider - audio is not available");
+                                      if (!_settings.provider.supportsTts) {
+                                        _showError("${_settings.provider.brandName} does not support audio playback");
                                         return;
                                       }
                                       try {
@@ -454,7 +458,7 @@ class _HomePageState extends State<HomePage> {
                                     recording: _content.isRecording,
                                     transcribing: _content.isTranscribing,
                                     enabled: _settings.hasActiveApiKey,
-                                    isAnthropic: _settings.provider == AiProviderType.anthropic,
+                                    isAnthropic: !_settings.provider.supportsAudio,
                                     level: pulse,
                                     instantLevel: flicker,
                                     onTap: () async {
@@ -466,8 +470,8 @@ class _HomePageState extends State<HomePage> {
                                         );
                                         return;
                                       }
-                                      if (_settings.provider == AiProviderType.anthropic) {
-                                        _showError('Claude does not support audio files - Please select GPT or Gemini.');
+                                      if (!_settings.provider.supportsAudio) {
+                                        _showError('${_settings.provider.brandName} does not support audio - Please select GPT or Gemini.');
                                         return;
                                       }
                                       if (!_content.isRecording) {
@@ -488,10 +492,10 @@ class _HomePageState extends State<HomePage> {
                                 ? PlayPauseButton(
                                   isLoading: _playback.isAudioLoading,
                                   isPlaying: _playback.isPlaying,
-                                  isAnthropic: _settings.provider == AiProviderType.anthropic,
+                                  isAnthropic: !_settings.provider.supportsTts,
                                   onPressed: () async {
-                                    if (_settings.provider == AiProviderType.anthropic) {
-                                      _showError("Claude is a text-only provider - audio is not available");
+                                    if (!_settings.provider.supportsTts) {
+                                      _showError("${_settings.provider.brandName} does not support audio playback");
                                       return;
                                     }
                                     if (_playback.isAudioLoading) return;
@@ -517,9 +521,9 @@ class _HomePageState extends State<HomePage> {
                           ? Text("Tap to stop",
                               key: const ValueKey("stop"),
                               style: Theme.of(context).textTheme.bodyMedium)
-                          : _settings.provider == AiProviderType.anthropic
-                              ? Text("Claude has no audio support",
-                                  key: const ValueKey("claude_no_audio"),
+                          : !_settings.provider.supportsAudio
+                              ? Text("${_settings.provider.brandName} has no audio support",
+                                  key: const ValueKey("no_audio"),
                                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.red))
                               : Text("Tap to record",
                                   key: const ValueKey("record"),
