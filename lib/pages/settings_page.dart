@@ -209,8 +209,10 @@ class _SettingsPageState extends State<SettingsPage> {
                             onChanged: (val) async {
                               widget.settings.setProvider(val!);
                               await _storage.saveProvider(val);
-                              widget.settings.setAppFetchUrl(true);
-                              await _storage.saveAppFetchUrl(true);
+                              if (val.mustExtractUrl) {
+                                widget.settings.setAppFetchUrl(true);
+                                await _storage.saveAppFetchUrl(true);
+                              }
                               setState(() {});
                             },
                           ),
@@ -223,8 +225,10 @@ class _SettingsPageState extends State<SettingsPage> {
                             onChanged: (val) async {
                               widget.settings.setProvider(val!);
                               await _storage.saveProvider(val);
-                              widget.settings.setAppFetchUrl(true);
-                              await _storage.saveAppFetchUrl(true);
+                              if (val.mustExtractUrl) {
+                                widget.settings.setAppFetchUrl(true);
+                                await _storage.saveAppFetchUrl(true);
+                              }
                               setState(() {});
                             },
                           ),
@@ -383,8 +387,8 @@ class _SettingsPageState extends State<SettingsPage> {
                             secondary: const Icon(Icons.cloud_download_outlined, size: 20),
                             title: const Text('App extracts URL content', style: TextStyle(fontSize: 14)),
                             subtitle: const Text('App fetches content locally and sends text to AI', style: TextStyle(fontSize: 12)),
-                            value: (widget.settings.provider == AiProviderType.anthropic || widget.settings.provider == AiProviderType.xai) ? true : widget.settings.appFetchUrl,
-                            onChanged: (widget.settings.provider == AiProviderType.anthropic || widget.settings.provider == AiProviderType.xai) ? null : (val) async {
+                            value: widget.settings.provider.mustExtractUrl ? true : widget.settings.appFetchUrl,
+                            onChanged: widget.settings.provider.mustExtractUrl ? null : (val) async {
                               widget.settings.setAppFetchUrl(val);
                               await _storage.saveAppFetchUrl(val);
                               setState(() {});
