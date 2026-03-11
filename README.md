@@ -17,16 +17,17 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 - **On-Device Recording:** Capture high-quality audio with live amplitude feedback.
 - **Whisper & Gemini Support:** Choose between OpenAI Whisper or Google Gemini for near-perfect transcriptions.
 - **Voice Message Summary:** Share voice messages from WhatsApp or other apps directly to EchoScribe.
+- **Note:** Claude 🦀 and Grok 𝕏 are text-only providers (no audio recording/transcription).
 
 ### ✍️ Smart Summarization
 - **Audio • Text • URL:** Summarize everything in one tap.
-- **Local URL Extraction:** A privacy-first mechanism extracts web content directly on your device, bypassing paywalls and bot-detection while keeping your browsing private.
+- **Local URL Extraction:** A privacy-first mechanism extracts web content directly on your device, bypassing paywalls and bot-detection while keeping your browsing private. Mandatory for Claude 🦀 and Grok 𝕏.
 - **Custom Prompts:** Fine-tune how your summaries look and feel in the settings.
 
 ### 🚀 Pro Mode & Models
 Access the world's most powerful AI models with a single toggle:
-- **Standard:** GPT-4o-mini, Gemini 1.5 Flash, Claude 3.5 Sonnet.
-- **Pro Mode:** GPT-4o (Flagship), Gemini 1.5 Pro, Claude 3.5 Opus.
+- **Standard (Fast):** GPT-5-mini, Gemini 3.0 Flash, Claude 4.6 Sonnet, Grok-3 Mini.
+- **Pro Mode (Premium):** GPT-5.4 (Flagship), Gemini 3.1 Pro, Claude 4.6 Opus, Grok-4.
 
 ### 🌍 Intelligent Re-Translation
 Need a result in another language? Change the target language via the globe icon, and EchoScribe will automatically re-process the source content to provide a high-quality summary in the new language.
@@ -44,6 +45,7 @@ To use EchoScribe, you'll need at least one API key:
 - **OpenAI:** [Get API Key](https://platform.openai.com/api-keys)
 - **Google Gemini:** [Get API Key](https://aistudio.google.com/app/apikey)
 - **Anthropic Claude:** [Get API Key](https://console.anthropic.com/settings/keys)
+- **xAI Grok:** [Get API Key](https://console.x.ai/)
 
 *Tip: Set a usage limit in your AI provider's dashboard to keep full control over your costs.*
 
