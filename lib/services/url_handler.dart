@@ -148,9 +148,16 @@ class UrlHandler {
 
       String contentToSummarize = effectiveUrl;
       bool extractionSuccessful = false;
+      
+      // Force extraction if the provider requires it (Claude/Grok) or user enabled it
+      final shouldExtract = settings.appFetchUrl || settings.provider.mustExtractUrl;
 
-      if (settings.appFetchUrl) {
+      if (shouldExtract) {
         content.appendLogLine('--------------------');
+        
+        if (settings.provider.mustExtractUrl) {
+           content.appendLogLine('💡 ${settings.provider.brandName} requires local content extraction');
+        }
         
         // Use the cache check directly to provide a specific log entry
         if (UrlContentService.hasCached(effectiveUrl)) {

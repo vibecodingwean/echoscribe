@@ -38,6 +38,18 @@ enum AiProviderType {
     }
   }
 
+  /// Whether this provider REQUIRES local URL content extraction (cannot handle naked URLs reliably)
+  bool get mustExtractUrl {
+    switch (this) {
+      case AiProviderType.anthropic:
+      case AiProviderType.xai:
+        return true;
+      case AiProviderType.openai:
+      case AiProviderType.gemini:
+        return false;
+    }
+  }
+
   /// Für SecureStorage-Kompatibilität (lesen/schreiben als String)
   static AiProviderType fromString(String s) {
     switch (s) {
