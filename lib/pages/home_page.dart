@@ -1,6 +1,7 @@
 import "dart:async";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
+import "package:flutter/foundation.dart";
 import "package:share_plus/share_plus.dart";
 import "package:share_handler/share_handler.dart";
 
@@ -126,6 +127,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _initShareHandling() async {
+    if (kIsWeb) return;
     _shareIntentController = ShareIntentController(
       settings: _settings,
       content: _content,
@@ -520,6 +522,10 @@ class _HomePageState extends State<HomePage> {
                                     instantLevel: flicker,
                                     onTap: () async {
                                       if (_content.isTranscribing) return;
+                                      if (_content.isGeneratingImage) {
+                                        _controller.cancelActiveOperations();
+                                        _hideProgressToast();
+                                      }
                                       if (!_settings.hasActiveApiKey) {
                                         _showError("Add your API key first");
                                         await Navigator.of(context).push(
