@@ -50,6 +50,18 @@ enum AiProviderType {
     }
   }
 
+  /// Whether this provider supports image generation
+  bool get supportsImage {
+    switch (this) {
+      case AiProviderType.openai:
+      case AiProviderType.gemini:
+      case AiProviderType.xai:
+        return true;
+      case AiProviderType.anthropic:
+        return false;
+    }
+  }
+
   /// Für SecureStorage-Kompatibilität (lesen/schreiben als String)
   static AiProviderType fromString(String s) {
     switch (s) {

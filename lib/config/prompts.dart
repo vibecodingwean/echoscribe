@@ -43,11 +43,13 @@ class AiModelConfig {
   static const String openAiSummaryPro = 'gpt-5.4';
   static const String openAiTranslationPro = 'gpt-5.4';
   static const String openAiTranscriptionPro = 'whisper-1'; 
+  static const String openAiImagePro = 'gpt-image-1';
 
   // Fast models (Upgrade auf die effiziente 5er-Serie)
   static const String openAiSummaryFast = 'gpt-5-mini';
   static const String openAiTranslationFast = 'gpt-5-mini';
   static const String openAiTranscriptionFast = 'whisper-1';
+  static const String openAiImageFast = 'gpt-image-1';
   static const String openAiTts = 'gpt-4o-mini-tts';
 
   // ---------- Gemini ----------
@@ -55,11 +57,13 @@ class AiModelConfig {
   static const String geminiSummaryPro = 'gemini-3.1-pro-preview';
   static const String geminiTranscriptionPro = 'gemini-3.1-pro-preview';
   static const String geminiTranslationPro = 'gemini-3.1-pro-preview';
+  static const String geminiImagePro = 'gemini-3-pro-image-preview';
 
   // Fast models (Standardisierung auf 3 Flash für alles)
   static const String geminiSummaryFast = 'gemini-3-flash-preview';
   static const String geminiTranscriptionFast = 'gemini-3-flash-preview';
   static const String geminiTranslationFast = 'gemini-3-flash-preview';
+  static const String geminiImageFast = 'gemini-3.1-flash-image-preview';
   static const String geminiTts = 'gemini-2.5-flash-preview-tts';
 
   // Helper methods to get the right model based on 'Pro' toggle
@@ -84,10 +88,16 @@ class AiModelConfig {
   // ---------- xAI (Grok) ----------
   static const String xaiSummaryPro = 'grok-4-0709';
   static const String xaiTranslationPro = 'grok-4-0709';
+  static const String xaiImagePro = 'grok-imagine-image';
 
   static const String xaiSummaryFast = 'grok-4-1-fast-non-reasoning';
   static const String xaiTranslationFast = 'grok-4-1-fast-non-reasoning';
+  static const String xaiImageFast = 'grok-imagine-image';
 
   static String xaiSummary({required bool pro}) => pro ? xaiSummaryPro : xaiSummaryFast;
   static String xaiTranslation({required bool pro}) => pro ? xaiTranslationPro : xaiTranslationFast;
+  static String xaiImage({required bool pro}) => pro ? xaiImagePro : xaiImageFast;
+  
+  static String openAiImage({required bool pro}) => pro ? openAiImagePro : openAiImageFast;
+  static String geminiImage({required bool pro}) => pro ? geminiImagePro : geminiImageFast;
 }

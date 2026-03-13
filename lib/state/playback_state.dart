@@ -74,6 +74,7 @@ class PlaybackState extends ChangeNotifier {
     String openAiVoice = "alloy",
     String geminiVoice = "Zephyr",
     String xaiVoice = "Eve",
+    String languageCode = "en",
   }) async {
     final t = text.trim();
     if (t.isEmpty) return;
@@ -92,7 +93,7 @@ class PlaybackState extends ChangeNotifier {
           case AiProviderType.gemini:
             bytes = await tts.generateSpeechGemini(apiKey: activeApiKey, text: t, voice: geminiVoice);
           case AiProviderType.xai:
-            bytes = await tts.generateSpeechXai(apiKey: activeApiKey, text: t, voice: xaiVoice);
+            bytes = await tts.generateSpeechXai(apiKey: activeApiKey, text: t, voice: xaiVoice, language: languageCode);
           default:
             bytes = await tts.generateSpeechOpenAI(apiKey: activeApiKey, text: t, voice: openAiVoice);
         }
