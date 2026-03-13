@@ -192,7 +192,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           _ProviderRadioTile(
                             value: AiProviderType.gemini,
                             label: 'Gemini',
-                            iconPath: 'assets/images/google-gemini-icon.svg',
+                            iconPath: 'assets/images/gemini-color.png',
                             groupValue: widget.settings.provider,
                             onChanged: (val) {
                               widget.settings.setProvider(val!);
@@ -220,7 +220,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           _ProviderRadioTile(
                             value: AiProviderType.xai,
                             label: 'Grok (no-audio)',
-                            iconPath: 'assets/images/grok-ai-icon.svg',
+                            iconPath: 'assets/images/Grok-icon.svg',
                             groupValue: widget.settings.provider,
                             onChanged: (val) async {
                               widget.settings.setProvider(val!);
@@ -443,7 +443,9 @@ class _ProviderRadioTile extends StatelessWidget {
       visualDensity: VisualDensity.compact,
       title: Row(
         children: [
-          SvgPicture.asset(iconPath, width: 24, height: 24),
+          iconPath.toLowerCase().endsWith('.svg')
+              ? SvgPicture.asset(iconPath, width: 24, height: 24)
+              : Image.asset(iconPath, width: 24, height: 24),
           const SizedBox(width: 12),
           Text(label, style: const TextStyle(fontSize: 14)),
         ],
