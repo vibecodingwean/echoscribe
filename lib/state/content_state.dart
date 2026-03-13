@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:typed_data";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:echoscribe/models/transcription_item.dart";
@@ -8,10 +9,12 @@ class ContentState extends ChangeNotifier {
   OutputMode _outputMode = OutputMode.transcription;
   bool _isRecording = false;
   bool _isTranscribing = false;
+  bool _isGeneratingImage = false;
 
   final ValueNotifier<String> currentTranscript = ValueNotifier("");
   final ValueNotifier<String> sourceTranscript = ValueNotifier("");
   final ValueNotifier<String> currentSummary = ValueNotifier("");
+  final ValueNotifier<Uint8List?> currentImageBytes = ValueNotifier(null);
 
   String get currentTranscriptValue => currentTranscript.value;
   String get sourceTranscriptValue => sourceTranscript.value;
@@ -37,6 +40,9 @@ class ContentState extends ChangeNotifier {
   bool get isTranscribing => _isTranscribing;
   void setTranscribing(bool value) { _isTranscribing = value; notifyListeners(); }
 
+  bool get isGeneratingImage => _isGeneratingImage;
+  void setGeneratingImage(bool value) { _isGeneratingImage = value; notifyListeners(); }
+
   void setCurrentTranscript(String text, {bool isSource = false}) {
     currentTranscript.value = text;
     if (isSource) sourceTranscript.value = text;
@@ -53,10 +59,16 @@ class ContentState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setCurrentImageBytes(Uint8List? bytes) {
+    currentImageBytes.value = bytes;
+    notifyListeners();
+  }
+
   void clearTranscription() {
     currentTranscript.value = "";
     sourceTranscript.value = "";
     currentSummary.value = "";
+    currentImageBytes.value = null;
     logText.value = "";
     notifyListeners();
   }
@@ -140,6 +152,7 @@ class ContentState extends ChangeNotifier {
     currentTranscript.dispose();
     sourceTranscript.dispose();
     currentSummary.dispose();
+    currentImageBytes.dispose();
     super.dispose();
   }
 }

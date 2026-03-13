@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 abstract class AiProvider {
   Future<String> summarize({
     required String apiKey,
@@ -19,6 +21,12 @@ abstract class AiProvider {
     required String filePath,
     required String fileName,
     required String mimeType,
+    required String model,
+  });
+
+  Future<Uint8List> generateImage({
+    required String apiKey,
+    required String prompt,
     required String model,
   });
 }

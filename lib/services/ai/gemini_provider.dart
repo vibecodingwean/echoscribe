@@ -1,20 +1,25 @@
+import 'dart:typed_data';
 import "package:echoscribe/services/ai/ai_provider.dart";
 import "package:echoscribe/services/gemini_service.dart";
 import "package:echoscribe/services/summary_service.dart";
 import "package:echoscribe/services/translation_service.dart";
+import "package:echoscribe/services/image_service.dart";
 
 class GeminiProvider implements AiProvider {
   final GeminiService _gemini;
   final SummaryService _summary;
   final TranslationService _translation;
+  final ImageService _image;
 
   GeminiProvider({
     required GeminiService gemini,
     required SummaryService summary,
     required TranslationService translation,
+    required ImageService image,
   }) : _gemini = gemini,
        _summary = summary,
-       _translation = translation;
+       _translation = translation,
+       _image = image;
 
   @override
   Future<String> summarize({
@@ -61,6 +66,19 @@ class GeminiProvider implements AiProvider {
       filePath: filePath,
       fileName: fileName,
       mimeType: mimeType,
+      model: model,
+    );
+  }
+
+  @override
+  Future<Uint8List> generateImage({
+    required String apiKey,
+    required String prompt,
+    required String model,
+  }) {
+    return _image.generateImageGemini(
+      apiKey: apiKey,
+      prompt: prompt,
       model: model,
     );
   }

@@ -1,10 +1,14 @@
 import 'dart:async';
+import 'dart:typed_data';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:echoscribe/widgets/home/recording_controls.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:echoscribe/widgets/home/full_screen_text_page.dart';
 import 'package:echoscribe/theme.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 
 class ProgressDots extends StatefulWidget {
   final Color? color;
@@ -57,6 +61,9 @@ class TranscriptionPanel extends StatefulWidget {
   final ValueNotifier<String> transcriptNotifier;
   final ValueNotifier<String> summaryNotifier;
   final ValueNotifier<String> logTextNotifier;
+  final ValueNotifier<Uint8List?> imageBytesNotifier;
+  final bool isGeneratingImage;
+  final bool supportsImage;
   final bool isLoading;
   final bool isRecording;
   final ValueNotifier<Duration> recordDurationNotifier;
@@ -67,6 +74,8 @@ class TranscriptionPanel extends StatefulWidget {
   final VoidCallback onShare;
   final VoidCallback onPaste;
   final VoidCallback onClear;
+  final VoidCallback onGenerateImage;
+  final void Function(Uint8List)? onImageTap;
 
   const TranscriptionPanel({
     super.key,
@@ -74,6 +83,9 @@ class TranscriptionPanel extends StatefulWidget {
     required this.transcriptNotifier,
     required this.summaryNotifier,
     required this.logTextNotifier,
+    required this.imageBytesNotifier,
+    required this.isGeneratingImage,
+    required this.supportsImage,
     required this.isLoading,
     required this.isRecording,
     required this.recordDurationNotifier,
@@ -84,6 +96,8 @@ class TranscriptionPanel extends StatefulWidget {
     required this.onShare,
     required this.onPaste,
     required this.onClear,
+    required this.onGenerateImage,
+    this.onImageTap,
   });
 
   @override
@@ -91,6 +105,62 @@ class TranscriptionPanel extends StatefulWidget {
 }
 
 class TranscriptionPanelState extends State<TranscriptionPanel> {
+  void _showImageOptions(BuildContext context, Uint8List bytes) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.share),
+              title: const Text('Share'),
+              onTap: () async {
+                Navigator.pop(context);
+                final tempDir = await getTemporaryDirectory();
+                final file = await File('${tempDir.path}/generated_image.png').create();
+                await file.writeAsBytes(bytes);
+                await Share.shareXFiles([XFile(file.path)], text: 'Generated with EchoScribe');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.save_alt),
+              title: const Text('Save to device'),
+              onTap: () async {
+                Navigator.pop(context);
+                try {
+                  Directory? dir;
+                  if (Platform.isAndroid) {
+                    dir = Directory('/storage/emulated/0/Download');
+                    if (!await dir.exists()) dir = await getExternalStorageDirectory();
+                  } else {
+                    dir = await getApplicationDocumentsDirectory();
+                  }
+                  
+                  final fileName = 'EchoScribe_${DateTime.now().millisecondsSinceEpoch}.png';
+                  final file = File('${dir!.path}/$fileName');
+                  await file.writeAsBytes(bytes);
+                  
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Saved to ${dir.path}/$fileName')),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Failed to save image')),
+                    );
+                  }
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildHeader(BuildContext context, String displayText) {
     final bool hasText = displayText.trim().isNotEmpty;
     
@@ -139,6 +209,7 @@ class TranscriptionPanelState extends State<TranscriptionPanel> {
         widget.transcriptNotifier,
         widget.summaryNotifier,
         widget.logTextNotifier,
+        widget.imageBytesNotifier,
       ]),
       builder: (context, child) {
         final bool showAsLog = (widget.isDebugMode || widget.isLoading || widget.isRecording) && widget.logTextNotifier.value.isNotEmpty;
@@ -171,43 +242,62 @@ class TranscriptionPanelState extends State<TranscriptionPanel> {
                 Expanded(
                   child: Stack(
                     children: [
-                      if (displayText.isEmpty && !widget.isLoading && !widget.isRecording)
+                      if (displayText.isEmpty && widget.imageBytesNotifier.value == null && !widget.isLoading && !widget.isRecording)
                         Center(
                           child: Text(
                             "Your transcription will appear here...",
                             style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
                           ),
                         )
-                      else if (displayText.isNotEmpty)
+                      else if (displayText.isNotEmpty || widget.imageBytesNotifier.value != null)
                         SingleChildScrollView(
                           padding: const EdgeInsets.all(16.0),
-                          child: showAsLog
-                              ? Text(
-                                  displayText,
-                                  style: const TextStyle(fontFamily: "monospace", fontSize: 12),
-                                )
-                              : MarkdownBody(
-                                  data: displayText,
-                                  selectable: true,
-                                  styleSheet: AppMarkdownStyle.of(context),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (displayText.isNotEmpty)
+                                showAsLog
+                                  ? Text(
+                                      displayText,
+                                      style: const TextStyle(fontFamily: "monospace", fontSize: 12),
+                                    )
+                                  : MarkdownBody(
+                                      data: displayText,
+                                      selectable: true,
+                                      styleSheet: AppMarkdownStyle.of(context),
+                                    ),
+                              if (widget.imageBytesNotifier.value != null) ...[
+                                if (displayText.isNotEmpty) const SizedBox(height: 16),
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => _FullScreenImageViewer(
+                                          imageBytes: widget.imageBytesNotifier.value!,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  onLongPress: () {
+                                    _showImageOptions(context, widget.imageBytesNotifier.value!);
+                                  },
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Image.memory(
+                                      widget.imageBytesNotifier.value!,
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
                                 ),
+                              ],
+                            ],
+                          ),
                         ),
-                      if (widget.isLoading || widget.isRecording)
+                      if (widget.isRecording)
                         Positioned(
                           bottom: 16,
                           left: 16,
-                          child: widget.isRecording
-                              ? FileLimitPill(durationNotifier: widget.recordDurationNotifier, maxDuration: widget.maxRecordDuration)
-                              : Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.primaryContainer,
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: ProgressDots(
-                                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                                  ),
-                                ),
+                          child: FileLimitPill(durationNotifier: widget.recordDurationNotifier, maxDuration: widget.maxRecordDuration),
                         ),
                     ],
                   ),
@@ -217,6 +307,62 @@ class TranscriptionPanelState extends State<TranscriptionPanel> {
           ),
         );
       },
+    );
+  }
+}
+
+class _FullScreenImageViewer extends StatefulWidget {
+  final Uint8List imageBytes;
+  const _FullScreenImageViewer({required this.imageBytes});
+
+  @override
+  State<_FullScreenImageViewer> createState() => _FullScreenImageViewerState();
+}
+
+class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
+  final TransformationController _transformationController = TransformationController();
+  TapDownDetails? _doubleTapDetails;
+
+  void _handleDoubleTap() {
+    if (_transformationController.value != Matrix4.identity()) {
+      _transformationController.value = Matrix4.identity();
+    } else {
+      final position = _doubleTapDetails!.localPosition;
+      // zoom in 3x
+      _transformationController.value = Matrix4.identity()
+        ..translate(-position.dx * 2, -position.dy * 2)
+        ..scale(3.0);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: GestureDetector(
+        onDoubleTapDown: (details) => _doubleTapDetails = details,
+        onDoubleTap: _handleDoubleTap,
+        child: Center(
+          child: InteractiveViewer(
+            transformationController: _transformationController,
+            minScale: 0.5,
+            maxScale: 5.0,
+            boundaryMargin: const EdgeInsets.all(double.infinity),
+            child: Image.memory(
+              widget.imageBytes,
+              fit: BoxFit.contain,
+              width: MediaQuery.of(context).size.width,
+              height: MediaQuery.of(context).size.height,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
