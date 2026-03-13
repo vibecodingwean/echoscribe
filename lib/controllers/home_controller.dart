@@ -161,7 +161,11 @@ class HomeController extends ChangeNotifier {
     try {
       content.appendLogLine('📄 Summarizing current text...');
       final ai = aiFactory.create(settings.provider);
-      await _summarize(ai, source);
+      final summary = await _summarize(ai, source);
+      try {
+        await content.addToClipboard(summary);
+        showSuccess('Copied to clipboard');
+      } catch (_) {}
     } on AppException catch (e) {
       content.appendLogLine('⚠️ ${e.userMessage}');
       showError(e.userMessage);
@@ -206,10 +210,18 @@ class HomeController extends ChangeNotifier {
       _saveToHistory(translated, settings.targetLanguageCode);
 
       if (mode == 'summary') {
-        await _summarize(ai, translated);
+        final summary = await _summarize(ai, translated);
         content.setOutputMode(OutputMode.summary);
+        try {
+          await content.addToClipboard(summary);
+          showSuccess('Copied to clipboard');
+        } catch (_) {}
       } else {
         content.setOutputMode(OutputMode.transcription);
+        try {
+          await content.addToClipboard(translated);
+          showSuccess('Copied to clipboard');
+        } catch (_) {}
       }
       
       _logFinalResponse(translated);
@@ -248,8 +260,12 @@ class HomeController extends ChangeNotifier {
       
       _saveToHistory(translated, settings.targetLanguageCode);
       
-      await _summarize(ai, translated);
+      final summary = await _summarize(ai, translated);
       content.setOutputMode(OutputMode.summary);
+      try {
+        await content.addToClipboard(summary);
+        showSuccess('Copied to clipboard');
+      } catch (_) {}
       content.appendLogLine('✅ Done');
     } on AppException catch (e) {
       content.appendLogLine('⚠️ ${e.userMessage}');
@@ -323,7 +339,16 @@ class HomeController extends ChangeNotifier {
       _saveToHistory(translated, settings.targetLanguageCode);
 
       if (content.isSummaryMode) {
-        await _summarize(ai, translated);
+        final summary = await _summarize(ai, translated);
+        try {
+          await content.addToClipboard(summary);
+          showSuccess('Copied to clipboard');
+        } catch (_) {}
+      } else {
+        try {
+          await content.addToClipboard(translated);
+          showSuccess('Copied to clipboard');
+        } catch (_) {}
       }
 
       _logFinalResponse(translated);
@@ -359,7 +384,16 @@ class HomeController extends ChangeNotifier {
       content.updateActiveHistory(transcript: translated, text: translated, language: settings.targetLanguageCode);
       
       if (content.isSummaryMode && content.currentSummaryValue.isNotEmpty) {
-         await _summarize(ai, translated);
+         final summary = await _summarize(ai, translated);
+         try {
+           await content.addToClipboard(summary);
+           showSuccess('Copied to clipboard');
+         } catch (_) {}
+      } else {
+         try {
+           await content.addToClipboard(translated);
+           showSuccess('Copied to clipboard');
+         } catch (_) {}
       }
       
       _logFinalResponse(translated);
