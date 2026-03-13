@@ -70,5 +70,5 @@ flutter {
 
 dependencies {
     implementation "androidx.core:core-ktx:1.13.1"
-    // (activity-ktx ist nicht mehr nötig)
+    implementation "androidx.activity:activity-ktx:1.9.3"
 }
