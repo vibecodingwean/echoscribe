@@ -42,6 +42,7 @@ class _HomePageState extends State<HomePage> {
 
   bool _isLoading = true;
   ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? _progressSnack;
+  final ValueNotifier<String> _progressText = ValueNotifier('');
 
   final ShareHandlerPlatform _shareHandler = ShareHandlerPlatform.instance;
 
@@ -72,6 +73,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    _progressText.dispose();
     _controller.dispose();
     _sl.recorder.dispose();
     _settings.dispose();
@@ -168,6 +170,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _clearTranscription() {
+    _controller.cancelActiveOperations();
     _content.clearTranscription();
     _playback.stopAudio();
   }
@@ -248,21 +251,27 @@ class _HomePageState extends State<HomePage> {
 
   void _showProgressToast(String msg) {
     if (!mounted) return;
-    _hideProgressToast();
+    _progressText.value = msg;
+    if (_progressSnack != null) return; // already showing, just update text
     _progressSnack = ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Row(
-        children: [
-          const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
-          const SizedBox(width: 16),
-          Expanded(child: Text(msg)),
-        ],
+      content: ValueListenableBuilder<String>(
+        valueListenable: _progressText,
+        builder: (_, text, __) => Row(
+          children: [
+            const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+            const SizedBox(width: 16),
+            Expanded(child: Text(text)),
+          ],
+        ),
       ),
       duration: const Duration(days: 1),
     ));
   }
 
   void _replaceProgressToast(String msg) {
-    _showProgressToast(msg);
+    if (!mounted) return;
+    _progressText.value = msg;
+    if (_progressSnack == null) _showProgressToast(msg);
   }
 
   @override
@@ -321,6 +330,9 @@ class _HomePageState extends State<HomePage> {
                 transcriptNotifier: _content.currentTranscript,
                 summaryNotifier: _content.currentSummary,
                 logTextNotifier: _content.logText,
+                imageBytesNotifier: _content.currentImageBytes,
+                isGeneratingImage: _content.isGeneratingImage,
+                supportsImage: _settings.provider.supportsImage,
                 isLoading: _content.isTranscribing,
                 isRecording: _content.isRecording,
                 recordDurationNotifier: _content.recordDuration,
@@ -340,6 +352,12 @@ class _HomePageState extends State<HomePage> {
                 },
                 onPaste: _pasteFromClipboard,
                 onClear: _clearTranscription,
+                onGenerateImage: () => _controller.generateImageFromCurrentContent(
+                  showProgressToast: _showProgressToast,
+                  hideProgressToast: _hideProgressToast,
+                  replaceProgressToast: _replaceProgressToast,
+                ),
+                onImageTap: null,
               );
 
               final controls = Column(
@@ -397,33 +415,72 @@ class _HomePageState extends State<HomePage> {
                     },
                   ),
                   const SizedBox(height: 12),
-                  SizedBox(
-                    height: 100,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        // Left: TTS Controls
                         Expanded(
                           child: Center(
                             child: (_content.isSummaryMode && _content.currentSummaryValue.trim().isNotEmpty)
-                                ? StopButton(
-                                    enabled: !_playback.isAudioLoading,
-                                    isAnthropic: !_settings.provider.supportsTts,
-                                    onPressed: () async {
-                                      if (!_settings.provider.supportsTts) {
-                                        _showError("${_settings.provider.brandName} does not support audio playback");
-                                        return;
-                                      }
-                                      try {
-                                        _hideProgressToast();
-                                        await _playback.stopAudio();
-                                      } catch (e) {
-                                        _showError("TTS error");
-                                      }
-                                    },
+                                ? Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.4),
+                                      borderRadius: BorderRadius.circular(24),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        StopButton(
+                                          enabled: !_playback.isAudioLoading,
+                                          isAnthropic: !_settings.provider.supportsTts,
+                                          onPressed: () async {
+                                            if (!_settings.provider.supportsTts) {
+                                              _showError("${_settings.provider.brandName} does not support audio playback");
+                                              return;
+                                            }
+                                            try {
+                                              _hideProgressToast();
+                                              await _playback.stopAudio();
+                                            } catch (e) {
+                                              _showError("TTS error");
+                                            }
+                                          },
+                                        ),
+                                        const SizedBox(width: 2),
+                                        PlayPauseButton(
+                                          isLoading: _playback.isAudioLoading,
+                                          isPlaying: _playback.isPlaying,
+                                          isAnthropic: !_settings.provider.supportsTts,
+                                          onPressed: () async {
+                                            if (!_settings.provider.supportsTts) {
+                                              _showError("${_settings.provider.brandName} does not support audio playback");
+                                              return;
+                                            }
+                                            if (_playback.isAudioLoading) return;
+                                            try {
+                                              await _controller.togglePlayback(
+                                                tts: _sl.tts,
+                                                showProgressToast: _showProgressToast,
+                                                hideProgressToast: _hideProgressToast,
+                                                replaceProgressToast: _replaceProgressToast,
+                                                showSuccess: _showSuccess
+                                              );
+                                            } catch (e) {
+                                              _hideProgressToast();
+                                              _showError("TTS error");
+                                            }
+                                          },
+                                        ),
+                                      ],
+                                    ),
                                   )
                                 : const SizedBox.shrink(),
                           ),
                         ),
+                        // Center: Mic
                         AnimatedBuilder(
                           animation: Listenable.merge([_controller.levelNotifier, _controller.smoothedLevelNotifier]),
                           builder: (context, child) {
@@ -446,8 +503,8 @@ class _HomePageState extends State<HomePage> {
                                 children: [
                                   AnimatedContainer(
                                     duration: const Duration(milliseconds: 120),
-                                    width: 100,
-                                    height: 100,
+                                    width: 90,
+                                    height: 90,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       gradient: RadialGradient(colors: ringColors),
@@ -486,28 +543,31 @@ class _HomePageState extends State<HomePage> {
                             );
                           },
                         ),
+                        // Right: Image Gen
                         Expanded(
                           child: Center(
-                            child: (_content.isSummaryMode && _content.currentSummaryValue.trim().isNotEmpty)
-                                ? PlayPauseButton(
-                                  isLoading: _playback.isAudioLoading,
-                                  isPlaying: _playback.isPlaying,
-                                  isAnthropic: !_settings.provider.supportsTts,
-                                  onPressed: () async {
-                                    if (!_settings.provider.supportsTts) {
-                                      _showError("${_settings.provider.brandName} does not support audio playback");
-                                      return;
-                                    }
-                                    if (_playback.isAudioLoading) return;
-                                    try {
-                                      await _controller.togglePlayback(tts: _sl.tts, showProgressToast: _showProgressToast, hideProgressToast: _hideProgressToast, replaceProgressToast: _replaceProgressToast, showSuccess: _showSuccess);
-                                    } catch (e) {
-                                      _hideProgressToast();
-                                      _showError("TTS error");
-                                    }
-                                  },
-                                )
-                                : const SizedBox.shrink(),
+                            child: Visibility(
+                              visible: _settings.provider.supportsImage && (_content.isSummaryMode ? _content.currentSummaryValue.trim().isNotEmpty : _content.currentTranscriptValue.trim().isNotEmpty),
+                              maintainSize: true,
+                              maintainAnimation: true,
+                              maintainState: true,
+                              child: ImageGenButton(
+                                isLoading: _content.isGeneratingImage,
+                                enabled: _settings.hasActiveApiKey,
+                                supportsImage: _settings.provider.supportsImage,
+                                onPressed: () async {
+                                  if (!_settings.provider.supportsImage) {
+                                    _showError("${_settings.provider.brandName} does not support image generation");
+                                    return;
+                                  }
+                                  await _controller.generateImageFromCurrentContent(
+                                    showProgressToast: _showProgressToast,
+                                    hideProgressToast: _hideProgressToast,
+                                    replaceProgressToast: _replaceProgressToast,
+                                  );
+                                },
+                              ),
+                            ),
                           ),
                         ),
                       ],

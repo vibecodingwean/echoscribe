@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:async/async.dart';
 import 'package:echoscribe/state/settings_state.dart';
 import 'package:echoscribe/state/content_state.dart';
 import 'package:echoscribe/state/playback_state.dart';
@@ -23,6 +24,8 @@ class HomeController extends ChangeNotifier {
   final void Function(String) showError;
   final void Function(String) showSuccess;
   
+  CancelableOperation? _imageOp;
+
   // Expose these for the UI to use
   final ValueNotifier<double> levelNotifier = ValueNotifier<double>(0.0);
   final ValueNotifier<double> smoothedLevelNotifier = ValueNotifier<double>(0.0);
@@ -41,9 +44,20 @@ class HomeController extends ChangeNotifier {
   @override
   void dispose() {
     _ampSub?.cancel();
+    _imageOp?.cancel();
     levelNotifier.dispose();
     smoothedLevelNotifier.dispose();
     super.dispose();
+  }
+
+  void cancelActiveOperations() {
+    if (_imageOp != null) {
+      _imageOp?.cancel();
+      _imageOp = null;
+      content.setGeneratingImage(false);
+      content.appendLogLine('🛑 Image generation cancelled');
+    }
+    // Note: Add transcription/summary cancel here if needed later
   }
 
   String _getModelForSummary() {
@@ -69,6 +83,15 @@ class HomeController extends ChangeNotifier {
     }
   }
 
+  String _getModelForImage() {
+    switch (settings.provider) {
+      case AiProviderType.gemini: return AiModelConfig.geminiImage(pro: true);
+      case AiProviderType.xai: return AiModelConfig.xaiImage(pro: true);
+      case AiProviderType.openai: return AiModelConfig.openAiImage(pro: true);
+      case AiProviderType.anthropic: return ''; // Unsupported
+    }
+  }
+
   String get _ttsVoice {
     switch (settings.provider) {
       case AiProviderType.gemini: return "Zephyr";
@@ -78,18 +101,18 @@ class HomeController extends ChangeNotifier {
   }
 
   Future<String> _transcribeAudio(String path, String filename, String mimeType, {int? fileSizeBytes}) async {
-    if (fileSizeBytes != null) {
-      final sizeInMb = (fileSizeBytes / (1024 * 1024)).toStringAsFixed(1);
-      content.appendLogLine('🎙️ Processing $sizeInMb MB audio file...');
-    } else {
-      content.appendLogLine('🎙️ Processing audio...');
-    }
-
-    final ai = aiFactory.create(settings.provider);
     final brand = settings.provider.brandName;
     final model = _getModelForTranscription();
-    content.appendLogLine('📡 Uploading audio to $brand\n($model)...');
     
+    if (fileSizeBytes != null) {
+      final sizeInMb = (fileSizeBytes / (1024 * 1024)).toStringAsFixed(1);
+      content.appendLogLine('🎙️ Uploading $sizeInMb MB to $brand...');
+    } else {
+      content.appendLogLine('🎙️ Uploading audio to $brand...');
+    }
+    content.appendLogLine('🤖 Transcription Model: $model');
+
+    final ai = aiFactory.create(settings.provider);
     final text = await ai.transcribe(
       apiKey: settings.activeApiKey,
       filePath: path,
@@ -97,7 +120,9 @@ class HomeController extends ChangeNotifier {
       mimeType: mimeType,
       model: model,
     );
-    content.appendLogLine('✅ Received text');
+    
+    final wordCount = text.split(' ').length;
+    content.appendLogLine('✅ Received $wordCount words');
     return text;
   }
 
@@ -105,21 +130,26 @@ class HomeController extends ChangeNotifier {
     if (targetLanguage == 'auto') return text;
     
     final transModel = _getModelForTranslation();
-    content.appendLogLine('🌐 Translating to $targetLanguage\n($transModel)...');
+    final brand = settings.provider.brandName;
+    content.appendLogLine('🌐 Translating via $brand...');
+    content.appendLogLine('🤖 Translation Model: $transModel');
+    content.appendLogLine('🌍 Target: $targetLanguage');
+    
     final translated = await ai.translate(
       apiKey: settings.activeApiKey,
       text: text,
       targetLanguageCode: targetLanguage,
       model: transModel,
     );
-    content.appendLogLine('✅ Translation received');
+    content.appendLogLine('✅ Translation successful');
     return translated;
   }
 
   Future<String> _summarize(AiProvider ai, String text) async {
     final brand = settings.provider.brandName;
     final sumModel = _getModelForSummary();
-    content.appendLogLine('🤖 $brand\n($sumModel) is analyzing...');
+    content.appendLogLine('🤖 Summarizing with $brand...');
+    content.appendLogLine('🤖 Summary Model: $sumModel');
     
     final summary = await ai.summarize(
       apiKey: settings.activeApiKey,
@@ -131,7 +161,7 @@ class HomeController extends ChangeNotifier {
     
     content.setCurrentSummary(summary);
     content.updateActiveHistory(summary: summary);
-    content.appendLogLine('✨ Summary received successfully');
+    content.appendLogLine('✨ Summary generated (${summary.length} chars)');
     return summary;
   }
 
@@ -151,6 +181,129 @@ class HomeController extends ChangeNotifier {
     content.appendLogLine('💬 Response (final text):');
     content.appendLogLine(text);
     content.appendLogLine('✅ Done');
+  }
+
+  Future<void> generateImageFromCurrentContent({
+    required Function(String) showProgressToast,
+    required Function() hideProgressToast,
+    required Function(String) replaceProgressToast,
+  }) async {
+    if (content.isGeneratingImage) {
+      cancelActiveOperations();
+      hideProgressToast();
+      return;
+    }
+
+    if (!settings.provider.supportsImage) {
+      showError('${settings.provider.brandName} does not support image generation.');
+      return;
+    }
+    if (!settings.hasActiveApiKey) {
+      showError('Add your API key first');
+      return;
+    }
+
+    final source = content.isSummaryMode ? content.currentSummaryValue.trim() : content.currentTranscriptValue.trim();
+    if (source.isEmpty) return;
+
+    var prompt = "Generate an image that represents the following text. Be creative, visual, and accurate to the core theme. Text:\n\n$source";
+    if (settings.provider == AiProviderType.openai) {
+      prompt = "Generate a realistic image that represents the following text. Focus on high quality, lifelike details. Text:\n\n$source";
+    }
+
+    content.setGeneratingImage(true);
+    content.setCurrentImageBytes(null);
+    
+    final brand = settings.provider.brandName;
+    final model = _getModelForImage();
+    
+    showProgressToast('Uploading prompt to $brand...');
+
+    // Estimated generation time per provider
+    final int estimateSec = switch (settings.provider) {
+      AiProviderType.openai => 70,
+      AiProviderType.gemini => 25,
+      AiProviderType.xai => 15,
+      AiProviderType.anthropic => 0,
+    };
+
+    Timer? countdownTimer;
+    int remaining = estimateSec;
+    bool done = false;
+
+    void stopCountdown() {
+      done = true;
+      countdownTimer?.cancel();
+      countdownTimer = null;
+    }
+
+    void startCountdown() {
+      // Show first message after 2s delay
+      countdownTimer = Timer(const Duration(seconds: 2), () {
+        if (done) return;
+        // Start 1-second ticks
+        countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+          if (done) { timer.cancel(); return; }
+          remaining--;
+          if (remaining <= 0) {
+            // Estimate expired — just cycle model/waiting
+            if (timer.tick % 4 < 2) {
+              replaceProgressToast('Model: $model');
+            } else {
+              replaceProgressToast('Waiting for reply...');
+            }
+          } else if (remaining % 4 < 2) {
+            replaceProgressToast('Estimate: ~$remaining seconds...');
+          } else {
+            replaceProgressToast('Model: $model');
+          }
+        });
+      });
+    }
+
+    try {
+      content.appendLogLine('🎨 Generating image with $brand...');
+      content.appendLogLine('🤖 Model: $model');
+
+      final ai = aiFactory.create(settings.provider);
+
+      _imageOp = CancelableOperation.fromFuture(
+        ai.generateImage(
+          apiKey: settings.activeApiKey,
+          prompt: prompt,
+          model: model,
+        ),
+      );
+
+      startCountdown();
+
+      final bytes = await _imageOp!.value;
+      stopCountdown();
+      _imageOp = null;
+
+      final sizeKb = (bytes.lengthInBytes / 1024).toStringAsFixed(1);
+      content.appendLogLine('✅ Image received ($sizeKb KB)');
+      content.setCurrentImageBytes(bytes);
+      replaceProgressToast('Image received ($sizeKb KB)');
+      Future.delayed(const Duration(seconds: 2), () {
+        if (!content.isGeneratingImage) hideProgressToast();
+      });
+    } on AppException catch (e) {
+      stopCountdown();
+      hideProgressToast();
+      content.appendLogLine('⚠️ ${e.userMessage}');
+      showError(e.userMessage);
+    } catch (e) {
+      stopCountdown();
+      hideProgressToast();
+      if (_imageOp?.isCanceled ?? false) return;
+      content.appendLogLine('⚠️ $e');
+      showError('Image generation failed');
+    } finally {
+      stopCountdown();
+      content.setGeneratingImage(false);
+      _imageOp = null;
+    }
   }
 
   Future<void> summarizeCurrentTranscript() async {
@@ -437,6 +590,7 @@ class HomeController extends ChangeNotifier {
           }
         });
       }
+      final lang = settings.targetLanguageCode == 'auto' ? 'en' : settings.targetLanguageCode;
       await playback.playSummary(
         tts: tts,
         text: content.currentSummaryValue,
@@ -445,6 +599,7 @@ class HomeController extends ChangeNotifier {
         openAiVoice: "alloy",
         geminiVoice: "Zephyr",
         xaiVoice: "Eve",
+        languageCode: lang,
       );
       hideProgressToast();
     }

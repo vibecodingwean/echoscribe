@@ -210,6 +210,61 @@ class StopButton extends StatelessWidget {
   }
 }
 
+class ImageGenButton extends StatelessWidget {
+  final bool isLoading;
+  final bool enabled;
+  final bool supportsImage;
+  final VoidCallback onPressed;
+
+  const ImageGenButton({
+    super.key,
+    required this.isLoading,
+    required this.enabled,
+    required this.supportsImage,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    final double size = 44;
+    final bool effectivelyEnabled = enabled && supportsImage;
+
+    return Opacity(
+      opacity: effectivelyEnabled ? 1.0 : 0.4,
+      child: Material(
+        color: c.secondary,
+        shape: const CircleBorder(),
+        elevation: 0,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: effectivelyEnabled ? onPressed : null,
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: Center(
+              child: isLoading
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(c.onSecondary),
+                      ),
+                    )
+                  : Icon(
+                      Icons.image_outlined,
+                      color: c.onSecondary,
+                      size: 24,
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class FileLimitPill extends StatelessWidget {
   final ValueNotifier<Duration> durationNotifier;
   final Duration maxDuration;

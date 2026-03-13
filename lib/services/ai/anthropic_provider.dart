@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import "package:echoscribe/services/ai/ai_provider.dart";
 import "package:echoscribe/services/summary_service.dart";
 import "package:echoscribe/services/translation_service.dart";
@@ -54,5 +55,14 @@ class AnthropicProvider implements AiProvider {
   }) {
     // Claude does not support audio transcription
     return Future.error(Exception("Claude does not support audio transcription"));
+  }
+
+  @override
+  Future<Uint8List> generateImage({
+    required String apiKey,
+    required String prompt,
+    required String model,
+  }) {
+    return Future.error(Exception("Claude does not support image generation"));
   }
 }

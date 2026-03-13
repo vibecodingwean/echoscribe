@@ -133,6 +133,7 @@ class TtsService {
     required String apiKey,
     required String text,
     String voice = 'Eve',
+    String language = 'en',
     String responseFormat = 'mp3',
   }) async {
     final trimmed = text.trim();
@@ -145,7 +146,8 @@ class TtsService {
     };
     final body = json.encode({
       'text': trimmed,
-      'voice': voice,
+      'voice_id': voice,
+      'language': language,
       'response_format': responseFormat,
     });
 
