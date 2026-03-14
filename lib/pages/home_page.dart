@@ -417,166 +417,189 @@ class _HomePageState extends State<HomePage> {
                     },
                   ),
                   const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Left: TTS Controls
-                        Expanded(
-                          child: Center(
-                            child: (_content.isSummaryMode && _content.currentSummaryValue.trim().isNotEmpty)
-                                ? Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.4),
-                                      borderRadius: BorderRadius.circular(24),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        StopButton(
-                                          enabled: !_playback.isAudioLoading,
-                                          isAnthropic: !_settings.provider.supportsTts,
-                                          onPressed: () async {
-                                            if (!_settings.provider.supportsTts) {
-                                              _showError("${_settings.provider.brandName} does not support audio playback");
-                                              return;
-                                            }
-                                            try {
-                                              _hideProgressToast();
-                                              await _playback.stopAudio();
-                                            } catch (e) {
-                                              _showError("TTS error");
-                                            }
-                                          },
-                                        ),
-                                        const SizedBox(width: 2),
-                                        PlayPauseButton(
-                                          isLoading: _playback.isAudioLoading,
-                                          isPlaying: _playback.isPlaying,
-                                          isAnthropic: !_settings.provider.supportsTts,
-                                          onPressed: () async {
-                                            if (!_settings.provider.supportsTts) {
-                                              _showError("${_settings.provider.brandName} does not support audio playback");
-                                              return;
-                                            }
-                                            if (_playback.isAudioLoading) return;
-                                            try {
-                                              await _controller.togglePlayback(
-                                                tts: _sl.tts,
-                                                showProgressToast: _showProgressToast,
-                                                hideProgressToast: _hideProgressToast,
-                                                replaceProgressToast: _replaceProgressToast,
-                                                showSuccess: _showSuccess
-                                              );
-                                            } catch (e) {
-                                              _hideProgressToast();
-                                              _showError("TTS error");
-                                            }
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  )
-                                : const SizedBox.shrink(),
-                          ),
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: color.surfaceContainerHigh.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(100),
+                        border: Border.all(
+                          color: color.outlineVariant.withValues(alpha: 0.3),
+                          width: 1,
                         ),
-                        // Center: Mic
-                        AnimatedBuilder(
-                          animation: Listenable.merge([_controller.levelNotifier, _controller.smoothedLevelNotifier]),
-                          builder: (context, child) {
-                            final pulse = _content.isRecording ? _controller.smoothedLevelNotifier.value.clamp(0.0, 1.0) : 0.0;
-                            final flicker = _content.isRecording ? _controller.levelNotifier.value.clamp(0.0, 1.0) : 0.0;
-                            final ringColors = _content.isRecording
-                                ? [
-                                    color.error.withValues(alpha: 0.16 + 0.18 * pulse),
-                                    color.error.withValues(alpha: 0.03 + 0.03 * pulse),
-                                  ]
-                                : [
-                                    color.secondary.withValues(alpha: 0.18),
-                                    color.secondary.withValues(alpha: 0.04),
-                                  ];
-                            return AnimatedScale(
-                              duration: const Duration(milliseconds: 160),
-                              scale: _content.isRecording ? (1.0 + 0.06 * pulse) : 1.0,
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  AnimatedContainer(
-                                    duration: const Duration(milliseconds: 120),
-                                    width: 90,
-                                    height: 90,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: RadialGradient(colors: ringColors),
-                                      border: Border.all(color: color.primary.withValues(alpha: 0.12), width: 1),
-                                    ),
-                                  ),
-                                  MicButton(
-                                    recording: _content.isRecording,
-                                    transcribing: _content.isTranscribing,
-                                    enabled: _settings.hasActiveApiKey,
-                                    isAnthropic: !_settings.provider.supportsAudio,
-                                    level: pulse,
-                                    instantLevel: flicker,
-                                    onTap: () async {
-                                      if (_content.isTranscribing) return;
-                                      if (_content.isGeneratingImage) {
-                                        _controller.cancelActiveOperations();
-                                        _hideProgressToast();
-                                      }
-                                      if (!_settings.hasActiveApiKey) {
-                                        _showError("Add your API key first");
-                                        await Navigator.of(context).push(
-                                          MaterialPageRoute(builder: (_) => SettingsPage(settings: _settings)),
-                                        );
-                                        return;
-                                      }
-                                      if (!_settings.provider.supportsAudio) {
-                                        _showError('${_settings.provider.brandName} does not support audio - Please select GPT or Gemini.');
-                                        return;
-                                      }
-                                      if (!_content.isRecording) {
-                                        await _controller.startRecording();
-                                      } else {
-                                        await _controller.stopAndTranscribe();
-                                      }
-                                    },
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                        // Right: Image Gen
-                        Expanded(
-                          child: Center(
-                            child: Visibility(
-                              visible: _settings.provider.supportsImage && (_content.isSummaryMode ? _content.currentSummaryValue.trim().isNotEmpty : _content.currentTranscriptValue.trim().isNotEmpty),
-                              maintainSize: true,
-                              maintainAnimation: true,
-                              maintainState: true,
-                              child: ImageGenButton(
-                                isLoading: _content.isGeneratingImage,
-                                enabled: _settings.hasActiveApiKey,
-                                supportsImage: _settings.provider.supportsImage,
-                                onPressed: () async {
-                                  if (!_settings.provider.supportsImage) {
-                                    _showError("${_settings.provider.brandName} does not support image generation");
-                                    return;
-                                  }
-                                  await _controller.generateImageFromCurrentContent(
-                                    showProgressToast: _showProgressToast,
-                                    hideProgressToast: _hideProgressToast,
-                                    replaceProgressToast: _replaceProgressToast,
-                                  );
-                                },
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          )
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Left Slot (TTS) - Fixed width to keep Mic centered
+                          SizedBox(
+                            width: 100,
+                            child: Center(
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 300),
+                                child: (_content.isSummaryMode && _content.currentSummaryValue.trim().isNotEmpty)
+                                    ? Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: color.secondaryContainer.withValues(alpha: 0.4),
+                                          borderRadius: BorderRadius.circular(100),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            StopButton(
+                                              enabled: !_playback.isAudioLoading,
+                                              isAnthropic: !_settings.provider.supportsTts,
+                                              onPressed: () async {
+                                                if (!_settings.provider.supportsTts) {
+                                                  _showError("${_settings.provider.brandName} does not support audio playback");
+                                                  return;
+                                                }
+                                                try {
+                                                  _hideProgressToast();
+                                                  await _playback.stopAudio();
+                                                } catch (e) {
+                                                  _showError("TTS error");
+                                                }
+                                              },
+                                            ),
+                                            const SizedBox(width: 4),
+                                            PlayPauseButton(
+                                              isLoading: _playback.isAudioLoading,
+                                              isPlaying: _playback.isPlaying,
+                                              isAnthropic: !_settings.provider.supportsTts,
+                                              onPressed: () async {
+                                                if (!_settings.provider.supportsTts) {
+                                                  _showError("${_settings.provider.brandName} does not support audio playback");
+                                                  return;
+                                                }
+                                                if (_playback.isAudioLoading) return;
+                                                try {
+                                                  await _controller.togglePlayback(
+                                                    tts: _sl.tts,
+                                                    showProgressToast: _showProgressToast,
+                                                    hideProgressToast: _hideProgressToast,
+                                                    replaceProgressToast: _replaceProgressToast,
+                                                    showSuccess: _showSuccess
+                                                  );
+                                                } catch (e) {
+                                                  _hideProgressToast();
+                                                  _showError("TTS error");
+                                                }
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      )
+                                    : const SizedBox.shrink(),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                          
+                          // Center: Mic
+                          AnimatedBuilder(
+                            animation: Listenable.merge([_controller.levelNotifier, _controller.smoothedLevelNotifier]),
+                            builder: (context, child) {
+                              final pulse = _content.isRecording ? _controller.smoothedLevelNotifier.value.clamp(0.0, 1.0) : 0.0;
+                              final flicker = _content.isRecording ? _controller.levelNotifier.value.clamp(0.0, 1.0) : 0.0;
+                              final ringColors = _content.isRecording
+                                  ? [
+                                      color.error.withValues(alpha: 0.16 + 0.18 * pulse),
+                                      color.error.withValues(alpha: 0.03 + 0.03 * pulse),
+                                    ]
+                                  : [
+                                      color.secondary.withValues(alpha: 0.18),
+                                      color.secondary.withValues(alpha: 0.04),
+                                    ];
+                              return AnimatedScale(
+                                duration: const Duration(milliseconds: 160),
+                                scale: _content.isRecording ? (1.0 + 0.06 * pulse) : 1.0,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    AnimatedContainer(
+                                      duration: const Duration(milliseconds: 120),
+                                      width: 90,
+                                      height: 90,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        gradient: RadialGradient(colors: ringColors),
+                                        border: Border.all(color: color.primary.withValues(alpha: 0.12), width: 1),
+                                      ),
+                                    ),
+                                    MicButton(
+                                      recording: _content.isRecording,
+                                      transcribing: _content.isTranscribing,
+                                      enabled: _settings.hasActiveApiKey,
+                                      isAnthropic: !_settings.provider.supportsAudio,
+                                      level: pulse,
+                                      instantLevel: flicker,
+                                      onTap: () async {
+                                        if (_content.isTranscribing) return;
+                                        if (_content.isGeneratingImage) {
+                                          _controller.cancelActiveOperations();
+                                          _hideProgressToast();
+                                        }
+                                        if (!_settings.hasActiveApiKey) {
+                                          _showError("Add your API key first");
+                                          await Navigator.of(context).push(
+                                            MaterialPageRoute(builder: (_) => SettingsPage(settings: _settings)),
+                                          );
+                                          return;
+                                        }
+                                        if (!_settings.provider.supportsAudio) {
+                                          _showError('${_settings.provider.brandName} does not support audio - Please select GPT or Gemini.');
+                                          return;
+                                        }
+                                        if (!_content.isRecording) {
+                                          await _controller.startRecording();
+                                        } else {
+                                          await _controller.stopAndTranscribe();
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+
+                          // Right Slot (Image Gen) - Fixed width to keep Mic centered
+                          SizedBox(
+                            width: 100,
+                            child: Center(
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 300),
+                                child: (_settings.provider.supportsImage && (_content.isSummaryMode ? _content.currentSummaryValue.trim().isNotEmpty : _content.currentTranscriptValue.trim().isNotEmpty))
+                                    ? ImageGenButton(
+                                        isLoading: _content.isGeneratingImage,
+                                        enabled: _settings.hasActiveApiKey,
+                                        supportsImage: _settings.provider.supportsImage,
+                                        onPressed: () async {
+                                          if (!_settings.provider.supportsImage) {
+                                            _showError("${_settings.provider.brandName} does not support image generation");
+                                            return;
+                                          }
+                                          await _controller.generateImageFromCurrentContent(
+                                            showProgressToast: _showProgressToast,
+                                            hideProgressToast: _hideProgressToast,
+                                            replaceProgressToast: _replaceProgressToast,
+                                          );
+                                        },
+                                      )
+                                    : const SizedBox.shrink(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
