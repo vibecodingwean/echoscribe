@@ -219,45 +219,24 @@ class HomeController extends ChangeNotifier {
     
     showProgressToast('Uploading prompt to $brand...');
 
-    // Estimated generation time per provider
-    final int estimateSec = switch (settings.provider) {
-      AiProviderType.openai => 70,
-      AiProviderType.gemini => 25,
-      AiProviderType.xai => 15,
-      AiProviderType.anthropic => 0,
-    };
-
-    Timer? countdownTimer;
-    int remaining = estimateSec;
+    Timer? cycleTimer;
     bool done = false;
 
-    void stopCountdown() {
+    void stopCycle() {
       done = true;
-      countdownTimer?.cancel();
-      countdownTimer = null;
+      cycleTimer?.cancel();
+      cycleTimer = null;
     }
 
-    void startCountdown() {
-      // Show first message after 2s delay
-      countdownTimer = Timer(const Duration(seconds: 2), () {
-        if (done) return;
-        // Start 1-second ticks
-        countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-          if (done) { timer.cancel(); return; }
-          remaining--;
-          if (remaining <= 0) {
-            // Estimate expired — just cycle model/waiting
-            if (timer.tick % 4 < 2) {
-              replaceProgressToast('Model: $model');
-            } else {
-              replaceProgressToast('Waiting for reply...');
-            }
-          } else if (remaining % 4 < 2) {
-            replaceProgressToast('Estimate: ~$remaining seconds...');
-          } else {
-            replaceProgressToast('Model: $model');
-          }
-        });
+    void startCycling() {
+      // Start after initial upload message
+      cycleTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+        if (done) { timer.cancel(); return; }
+        if (timer.tick % 2 == 1) {
+          replaceProgressToast('Waiting for reply...');
+        } else {
+          replaceProgressToast('Model: $model');
+        }
       });
     }
 
@@ -275,10 +254,10 @@ class HomeController extends ChangeNotifier {
         ),
       );
 
-      startCountdown();
+      startCycling();
 
       final bytes = await _imageOp!.value;
-      stopCountdown();
+      stopCycle();
       _imageOp = null;
 
       final sizeKb = (bytes.lengthInBytes / 1024).toStringAsFixed(1);
@@ -289,18 +268,18 @@ class HomeController extends ChangeNotifier {
         if (!content.isGeneratingImage) hideProgressToast();
       });
     } on AppException catch (e) {
-      stopCountdown();
+      stopCycle();
       hideProgressToast();
       content.appendLogLine('⚠️ ${e.userMessage}');
       showError(e.userMessage);
     } catch (e) {
-      stopCountdown();
+      stopCycle();
       hideProgressToast();
       if (_imageOp?.isCanceled ?? false) return;
       content.appendLogLine('⚠️ $e');
       showError('Image generation failed');
     } finally {
-      stopCountdown();
+      stopCycle();
       content.setGeneratingImage(false);
       _imageOp = null;
     }
