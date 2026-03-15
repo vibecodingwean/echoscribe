@@ -46,8 +46,8 @@ class MicButton extends StatelessWidget {
       child: AnimatedContainer(
         duration:
             const Duration(milliseconds: 64), // quick to emphasize flicker
-        width: 80,
-        height: 80,
+        width: 56,
+        height: 56,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: baseColor,
@@ -78,15 +78,15 @@ class MicButton extends StatelessWidget {
             ),
           if (transcribing)
             const SizedBox(
-                width: 32,
-                height: 32,
-                child: CircularProgressIndicator(strokeWidth: 3))
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2.5))
           else ...[
             Icon(Icons.mic_rounded,
                 color: effectivelyEnabled
                     ? (recording ? c.onError : c.onPrimary)
                     : c.onSurfaceVariant.withValues(alpha: 0.38),
-                size: 32),
+                size: 24),
           ],
         ]),
       ),
@@ -109,7 +109,7 @@ class PlayPauseButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
-    final double size = isAnthropic ? 32 : 44;
+    final double size = isAnthropic ? 28 : 36;
     final Color buttonColor = isAnthropic ? Colors.red.withValues(alpha: 0.1) : c.secondary;
     final Color iconColor = isAnthropic ? Colors.red : c.onSecondary;
 
@@ -129,8 +129,8 @@ class PlayPauseButton extends StatelessWidget {
               children: [
                 isLoading
                     ? SizedBox(
-                        width: 20,
-                        height: 20,
+                        width: 18,
+                        height: 18,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           valueColor: AlwaysStoppedAnimation<Color>(iconColor),
@@ -139,13 +139,13 @@ class PlayPauseButton extends StatelessWidget {
                     : Icon(
                         isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
                         color: iconColor,
-                        size: isAnthropic ? 20 : 24,
+                        size: isAnthropic ? 18 : 20,
                       ),
                 if (isAnthropic)
                   const Icon(
                     Icons.block,
                     color: Colors.red,
-                    size: 28,
+                    size: 22,
                   ),
               ],
             ),
@@ -169,7 +169,7 @@ class StopButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
-    final double size = isAnthropic ? 32 : 44;
+    final double size = isAnthropic ? 28 : 36;
     final Color buttonColor = isAnthropic ? Colors.red.withValues(alpha: 0.1) : c.secondary;
     final Color iconColor = isAnthropic ? Colors.red : c.onSecondary;
 
@@ -192,13 +192,13 @@ class StopButton extends StatelessWidget {
                   Icon(
                     Icons.stop_rounded,
                     color: iconColor,
-                    size: isAnthropic ? 20 : 24,
+                    size: isAnthropic ? 18 : 20,
                   ),
                   if (isAnthropic)
                     const Icon(
                       Icons.block,
                       color: Colors.red,
-                      size: 28,
+                      size: 22,
                     ),
                 ],
               ),
@@ -227,7 +227,7 @@ class ImageGenButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
-    final double size = 44;
+    final double size = 36;
     final bool effectivelyEnabled = enabled && supportsImage;
 
     return Opacity(
@@ -245,8 +245,8 @@ class ImageGenButton extends StatelessWidget {
             child: Center(
               child: isLoading
                   ? SizedBox(
-                      width: 20,
-                      height: 20,
+                      width: 18,
+                      height: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         valueColor: AlwaysStoppedAnimation<Color>(c.onSecondary),
@@ -255,7 +255,7 @@ class ImageGenButton extends StatelessWidget {
                   : Icon(
                       Icons.image_outlined,
                       color: c.onSecondary,
-                      size: 24,
+                      size: 20,
                     ),
             ),
           ),

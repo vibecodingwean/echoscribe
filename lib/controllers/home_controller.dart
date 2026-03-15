@@ -25,6 +25,8 @@ class HomeController extends ChangeNotifier {
   final void Function(String) showSuccess;
   
   CancelableOperation? _imageOp;
+  Timer? _imageCycleTimer;
+  bool _imageCycleDone = false;
 
   // Expose these for the UI to use
   final ValueNotifier<double> levelNotifier = ValueNotifier<double>(0.0);
@@ -45,15 +47,23 @@ class HomeController extends ChangeNotifier {
   void dispose() {
     _ampSub?.cancel();
     _imageOp?.cancel();
+    _imageCycleTimer?.cancel();
     levelNotifier.dispose();
     smoothedLevelNotifier.dispose();
     super.dispose();
+  }
+
+  void _stopImageCycle() {
+    _imageCycleDone = true;
+    _imageCycleTimer?.cancel();
+    _imageCycleTimer = null;
   }
 
   void cancelActiveOperations() {
     if (_imageOp != null) {
       _imageOp?.cancel();
       _imageOp = null;
+      _stopImageCycle();
       content.setGeneratingImage(false);
       content.appendLogLine('🛑 Image generation cancelled');
     }
@@ -219,23 +229,27 @@ class HomeController extends ChangeNotifier {
     
     showProgressToast('Uploading prompt to $brand...');
 
-    Timer? cycleTimer;
-    bool done = false;
+    int remaining = switch (settings.provider) {
+      AiProviderType.openai => 70,
+      AiProviderType.gemini => 25,
+      AiProviderType.xai => 15,
+      AiProviderType.anthropic => 0,
+    };
 
-    void stopCycle() {
-      done = true;
-      cycleTimer?.cancel();
-      cycleTimer = null;
-    }
+    _imageCycleDone = false;
 
     void startCycling() {
-      // Start after initial upload message
-      cycleTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-        if (done) { timer.cancel(); return; }
-        if (timer.tick % 2 == 1) {
-          replaceProgressToast('Waiting for reply...');
-        } else {
+      _imageCycleTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (_imageCycleDone) { timer.cancel(); return; }
+        remaining--;
+
+        final int cyclePos = timer.tick % 9;
+        if (cyclePos < 3) {
+          replaceProgressToast(remaining > 0 ? 'Estimate: ~$remaining seconds...' : 'Waiting for reply...');
+        } else if (cyclePos < 6) {
           replaceProgressToast('Model: $model');
+        } else {
+          replaceProgressToast('Waiting for reply...');
         }
       });
     }
@@ -254,10 +268,12 @@ class HomeController extends ChangeNotifier {
         ),
       );
 
-      startCycling();
+      Future.delayed(const Duration(seconds: 2), () {
+        if (!_imageCycleDone) startCycling();
+      });
 
       final bytes = await _imageOp!.value;
-      stopCycle();
+      _stopImageCycle();
       _imageOp = null;
 
       final sizeKb = (bytes.lengthInBytes / 1024).toStringAsFixed(1);
@@ -268,18 +284,18 @@ class HomeController extends ChangeNotifier {
         if (!content.isGeneratingImage) hideProgressToast();
       });
     } on AppException catch (e) {
-      stopCycle();
+      _stopImageCycle();
       hideProgressToast();
       content.appendLogLine('⚠️ ${e.userMessage}');
       showError(e.userMessage);
     } catch (e) {
-      stopCycle();
+      _stopImageCycle();
       hideProgressToast();
       if (_imageOp?.isCanceled ?? false) return;
       content.appendLogLine('⚠️ $e');
       showError('Image generation failed');
     } finally {
-      stopCycle();
+      _stopImageCycle();
       content.setGeneratingImage(false);
       _imageOp = null;
     }

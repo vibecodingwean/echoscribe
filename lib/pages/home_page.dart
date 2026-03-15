@@ -173,6 +173,7 @@ class _HomePageState extends State<HomePage> {
 
   void _clearTranscription() {
     _controller.cancelActiveOperations();
+    _hideProgressToast();
     _content.clearTranscription();
     _playback.stopAudio();
   }
@@ -429,7 +430,7 @@ class _HomePageState extends State<HomePage> {
                           duration: const Duration(milliseconds: 300),
                           padding: EdgeInsets.symmetric(
                             horizontal: showBubble ? 8 : 0, 
-                            vertical: showBubble ? 4 : 0
+                            vertical: showBubble ? 2 : 0
                           ),
                           decoration: BoxDecoration(
                             color: showBubble 
@@ -455,7 +456,7 @@ class _HomePageState extends State<HomePage> {
                             children: [
                               // Left Slot (TTS) - Fixed width to keep Mic centered
                               SizedBox(
-                                width: 100,
+                                width: 88,
                                 child: Center(
                                   child: AnimatedSwitcher(
                                     duration: const Duration(milliseconds: 300),
@@ -541,8 +542,8 @@ class _HomePageState extends State<HomePage> {
                                       children: [
                                         AnimatedContainer(
                                           duration: const Duration(milliseconds: 120),
-                                          width: 90,
-                                          height: 90,
+                                          width: 64,
+                                          height: 64,
                                           decoration: BoxDecoration(
                                             shape: BoxShape.circle,
                                             gradient: RadialGradient(colors: ringColors),
@@ -588,7 +589,7 @@ class _HomePageState extends State<HomePage> {
 
                               // Right Slot (Image Gen) - Fixed width to keep Mic centered
                               SizedBox(
-                                width: 100,
+                                width: 88,
                                 child: Center(
                                   child: AnimatedSwitcher(
                                     duration: const Duration(milliseconds: 300),
