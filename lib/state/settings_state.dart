@@ -13,7 +13,7 @@ class SettingsState extends ChangeNotifier {
   bool _geminiPro = false;
   bool _anthropicPro = false;
   bool _xaiPro = false;
-  bool _appFetchUrl = false;
+  bool _appFetchUrl = true;
   String _targetLanguageCode = "auto";
   String _summaryPrompt = kDefaultSummaryPrompt;
   String _urlSummaryPrompt = kDefaultUrlSummaryPrompt;

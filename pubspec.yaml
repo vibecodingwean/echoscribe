@@ -1,7 +1,7 @@
 name: echoscribe
 description: "EchoSribe: Your API key, your data! Summarize and convert spoken words into text, ready to paste with a single tap."
 publish_to: "none"
-version: 1.0.34+41
+version: 1.0.35+42
 environment:
   sdk: ^3.6.0
 

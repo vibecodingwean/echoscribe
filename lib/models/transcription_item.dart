@@ -49,14 +49,25 @@ class TranscriptionItem {
     );
   }
 
-  factory TranscriptionItem.sample(int i) => TranscriptionItem(
-        id: 'sample_$i',
-        text: 'Sample transcription #$i: The quick brown fox jumps over the lazy dog.',
-        createdAt: DateTime.now().subtract(Duration(minutes: i * 5)),
-        duration: Duration(seconds: 12 + i),
-        language: 'en',
-        transcript: 'Sample transcription #$i: The quick brown fox jumps over the lazy dog.',
-        summary: null,
-        mode: 'transcription',
-      );
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'text': text,
+    'createdAt': createdAt.toIso8601String(),
+    if (duration != null) 'durationMs': duration!.inMilliseconds,
+    if (language != null) 'language': language,
+    if (transcript != null) 'transcript': transcript,
+    if (summary != null) 'summary': summary,
+    if (mode != null) 'mode': mode,
+  };
+
+  factory TranscriptionItem.fromJson(Map<String, dynamic> json) => TranscriptionItem(
+    id: json['id'] as String,
+    text: json['text'] as String,
+    createdAt: DateTime.parse(json['createdAt'] as String),
+    duration: json['durationMs'] != null ? Duration(milliseconds: json['durationMs'] as int) : null,
+    language: json['language'] as String?,
+    transcript: json['transcript'] as String?,
+    summary: json['summary'] as String?,
+    mode: json['mode'] as String?,
+  );
 }
