@@ -1,7 +1,7 @@
 name: echoscribe
 description: "EchoSribe: Your API key, your data! Summarize and convert spoken words into text, ready to paste with a single tap."
 publish_to: "none"
-version: 1.0.35+42
+version: 1.0.36+43
 environment:
   sdk: ^3.6.0
 
@@ -22,6 +22,7 @@ dependencies:
   flutter_markdown_plus: ^1.0.7
   html: ^0.15.6
   flutter_svg: ^2.2.4
+  brotli: ^0.6.0
 
 dev_dependencies:
   flutter_test:
