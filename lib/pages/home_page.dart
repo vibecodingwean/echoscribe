@@ -12,7 +12,7 @@ import "package:echoscribe/services/url_handler.dart";
 import "package:echoscribe/state/settings_state.dart";
 import "package:echoscribe/state/content_state.dart";
 import "package:echoscribe/state/playback_state.dart";
-import "package:echoscribe/models/transcription_item.dart";
+
 
 import "package:echoscribe/pages/history_page.dart";
 import "package:echoscribe/pages/settings_page.dart";
@@ -36,9 +36,7 @@ class _HomePageState extends State<HomePage> {
   final _sl = ServiceLocator();
 
   final SettingsState _settings = SettingsState();
-  final ContentState _content = ContentState()
-    ..addHistory(TranscriptionItem.sample(1))
-    ..addHistory(TranscriptionItem.sample(2));
+  final ContentState _content = ContentState();
   final PlaybackState _playback = PlaybackState();
 
   bool _isLoading = true;
@@ -85,6 +83,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _bootstrap() async {
     await _initializeFromStorage();
+    await _content.loadHistory();
     await _initShareHandling();
     if (mounted) {
       setState(() {

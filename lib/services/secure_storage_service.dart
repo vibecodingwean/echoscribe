@@ -143,7 +143,7 @@ class SecureStorageService {
   Future<bool> readAnthropicPro() async => (await _safeRead(_keyAnthropicPro, fallback: '0')) == '1';
 
   Future<void> saveAppFetchUrl(bool enabled) => _safeWrite(_keyAppFetchUrl, enabled ? '1' : '0');
-  Future<bool> readAppFetchUrl() async => (await _safeRead(_keyAppFetchUrl, fallback: '0')) == '1';
+  Future<bool> readAppFetchUrl() async => (await _safeRead(_keyAppFetchUrl, fallback: '1')) == '1';
 
   // xAI Key
   Future<void> saveXaiKey(String key) => _safeWrite(_keyXai, key);

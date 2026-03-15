@@ -1,7 +1,9 @@
 import "dart:async";
+import "dart:convert";
 import "dart:typed_data";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
+import "package:shared_preferences/shared_preferences.dart";
 import "package:echoscribe/models/transcription_item.dart";
 import "package:echoscribe/models/enums.dart";
 
@@ -95,11 +97,32 @@ class ContentState extends ChangeNotifier {
     notifyListeners();
   }
 
+  static const _historyKey = 'transcription_history';
+
   List<TranscriptionItem> get history => List.unmodifiable(_history);
+
+  Future<void> loadHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_historyKey);
+    if (raw == null || raw.isEmpty) return;
+    try {
+      final list = (json.decode(raw) as List).cast<Map<String, dynamic>>();
+      _history.clear();
+      _history.addAll(list.map(TranscriptionItem.fromJson));
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> _saveHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final encoded = json.encode(_history.map((e) => e.toJson()).toList());
+    await prefs.setString(_historyKey, encoded);
+  }
 
   void addHistory(TranscriptionItem item) {
     _history.insert(0, item);
     notifyListeners();
+    _saveHistory();
   }
 
   void updateActiveHistory({String? transcript, String? summary, String? mode, String? text, DateTime? createdAt, Duration? duration, String? language}) {
@@ -117,18 +140,21 @@ class ContentState extends ChangeNotifier {
       language: language ?? current.language,
     );
     notifyListeners();
+    _saveHistory();
   }
 
   void deleteHistoryItem(String id) {
     _history.removeWhere((e) => e.id == id);
     if (_activeHistoryId == id) _activeHistoryId = null;
     notifyListeners();
+    _saveHistory();
   }
 
   void clearHistory() {
     _history.clear();
     _activeHistoryId = null;
     notifyListeners();
+    _saveHistory();
   }
 
   void startTimer() {
