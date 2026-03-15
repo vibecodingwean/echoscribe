@@ -1,5 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' show parse;
+import 'package:brotli/brotli.dart';
 import 'package:echoscribe/services/debug_console.dart';
 
 class UrlContentService {
@@ -20,9 +23,12 @@ class UrlContentService {
 
     final sw = Stopwatch()..start();
     DebugConsole.logApiStart(method: 'GET', url: uri, note: 'Fetching URL content for extraction');
-    
+
     try {
-      final response = await http.get(uri).timeout(timeout);
+      final response = await http.get(uri, headers: {
+        'Accept-Encoding': 'gzip, deflate, br',
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+      }).timeout(timeout);
       sw.stop();
       DebugConsole.logApiEnd(status: response.statusCode, elapsedMs: sw.elapsedMilliseconds, responseBytes: response.bodyBytes.length);
 
@@ -30,8 +36,33 @@ class UrlContentService {
         throw Exception('Failed to fetch URL: ${response.statusCode}');
       }
 
-      final document = parse(response.body);
-      
+      // Check for compression
+      final encoding = response.headers['content-encoding']?.toLowerCase();
+      List<int> bytes = response.bodyBytes;
+
+      if (encoding == 'br') {
+        // Handle Brotli decompression
+        try {
+          bytes = brotli.decode(bytes);
+        } catch (e) {
+          throw Exception('Brotli decompression failed: $e');
+        }
+      } else if (encoding == 'gzip') {
+         // Manual gzip if needed (though http package usually handles it)
+         try {
+           bytes = gzip.decode(bytes);
+         } catch (_) {}
+      }
+
+      // Robust decoding
+      String html;
+      try {
+        html = utf8.decode(bytes, allowMalformed: true);
+      } catch (e) {
+        html = latin1.decode(bytes);
+      }
+
+      final document = parse(html);      
       // Remove noise
       document.querySelectorAll('script, style, head, nav, footer, iframe, noscript').forEach((e) => e.remove());
 
