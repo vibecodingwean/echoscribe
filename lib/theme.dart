@@ -181,8 +181,8 @@ ThemeData get darkTheme => ThemeData(
 );
 
 class AppMarkdownStyle {
-  /// Zentrales Markdown-Styling für die App.
-  /// [scaleFactor] ermöglicht größere Schrift für FullScreen (default 1.0).
+  /// Central Markdown styling for the app.
+  /// [scaleFactor] enables larger font sizes for FullScreen (default 1.0).
   static MarkdownStyleSheet of(BuildContext context, {double scaleFactor = 1.0}) {
     final theme = Theme.of(context);
     final base = theme.textTheme.bodyLarge;

@@ -37,15 +37,15 @@ const String kDefaultUrlSummaryPrompt =
 /// Centralized AI model configuration. Update these values to change defaults app-wide.
 class AiModelConfig {
   // ---------- OpenAI ----------
-  // Pro models (Dez 2025 Flagship)
-  // Hinweis: Der Transcriptions-Endpunkt akzeptiert nur 'whisper-1'. 
-  // GPT-4o-Audio läuft über die Chat-API, was einen Umbau erfordern würde.
+  // Pro models (Dec 2025 Flagship)
+  // Note: The Transcriptions endpoint only accepts 'whisper-1'. 
+  // GPT-4o-Audio runs via the Chat-API, which would require a structural change.
   static const String openAiSummaryPro = 'gpt-5.4';
   static const String openAiTranslationPro = 'gpt-5.4';
   static const String openAiTranscriptionPro = 'whisper-1'; 
   static const String openAiImagePro = 'gpt-image-1';
 
-  // Fast models (Upgrade auf die effiziente 5er-Serie)
+  // Fast models (Upgrade to the efficient 5-series)
   static const String openAiSummaryFast = 'gpt-5-mini';
   static const String openAiTranslationFast = 'gpt-5-mini';
   static const String openAiTranscriptionFast = 'whisper-1';
@@ -53,13 +53,13 @@ class AiModelConfig {
   static const String openAiTts = 'gpt-4o-mini-tts';
 
   // ---------- Gemini ----------
-  // Pro models (Preview der nächsten Generation)
+  // Pro models (Preview of the next generation)
   static const String geminiSummaryPro = 'gemini-3.1-pro-preview';
   static const String geminiTranscriptionPro = 'gemini-3.1-pro-preview';
   static const String geminiTranslationPro = 'gemini-3.1-pro-preview';
   static const String geminiImagePro = 'gemini-3-pro-image-preview';
 
-  // Fast models (Standardisierung auf 3 Flash für alles)
+  // Fast models (Standardization to 3 Flash for everything)
   static const String geminiSummaryFast = 'gemini-3-flash-preview';
   static const String geminiTranscriptionFast = 'gemini-3-flash-preview';
   static const String geminiTranslationFast = 'gemini-3-flash-preview';

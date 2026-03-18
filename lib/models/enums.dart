@@ -4,7 +4,7 @@ enum AiProviderType {
   anthropic,
   xai;
 
-  /// Menschenlesbarer Markenname für Logs und UI
+  /// Human-readable brand name for logs and UI
   String get brandName {
     switch (this) {
       case AiProviderType.openai: return 'GPT';
@@ -62,7 +62,7 @@ enum AiProviderType {
     }
   }
 
-  /// Für SecureStorage-Kompatibilität (lesen/schreiben als String)
+  /// For SecureStorage compatibility (read/write as String)
   static AiProviderType fromString(String s) {
     switch (s) {
       case 'gemini': return AiProviderType.gemini;
