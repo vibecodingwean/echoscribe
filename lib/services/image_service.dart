@@ -18,7 +18,6 @@ class ImageService {
     final body = json.encode({
       'model': model,
       'prompt': prompt,
-      // 'response_format': 'b64_json', // Removed because of error
     });
 
     final sw = Stopwatch()..start();
@@ -70,7 +69,6 @@ class ImageService {
     final body = json.encode({
       'model': model,
       'prompt': prompt,
-      // 'response_format': 'b64_json', // Removed because of error
     });
 
     final sw = Stopwatch()..start();

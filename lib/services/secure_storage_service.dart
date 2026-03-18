@@ -4,7 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:echoscribe/models/enums.dart';
 
 class SecureStorageService {
-  // 1. Singleton Pattern implementieren
+  // 1. Implement Singleton Pattern
   static final SecureStorageService _instance = SecureStorageService._internal();
   
   factory SecureStorageService() {
@@ -27,7 +27,7 @@ class SecureStorageService {
   static const _keyXai = 'xai_api_key';
   static const _keyXaiPro = 'xai_pro_enabled';
 
-  // 2. WICHTIG: resetOnError: true verhindert dauerhafte Abstürze/leere Daten bei Key-Problemen
+  // 2. IMPORTANT: resetOnError: true prevents permanent crashes/empty data on key problems
   static const AndroidOptions _androidOptions = AndroidOptions(
     resetOnError: true, 
   );
@@ -44,8 +44,8 @@ class SecureStorageService {
       final all = await _storage.readAll();
       return Map<String, String>.from(all);
     } catch (e) {
-      // Falls readAll fehlschlägt (trotz resetOnError), gib leere Map zurück,
-      // aber der Fehler wurde durch resetOnError für den nächsten Start wahrscheinlich behoben.
+      // If readAll fails (despite resetOnError), return an empty Map,
+      // but the error was likely fixed by resetOnError for the next start.
       return <String, String>{};
     }
   }
@@ -70,7 +70,7 @@ class SecureStorageService {
   }
 
   Future<void> _safeWrite(String key, String? value) async {
-    await _ensureCache(); // Sicherstellen, dass Cache existiert vor Update
+    await _ensureCache(); // Ensure cache exists before update
     try {
       if (value == null) {
         await _storage.delete(key: key);
@@ -80,7 +80,7 @@ class SecureStorageService {
         _cache![key] = value;
       }
     } catch (_) {
-      // Ignorieren im Release, aber Cache wurde lokal aktualisiert
+      // Ignore in release, but cache was updated locally
     }
   }
 
