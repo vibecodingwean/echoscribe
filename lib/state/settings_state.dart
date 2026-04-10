@@ -17,6 +17,7 @@ class SettingsState extends ChangeNotifier {
   String _targetLanguageCode = "auto";
   String _summaryPrompt = kDefaultSummaryPrompt;
   String _urlSummaryPrompt = kDefaultUrlSummaryPrompt;
+  String _lastSharedIntentId = "";
 
   bool get debugMode => _debugMode;
   void setDebugMode(bool enabled) {
@@ -73,4 +74,7 @@ class SettingsState extends ChangeNotifier {
 
   String get urlSummaryPrompt => _urlSummaryPrompt;
   void setUrlSummaryPrompt(String prompt) { _urlSummaryPrompt = prompt.trim(); notifyListeners(); }
+
+  String get lastSharedIntentId => _lastSharedIntentId;
+  void setLastSharedIntentId(String id) { _lastSharedIntentId = id; notifyListeners(); }
 }

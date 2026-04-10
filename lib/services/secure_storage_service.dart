@@ -26,6 +26,7 @@ class SecureStorageService {
   static const _keyAnthropic = 'anthropic_api_key';
   static const _keyXai = 'xai_api_key';
   static const _keyXaiPro = 'xai_pro_enabled';
+  static const _keyLastSharedIntentId = 'last_shared_intent_id';
 
   // 2. IMPORTANT: resetOnError: true prevents permanent crashes/empty data on key problems
   static const AndroidOptions _androidOptions = AndroidOptions(
@@ -153,4 +154,8 @@ class SecureStorageService {
   // xAI Pro
   Future<void> saveXaiPro(bool enabled) => _safeWrite(_keyXaiPro, enabled ? '1' : '0');
   Future<bool> readXaiPro() async => (await _safeRead(_keyXaiPro, fallback: '0')) == '1';
+
+  // Last shared intent ID
+  Future<void> saveLastSharedIntentId(String id) => _safeWrite(_keyLastSharedIntentId, id);
+  Future<String> readLastSharedIntentId() async => _safeRead(_keyLastSharedIntentId);
 }
