@@ -108,6 +108,7 @@ class _HomePageState extends State<HomePage> {
       final xai = await secure.readXaiKey();
       final xaiPro = await secure.readXaiPro();
       final appFetchUrl = await secure.readAppFetchUrl();
+      final lastIntent = await secure.readLastSharedIntentId();
 
       _settings.setProvider(provider);
       if (open.isNotEmpty) _settings.setOpenAiKey(open);
@@ -122,6 +123,7 @@ class _HomePageState extends State<HomePage> {
       _settings.setAnthropicPro(anthropicPro);
       _settings.setXaiPro(xaiPro);
       _settings.setAppFetchUrl(appFetchUrl);
+      _settings.setLastSharedIntentId(lastIntent);
     } catch (_) {}
   }
 
@@ -131,6 +133,7 @@ class _HomePageState extends State<HomePage> {
       settings: _settings,
       content: _content,
       aiFactory: _sl.aiProviderFactory,
+      secureStorage: _sl.secureStorage,
       onAudioReceived: (path, name, mime) async {
         await _controller.processSharedAudio(path: path, filename: name, mimeType: mime, mode: "transcription");
       },
@@ -422,6 +425,7 @@ class _HomePageState extends State<HomePage> {
                       builder: (context) {
                         final bool showTts = _content.isSummaryMode && _content.currentSummaryValue.trim().isNotEmpty;
                         final bool showImage = _settings.provider.supportsImage && 
+                                             !_content.isTranscribing &&
                                              (_content.isSummaryMode ? _content.currentSummaryValue.trim().isNotEmpty : _content.currentTranscriptValue.trim().isNotEmpty);
                         final bool showBubble = showTts || showImage;
                         
