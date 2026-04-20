@@ -36,6 +36,7 @@ class HistoryPage extends StatelessWidget {
                             ],
                           ),
                         );
+                        if (!context.mounted) return;
                         if (ok == true) {
                           content.clearHistory();
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('History cleared'), duration: Duration(milliseconds: 1000)));

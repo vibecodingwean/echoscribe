@@ -11,19 +11,23 @@ class AppException implements Exception {
 
   /// Creates the appropriate [AppException] subtype from an HTTP status code
   /// and an optional API error message.
-  factory AppException.fromHttp(int statusCode, {String? apiMessage, String? fallback}) {
+  factory AppException.fromHttp(int statusCode,
+      {String? apiMessage, String? fallback}) {
     final detail = apiMessage ?? fallback ?? 'Request failed ($statusCode)';
     switch (statusCode) {
       case 401:
         return AuthException(apiMessage ?? 'Invalid API key');
       case 403:
-        return AuthException(apiMessage ?? 'Access denied - check your API key permissions');
+        return AuthException(
+            apiMessage ?? 'Access denied - check your API key permissions');
       case 429:
-        return QuotaException(apiMessage ?? 'Rate limit exceeded - please wait and try again');
+        return QuotaException(
+            apiMessage ?? 'Rate limit exceeded - please wait and try again');
       case >= 500:
         return ServerException(detail);
       default:
-        return AppException(detail, internalMessage: 'HTTP $statusCode: $detail');
+        return AppException(detail,
+            internalMessage: 'HTTP $statusCode: $detail');
     }
   }
 }
@@ -45,12 +49,12 @@ class ServerException extends AppException {
 
 /// Network connectivity error (SocketException, TimeoutException).
 class NetworkException extends AppException {
-  const NetworkException([String userMessage = 'Network error - check your connection'])
-      : super(userMessage);
+  const NetworkException(
+      [super.userMessage = 'Network error - check your connection']);
 }
 
 /// The AI returned an empty or unusable result.
 class EmptyResultException extends AppException {
-  const EmptyResultException([String userMessage = 'AI returned an empty result'])
-      : super(userMessage);
+  const EmptyResultException(
+      [super.userMessage = 'AI returned an empty result']);
 }
