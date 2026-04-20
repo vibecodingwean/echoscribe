@@ -7,10 +7,14 @@ enum AiProviderType {
   /// Human-readable brand name for logs and UI
   String get brandName {
     switch (this) {
-      case AiProviderType.openai: return 'GPT';
-      case AiProviderType.gemini: return 'Gemini';
-      case AiProviderType.anthropic: return 'Claude';
-      case AiProviderType.xai: return 'Grok';
+      case AiProviderType.openai:
+        return 'GPT';
+      case AiProviderType.gemini:
+        return 'Gemini';
+      case AiProviderType.anthropic:
+        return 'Claude';
+      case AiProviderType.xai:
+        return 'Grok';
     }
   }
 
@@ -65,10 +69,14 @@ enum AiProviderType {
   /// For SecureStorage compatibility (read/write as String)
   static AiProviderType fromString(String s) {
     switch (s) {
-      case 'gemini': return AiProviderType.gemini;
-      case 'anthropic': return AiProviderType.anthropic;
-      case 'xai': return AiProviderType.xai;
-      default: return AiProviderType.openai;
+      case 'gemini':
+        return AiProviderType.gemini;
+      case 'anthropic':
+        return AiProviderType.anthropic;
+      case 'xai':
+        return AiProviderType.xai;
+      default:
+        return AiProviderType.openai;
     }
   }
 }

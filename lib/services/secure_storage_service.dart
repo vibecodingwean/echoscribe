@@ -5,8 +5,9 @@ import 'package:echoscribe/models/enums.dart';
 
 class SecureStorageService {
   // 1. Implement Singleton Pattern
-  static final SecureStorageService _instance = SecureStorageService._internal();
-  
+  static final SecureStorageService _instance =
+      SecureStorageService._internal();
+
   factory SecureStorageService() {
     return _instance;
   }
@@ -18,6 +19,7 @@ class SecureStorageService {
   static const _keyGemini = 'gemini_api_key';
   static const _keySummaryPrompt = 'summary_prompt';
   static const _keyUrlSummaryPrompt = 'url_summary_prompt';
+  static const _keyTargetLanguage = 'target_language_code';
   static const _keyDebugMode = 'debug_mode_enabled';
   static const _keyOpenAiPro = 'openai_pro_enabled';
   static const _keyGeminiPro = 'gemini_pro_enabled';
@@ -30,7 +32,7 @@ class SecureStorageService {
 
   // 2. IMPORTANT: resetOnError: true prevents permanent crashes/empty data on key problems
   static const AndroidOptions _androidOptions = AndroidOptions(
-    resetOnError: true, 
+    resetOnError: true,
   );
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage(
@@ -53,13 +55,13 @@ class SecureStorageService {
 
   Future<void> _ensureCache() async {
     if (_cache != null) return;
-    
+
     // Prevent multiple parallel loads
     if (_loading != null) {
       _cache = await _loading!;
       return;
     }
-    
+
     _loading = _safeReadAll();
     _cache = await _loading!;
     _loading = null;
@@ -90,8 +92,7 @@ class SecureStorageService {
     try {
       await _storage.delete(key: key);
       _cache!.remove(key);
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<void> warmUp() async {
@@ -101,8 +102,10 @@ class SecureStorageService {
   // --- Getter & Setter ---
 
   // Provider
-  Future<void> saveProvider(AiProviderType provider) => _safeWrite(_keyProvider, provider.name);
-  Future<AiProviderType> readProvider() async => AiProviderType.fromString(await _safeRead(_keyProvider, fallback: 'openai'));
+  Future<void> saveProvider(AiProviderType provider) =>
+      _safeWrite(_keyProvider, provider.name);
+  Future<AiProviderType> readProvider() async => AiProviderType.fromString(
+      await _safeRead(_keyProvider, fallback: 'openai'));
 
   // OpenAI Key
   Future<void> saveOpenAiKey(String key) => _safeWrite(_keyOpenAi, key);
@@ -120,31 +123,50 @@ class SecureStorageService {
   Future<void> deleteAnthropicKey() => _safeDelete(_keyAnthropic);
 
   // Summary prompt
-  Future<void> saveSummaryPrompt(String prompt) => _safeWrite(_keySummaryPrompt, prompt);
+  Future<void> saveSummaryPrompt(String prompt) =>
+      _safeWrite(_keySummaryPrompt, prompt);
   Future<String> readSummaryPrompt() async => _safeRead(_keySummaryPrompt);
   Future<void> deleteSummaryPrompt() => _safeDelete(_keySummaryPrompt);
 
   // URL Summary prompt
-  Future<void> saveUrlSummaryPrompt(String prompt) => _safeWrite(_keyUrlSummaryPrompt, prompt);
-  Future<String> readUrlSummaryPrompt() async => _safeRead(_keyUrlSummaryPrompt);
+  Future<void> saveUrlSummaryPrompt(String prompt) =>
+      _safeWrite(_keyUrlSummaryPrompt, prompt);
+  Future<String> readUrlSummaryPrompt() async =>
+      _safeRead(_keyUrlSummaryPrompt);
   Future<void> deleteUrlSummaryPrompt() => _safeDelete(_keyUrlSummaryPrompt);
 
+  // Target language
+  Future<void> saveTargetLanguageCode(String code) =>
+      _safeWrite(_keyTargetLanguage, code);
+  Future<String> readTargetLanguageCode() async =>
+      _safeRead(_keyTargetLanguage, fallback: 'auto');
+
   // Debug mode
-  Future<void> saveDebugMode(bool enabled) => _safeWrite(_keyDebugMode, enabled ? '1' : '0');
-  Future<bool> readDebugMode() async => (await _safeRead(_keyDebugMode, fallback: '0')) == '1';
+  Future<void> saveDebugMode(bool enabled) =>
+      _safeWrite(_keyDebugMode, enabled ? '1' : '0');
+  Future<bool> readDebugMode() async =>
+      (await _safeRead(_keyDebugMode, fallback: '0')) == '1';
 
   // Pro toggles
-  Future<void> saveOpenAiPro(bool enabled) => _safeWrite(_keyOpenAiPro, enabled ? '1' : '0');
-  Future<bool> readOpenAiPro() async => (await _safeRead(_keyOpenAiPro, fallback: '0')) == '1';
+  Future<void> saveOpenAiPro(bool enabled) =>
+      _safeWrite(_keyOpenAiPro, enabled ? '1' : '0');
+  Future<bool> readOpenAiPro() async =>
+      (await _safeRead(_keyOpenAiPro, fallback: '0')) == '1';
 
-  Future<void> saveGeminiPro(bool enabled) => _safeWrite(_keyGeminiPro, enabled ? '1' : '0');
-  Future<bool> readGeminiPro() async => (await _safeRead(_keyGeminiPro, fallback: '0')) == '1';
+  Future<void> saveGeminiPro(bool enabled) =>
+      _safeWrite(_keyGeminiPro, enabled ? '1' : '0');
+  Future<bool> readGeminiPro() async =>
+      (await _safeRead(_keyGeminiPro, fallback: '0')) == '1';
 
-  Future<void> saveAnthropicPro(bool enabled) => _safeWrite(_keyAnthropicPro, enabled ? '1' : '0');
-  Future<bool> readAnthropicPro() async => (await _safeRead(_keyAnthropicPro, fallback: '0')) == '1';
+  Future<void> saveAnthropicPro(bool enabled) =>
+      _safeWrite(_keyAnthropicPro, enabled ? '1' : '0');
+  Future<bool> readAnthropicPro() async =>
+      (await _safeRead(_keyAnthropicPro, fallback: '0')) == '1';
 
-  Future<void> saveAppFetchUrl(bool enabled) => _safeWrite(_keyAppFetchUrl, enabled ? '1' : '0');
-  Future<bool> readAppFetchUrl() async => (await _safeRead(_keyAppFetchUrl, fallback: '1')) == '1';
+  Future<void> saveAppFetchUrl(bool enabled) =>
+      _safeWrite(_keyAppFetchUrl, enabled ? '1' : '0');
+  Future<bool> readAppFetchUrl() async =>
+      (await _safeRead(_keyAppFetchUrl, fallback: '1')) == '1';
 
   // xAI Key
   Future<void> saveXaiKey(String key) => _safeWrite(_keyXai, key);
@@ -152,10 +174,14 @@ class SecureStorageService {
   Future<void> deleteXaiKey() => _safeDelete(_keyXai);
 
   // xAI Pro
-  Future<void> saveXaiPro(bool enabled) => _safeWrite(_keyXaiPro, enabled ? '1' : '0');
-  Future<bool> readXaiPro() async => (await _safeRead(_keyXaiPro, fallback: '0')) == '1';
+  Future<void> saveXaiPro(bool enabled) =>
+      _safeWrite(_keyXaiPro, enabled ? '1' : '0');
+  Future<bool> readXaiPro() async =>
+      (await _safeRead(_keyXaiPro, fallback: '0')) == '1';
 
   // Last shared intent ID
-  Future<void> saveLastSharedIntentId(String id) => _safeWrite(_keyLastSharedIntentId, id);
-  Future<String> readLastSharedIntentId() async => _safeRead(_keyLastSharedIntentId);
+  Future<void> saveLastSharedIntentId(String id) =>
+      _safeWrite(_keyLastSharedIntentId, id);
+  Future<String> readLastSharedIntentId() async =>
+      _safeRead(_keyLastSharedIntentId);
 }

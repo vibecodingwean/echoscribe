@@ -6,6 +6,7 @@ environment:
   sdk: ^3.6.0
 
 dependencies:
+  async: ^2.13.0
   audioplayers: ^6.0.0
   crypto: ^3.0.0
   shared_preferences: ^2.0.0
@@ -15,7 +16,7 @@ dependencies:
   flutter_secure_storage: ^10.0.0
   path_provider: ^2.1.4
   record: '>=5.1.2'
-  http: ^1.0.0
+  http: ^1.6.0
   flutter:
     sdk: flutter
   google_fonts: ^8.0.2
@@ -23,6 +24,7 @@ dependencies:
   html: ^0.15.6
   flutter_svg: ^2.2.4
   brotli: ^0.6.0
+  web: ^1.1.1
 
 dev_dependencies:
   flutter_test:

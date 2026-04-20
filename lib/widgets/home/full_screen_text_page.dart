@@ -7,6 +7,7 @@ class FullScreenTextPage extends StatelessWidget {
   final bool isLog;
 
   const FullScreenTextPage({
+    super.key,
     required this.text,
     required this.title,
     this.isLog = false,

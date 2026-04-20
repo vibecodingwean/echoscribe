@@ -8,6 +8,7 @@ class MicButton extends StatelessWidget {
   final double instantLevel; // raw 0..1 for flicker
   final VoidCallback onTap;
   const MicButton({
+    super.key,
     required this.recording,
     required this.transcribing,
     required this.enabled,
@@ -100,6 +101,7 @@ class PlayPauseButton extends StatelessWidget {
   final bool isAnthropic;
   final VoidCallback onPressed;
   const PlayPauseButton({
+    super.key,
     required this.isLoading,
     required this.isPlaying,
     required this.onPressed,
@@ -161,6 +163,7 @@ class StopButton extends StatelessWidget {
   final bool isAnthropic;
   final VoidCallback onPressed;
   const StopButton({
+    super.key,
     required this.enabled,
     required this.onPressed,
     this.isAnthropic = false,

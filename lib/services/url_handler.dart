@@ -21,7 +21,9 @@ class UrlHandler {
     if (t.isEmpty) return false;
     if (t.contains(' ') || t.contains('\n') || t.contains('\t')) return false;
     final uri = Uri.tryParse(t);
-    return uri != null && (uri.scheme == 'http' || uri.scheme == 'https') && uri.host.isNotEmpty;
+    return uri != null &&
+        (uri.scheme == 'http' || uri.scheme == 'https') &&
+        uri.host.isNotEmpty;
   }
 
   /// Try to extract a single URL from a SharedMedia event and process it.
@@ -70,6 +72,7 @@ class UrlHandler {
     if (!looksLikeSingleUrl(text)) return false;
 
     if (showSuccess != null) showSuccess('URL pasted and summary initiated');
+    if (!context.mounted) return true;
 
     await processUrl(
       context: context,
@@ -113,8 +116,9 @@ class UrlHandler {
 
     if (!settings.hasActiveApiKey) {
       showError0('Add your API key first');
-      await Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => SettingsPage(settings: settings)));
+      await Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => SettingsPage(settings: settings)));
+      if (!context.mounted) return;
       return;
     }
 
@@ -134,10 +138,13 @@ class UrlHandler {
       final effectiveUrl = resolution.url;
       if (resolution.wasShortDomain) {
         if (resolution.resolved) {
-          content.appendLogLine('Short link resolved in ${resolution.hops} hop(s)');
+          content.appendLogLine(
+              'Short link resolved in ${resolution.hops} hop(s)');
         } else if (resolution.error != null) {
-          content.appendLogLine('Redirect resolution failed: ${resolution.error}');
-          showInfo('Die Weiterleitung konnte nicht aufgelöst werden, die Zusammenfassung kann unvollständig sein.');
+          content
+              .appendLogLine('Redirect resolution failed: ${resolution.error}');
+          showInfo(
+              'Die Weiterleitung konnte nicht aufgelöst werden, die Zusammenfassung kann unvollständig sein.');
         } else {
           content.appendLogLine('No redirect detected on whitelisted domain');
         }
@@ -147,18 +154,19 @@ class UrlHandler {
       content.setCurrentTranscript(effectiveUrl);
 
       String contentToSummarize = effectiveUrl;
-      bool extractionSuccessful = false;
-      
+
       // Force extraction if the provider requires it (Claude/Grok) or user enabled it
-      final shouldExtract = settings.appFetchUrl || settings.provider.mustExtractUrl;
+      final shouldExtract =
+          settings.appFetchUrl || settings.provider.mustExtractUrl;
 
       if (shouldExtract) {
         content.appendLogLine('--------------------');
-        
+
         if (settings.provider.mustExtractUrl) {
-           content.appendLogLine('💡 ${settings.provider.brandName} requires local content extraction');
+          content.appendLogLine(
+              '💡 ${settings.provider.brandName} requires local content extraction');
         }
-        
+
         // Use the cache check directly to provide a specific log entry
         if (UrlContentService.hasCached(effectiveUrl)) {
           content.appendLogLine('📦 Content found in local cache');
@@ -172,16 +180,17 @@ class UrlHandler {
             content.appendLogLine('✅ Content retrieved (${text.length} chars)');
           }
           content.appendLogLine('📄 Extracting visible text...');
-          
+
           contentToSummarize = text;
-          extractionSuccessful = true;
 
           // Update transcription panel: Show URL + Extracted Text
           final displayBuffer = StringBuffer();
           displayBuffer.writeln('#### URL:');
-          displayBuffer.writeln('[$effectiveUrl]($effectiveUrl)'); // Markdown link
+          displayBuffer
+              .writeln('[$effectiveUrl]($effectiveUrl)'); // Markdown link
           displayBuffer.writeln('');
-          displayBuffer.writeln('........................................'); // Subtle "thread"
+          displayBuffer.writeln(
+              '........................................'); // Subtle "thread"
           displayBuffer.writeln('');
           displayBuffer.writeln('#### EXTRACTED TEXT:');
           displayBuffer.writeln('');
@@ -202,7 +211,7 @@ class UrlHandler {
         content.appendLogLine('📡 Sending URL to AI provider...');
       }
 
-      // Store the SOURCE content (either extracted text or the URL) 
+      // Store the SOURCE content (either extracted text or the URL)
       // so that re-translation logic in HomePage can re-process it.
       content.setSourceTranscript(contentToSummarize);
 
@@ -211,10 +220,14 @@ class UrlHandler {
 
       String getModelForSummary() {
         switch (settings.provider) {
-          case AiProviderType.gemini: return AiModelConfig.geminiSummary(pro: settings.geminiPro);
-          case AiProviderType.anthropic: return AiModelConfig.anthropicSummary(pro: settings.anthropicPro);
-          case AiProviderType.xai: return AiModelConfig.xaiSummary(pro: settings.xaiPro);
-          case AiProviderType.openai: return AiModelConfig.openAiSummary(pro: settings.openAiPro);
+          case AiProviderType.gemini:
+            return AiModelConfig.geminiSummary(pro: settings.geminiPro);
+          case AiProviderType.anthropic:
+            return AiModelConfig.anthropicSummary(pro: settings.anthropicPro);
+          case AiProviderType.xai:
+            return AiModelConfig.xaiSummary(pro: settings.xaiPro);
+          case AiProviderType.openai:
+            return AiModelConfig.openAiSummary(pro: settings.openAiPro);
         }
       }
 

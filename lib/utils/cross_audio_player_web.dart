@@ -1,12 +1,22 @@
 import 'dart:async';
-import 'dart:html' as html;
+import 'dart:js_interop';
 import 'package:flutter/foundation.dart';
+import 'package:web/web.dart' as web;
 
 class CrossAudioPlayer {
-  html.AudioElement? _audio;
-  String? _objectUrl;
+  web.HTMLAudioElement? _audio;
   final _controller = StreamController<bool>.broadcast();
   final _endedController = StreamController<void>.broadcast();
+  late final JSFunction _onEndedJs = (() {
+    _controller.add(false);
+    _endedController.add(null);
+  }).toJS;
+  late final JSFunction _onPlayJs = (() {
+    _controller.add(true);
+  }).toJS;
+  late final JSFunction _onPauseJs = (() {
+    _controller.add(false);
+  }).toJS;
 
   // Emits true when playing, false on pause/stop/end
   Stream<bool> get onPlayingChanged => _controller.stream;
@@ -14,37 +24,27 @@ class CrossAudioPlayer {
   Stream<void> get onEnded => _endedController.stream;
 
   Future<void> playBytes(Uint8List bytes, {String? mimeType}) async {
-    debugPrint('CrossAudioPlayer.web: playBytes len=${bytes.length} mime=$mimeType');
-    // Stop any existing playback and release previous URL
+    debugPrint(
+        'CrossAudioPlayer.web: playBytes len=${bytes.length} mime=$mimeType');
     await stop();
 
-    final blob = html.Blob([bytes], mimeType ?? 'audio/mpeg');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    _objectUrl = url;
+    final dataUrl =
+        Uri.dataFromBytes(bytes, mimeType: mimeType ?? 'audio/mpeg').toString();
 
-    final a = html.AudioElement(url)
+    final a = web.HTMLAudioElement()
+      ..src = dataUrl
       ..autoplay = true
       ..controls = false;
 
-    // Wire events
-    a.onEnded.listen((_) {
-      _controller.add(false);
-      _endedController.add(null);
-    });
-    a.onPlay.listen((_) {
-      _controller.add(true);
-    });
-    a.onPause.listen((_) {
-      _controller.add(false);
-    });
+    a.addEventListener('ended', _onEndedJs);
+    a.addEventListener('play', _onPlayJs);
+    a.addEventListener('pause', _onPauseJs);
 
     _audio = a;
-    // Attempt to play; browsers may require a user gesture (button press), which we have
     try {
-      await a.play();
+      a.play();
       _controller.add(true);
     } catch (_) {
-      // If autoplay fails for any reason, surface as not playing
       _controller.add(false);
       rethrow;
     }
@@ -61,7 +61,7 @@ class CrossAudioPlayer {
     final a = _audio;
     if (a != null) {
       try {
-        await a.play();
+        a.play();
         _controller.add(true);
       } catch (_) {
         _controller.add(false);
@@ -75,13 +75,14 @@ class CrossAudioPlayer {
     try {
       _audio?.pause();
       if (_audio != null) {
-        _audio!..src = ''..load();
+        _audio!
+          ..removeEventListener('ended', _onEndedJs)
+          ..removeEventListener('play', _onPlayJs)
+          ..removeEventListener('pause', _onPauseJs)
+          ..src = ''
+          ..load();
       }
     } finally {
-      if (_objectUrl != null) {
-        html.Url.revokeObjectUrl(_objectUrl!);
-        _objectUrl = null;
-      }
       _audio = null;
       _controller.add(false);
     }
