@@ -28,6 +28,7 @@ class ServiceLocator {
     recorder = RecorderService();
     tts = TtsService();
     secureStorage = SecureStorageService();
+
     aiProviderFactory = AiProviderFactory(
       whisper: whisper,
       gemini: gemini,

@@ -67,14 +67,19 @@ class _SettingsPageState extends State<SettingsPage> {
     widget.settings.setUrlSummaryPrompt(defaultPrompt);
   }
 
-  Future<void> _openPromptDialog({required String labelText, required String initialText, required Future<void> Function(String value) onSave, required Future<void> Function() onReset}) async {
+  Future<void> _openPromptDialog(
+      {required String labelText,
+      required String initialText,
+      required Future<void> Function(String value) onSave,
+      required Future<void> Function() onReset}) async {
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: true,
       builder: (builderContext) {
-        return _EditPromptDialog(labelText: labelText, initialText: initialText);
+        return _EditPromptDialog(
+            labelText: labelText, initialText: initialText);
       },
     );
 
@@ -85,14 +90,18 @@ class _SettingsPageState extends State<SettingsPage> {
     if (action == 'reset') {
       await onReset();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Prompt reset to default'), duration: Duration(milliseconds: 1000)));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Prompt reset to default'),
+            duration: Duration(milliseconds: 1000)));
         setState(() {});
       }
     } else if (action == 'save') {
       final newPrompt = result['text'] as String;
       await onSave(newPrompt);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Prompt saved'), duration: Duration(milliseconds: 1000)));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Prompt saved'),
+            duration: Duration(milliseconds: 1000)));
         setState(() {});
       }
     }
@@ -140,13 +149,18 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
     return PopScope(
       canPop: true,
       onPopInvokedWithResult: (didPop, result) async {
         await _autoSaveKeysIfValid();
-        if (didPop && !_snackShownOnExit && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Settings saved'), duration: Duration(milliseconds: 1000)),
+        if (!mounted) return;
+        if (didPop && !_snackShownOnExit) {
+          messenger.showSnackBar(
+            const SnackBar(
+                content: Text('Settings saved'),
+                duration: Duration(milliseconds: 1000)),
           );
         }
       },
@@ -156,299 +170,231 @@ class _SettingsPageState extends State<SettingsPage> {
           leading: BackButton(
             onPressed: () async {
               await _autoSaveKeysIfValid();
-              if (mounted) {
-                _snackShownOnExit = true;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Settings saved'), duration: Duration(milliseconds: 1000)),
-                );
-                Navigator.of(context).pop();
-              }
+              if (!mounted) return;
+              _snackShownOnExit = true;
+              messenger.showSnackBar(
+                const SnackBar(
+                    content: Text('Settings saved'),
+                    duration: Duration(milliseconds: 1000)),
+              );
+              navigator.pop();
             },
           ),
         ),
         body: SafeArea(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Choose Provider', style: Theme.of(context).textTheme.titleSmall),
-                    const SizedBox(height: 6),
-                    Card(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      margin: EdgeInsets.zero,
-                      child: Column(
-                        children: [
-                          _ProviderRadioTile(
-                            value: AiProviderType.openai,
-                            label: 'OpenAI',
-                            iconPath: 'assets/images/chatgpt-icon.svg',
-                            groupValue: widget.settings.provider,
-                            onChanged: (val) {
-                              widget.settings.setProvider(val!);
-                              _storage.saveProvider(val);
-                              setState(() {});
-                            },
-                          ),
-                          const Divider(height: 1, indent: 56),
-                          _ProviderRadioTile(
-                            value: AiProviderType.gemini,
-                            label: 'Gemini',
-                            iconPath: 'assets/images/gemini-color.png',
-                            groupValue: widget.settings.provider,
-                            onChanged: (val) {
-                              widget.settings.setProvider(val!);
-                              _storage.saveProvider(val);
-                              setState(() {});
-                            },
-                          ),
-                          const Divider(height: 1, indent: 56),
-                          _ProviderRadioTile(
-                            value: AiProviderType.anthropic,
-                            label: 'Claude (no-audio) 🦀',
-                            iconPath: 'assets/images/claude-ai-icon.svg',
-                            groupValue: widget.settings.provider,
-                            onChanged: (val) async {
-                              widget.settings.setProvider(val!);
-                              await _storage.saveProvider(val);
-                              if (val.mustExtractUrl) {
-                                widget.settings.setAppFetchUrl(true);
-                                await _storage.saveAppFetchUrl(true);
-                              }
-                              setState(() {});
-                            },
-                          ),
-                          const Divider(height: 1, indent: 56),
-                          _ProviderRadioTile(
-                            value: AiProviderType.xai,
-                            label: 'Grok (no-audio)',
-                            iconPath: 'assets/images/Grok-icon.svg',
-                            groupValue: widget.settings.provider,
-                            onChanged: (val) async {
-                              widget.settings.setProvider(val!);
-                              await _storage.saveProvider(val);
-                              if (val.mustExtractUrl) {
-                                widget.settings.setAppFetchUrl(true);
-                                await _storage.saveAppFetchUrl(true);
-                              }
-                              setState(() {});
-                            },
-                          ),
-                        ],
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Choose Provider',
+                  style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 6),
+              ProviderSelectorCard(
+                selectedProvider: widget.settings.provider,
+                onProviderSelected: (provider) async {
+                  widget.settings.setProvider(provider);
+                  await _storage.saveProvider(provider);
+                  if (provider.mustExtractUrl) {
+                    widget.settings.setAppFetchUrl(true);
+                    await _storage.saveAppFetchUrl(true);
+                  }
+                  if (mounted) {
+                    setState(() {});
+                  }
+                },
+              ),
+              if (widget.settings.provider == AiProviderType.openai)
+                _ApiKeyCard(
+                  labelText: 'OpenAI API Key',
+                  hintText: 'sk-...',
+                  controller: _openAiCtrl,
+                  obscure: _obscureOpenAi,
+                  proValue: _openAiPro,
+                  onObscureToggle: () =>
+                      setState(() => _obscureOpenAi = !_obscureOpenAi),
+                  onChanged: (_) => _scheduleAutoSaveImmediate(),
+                  onProChanged: (val) async {
+                    setState(() => _openAiPro = val);
+                    widget.settings.setOpenAiPro(val);
+                    await _storage.saveOpenAiPro(val);
+                  },
+                  onDelete: () async {
+                    await _storage.deleteOpenAiKey();
+                    widget.settings.setOpenAiKey('');
+                    _openAiCtrl.clear();
+                  },
+                  formKey: _openAiFormKey,
+                ),
+              if (widget.settings.provider == AiProviderType.gemini)
+                _ApiKeyCard(
+                  labelText: 'Gemini API Key',
+                  hintText: 'AIza...',
+                  controller: _geminiCtrl,
+                  obscure: _obscureGemini,
+                  proValue: _geminiPro,
+                  onObscureToggle: () =>
+                      setState(() => _obscureGemini = !_obscureGemini),
+                  onChanged: (_) => _scheduleAutoSaveImmediate(),
+                  onProChanged: (val) async {
+                    setState(() => _geminiPro = val);
+                    widget.settings.setGeminiPro(val);
+                    await _storage.saveGeminiPro(val);
+                  },
+                  onDelete: () async {
+                    await _storage.deleteGeminiKey();
+                    widget.settings.setGeminiKey('');
+                    _geminiCtrl.clear();
+                  },
+                  formKey: _geminiFormKey,
+                ),
+              if (widget.settings.provider == AiProviderType.anthropic)
+                _ApiKeyCard(
+                  labelText: 'Anthropic API Key',
+                  hintText: 'sk-ant-...',
+                  controller: _anthropicCtrl,
+                  obscure: _obscureAnthropic,
+                  proValue: _anthropicPro,
+                  onObscureToggle: () =>
+                      setState(() => _obscureAnthropic = !_obscureAnthropic),
+                  onChanged: (_) => _scheduleAutoSaveImmediate(),
+                  onProChanged: (val) async {
+                    setState(() => _anthropicPro = val);
+                    widget.settings.setAnthropicPro(val);
+                    await _storage.saveAnthropicPro(val);
+                  },
+                  onDelete: () async {
+                    await _storage.deleteAnthropicKey();
+                    widget.settings.setAnthropicKey('');
+                    _anthropicCtrl.clear();
+                  },
+                  formKey: _anthropicFormKey,
+                ),
+              if (widget.settings.provider == AiProviderType.xai)
+                _ApiKeyCard(
+                  labelText: 'xAI API Key',
+                  hintText: 'xai-...',
+                  controller: _xaiCtrl,
+                  obscure: _obscureXai,
+                  proValue: _xaiPro,
+                  onObscureToggle: () =>
+                      setState(() => _obscureXai = !_obscureXai),
+                  onChanged: (_) => _scheduleAutoSaveImmediate(),
+                  onProChanged: (val) async {
+                    setState(() => _xaiPro = val);
+                    widget.settings.setXaiPro(val);
+                    await _storage.saveXaiPro(val);
+                  },
+                  onDelete: () async {
+                    await _storage.deleteXaiKey();
+                    widget.settings.setXaiKey('');
+                    _xaiCtrl.clear();
+                  },
+                  formKey: _xaiFormKey,
+                ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _openPromptDialog(
+                        labelText: 'Audio Prompt',
+                        initialText: widget.settings.summaryPrompt,
+                        onSave: (val) async {
+                          widget.settings.setSummaryPrompt(val);
+                          await _storage.saveSummaryPrompt(val);
+                        },
+                        onReset: () async {
+                          await _storage.deleteSummaryPrompt();
+                          _resetAudioPromptToDefault();
+                        },
+                      ),
+                      icon: const Icon(Icons.graphic_eq, size: 18),
+                      label: const Text('Audio Prompt',
+                          style: TextStyle(fontSize: 13)),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
                       ),
                     ),
-                    
-                    if (widget.settings.provider == AiProviderType.openai)
-                      _ApiKeyCard(
-                        labelText: 'OpenAI API Key',
-                        hintText: 'sk-...',
-                        controller: _openAiCtrl,
-                        obscure: _obscureOpenAi,
-                        proValue: _openAiPro,
-                        onObscureToggle: () => setState(() => _obscureOpenAi = !_obscureOpenAi),
-                        onChanged: (_) => _scheduleAutoSaveImmediate(),
-                        onProChanged: (val) async {
-                          setState(() => _openAiPro = val);
-                          widget.settings.setOpenAiPro(val);
-                          await _storage.saveOpenAiPro(val);
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _openPromptDialog(
+                        labelText: 'URL Prompt',
+                        initialText: widget.settings.urlSummaryPrompt,
+                        onSave: (val) async {
+                          widget.settings.setUrlSummaryPrompt(val);
+                          await _storage.saveUrlSummaryPrompt(val);
                         },
-                        onDelete: () async {
-                          await _storage.deleteOpenAiKey();
-                          widget.settings.setOpenAiKey('');
-                          _openAiCtrl.clear();
+                        onReset: () async {
+                          await _storage.deleteUrlSummaryPrompt();
+                          _resetUrlPromptToDefault();
                         },
-                        formKey: _openAiFormKey,
                       ),
-
-                    if (widget.settings.provider == AiProviderType.gemini)
-                      _ApiKeyCard(
-                        labelText: 'Gemini API Key',
-                        hintText: 'AIza...',
-                        controller: _geminiCtrl,
-                        obscure: _obscureGemini,
-                        proValue: _geminiPro,
-                        onObscureToggle: () => setState(() => _obscureGemini = !_obscureGemini),
-                        onChanged: (_) => _scheduleAutoSaveImmediate(),
-                        onProChanged: (val) async {
-                          setState(() => _geminiPro = val);
-                          widget.settings.setGeminiPro(val);
-                          await _storage.saveGeminiPro(val);
-                        },
-                        onDelete: () async {
-                          await _storage.deleteGeminiKey();
-                          widget.settings.setGeminiKey('');
-                          _geminiCtrl.clear();
-                        },
-                        formKey: _geminiFormKey,
+                      icon: const Icon(Icons.link, size: 18),
+                      label: const Text('URL Prompt',
+                          style: TextStyle(fontSize: 13)),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
                       ),
-
-                    if (widget.settings.provider == AiProviderType.anthropic)
-                      _ApiKeyCard(
-                        labelText: 'Anthropic API Key',
-                        hintText: 'sk-ant-...',
-                        controller: _anthropicCtrl,
-                        obscure: _obscureAnthropic,
-                        proValue: _anthropicPro,
-                        onObscureToggle: () => setState(() => _obscureAnthropic = !_obscureAnthropic),
-                        onChanged: (_) => _scheduleAutoSaveImmediate(),
-                        onProChanged: (val) async {
-                          setState(() => _anthropicPro = val);
-                          widget.settings.setAnthropicPro(val);
-                          await _storage.saveAnthropicPro(val);
-                        },
-                        onDelete: () async {
-                          await _storage.deleteAnthropicKey();
-                          widget.settings.setAnthropicKey('');
-                          _anthropicCtrl.clear();
-                        },
-                        formKey: _anthropicFormKey,
-                      ),
-
-                    if (widget.settings.provider == AiProviderType.xai)
-                      _ApiKeyCard(
-                        labelText: 'xAI API Key',
-                        hintText: 'xai-...',
-                        controller: _xaiCtrl,
-                        obscure: _obscureXai,
-                        proValue: _xaiPro,
-                        onObscureToggle: () => setState(() => _obscureXai = !_obscureXai),
-                        onChanged: (_) => _scheduleAutoSaveImmediate(),
-                        onProChanged: (val) async {
-                          setState(() => _xaiPro = val);
-                          widget.settings.setXaiPro(val);
-                          await _storage.saveXaiPro(val);
-                        },
-                        onDelete: () async {
-                          await _storage.deleteXaiKey();
-                          widget.settings.setXaiKey('');
-                          _xaiCtrl.clear();
-                        },
-                        formKey: _xaiFormKey,
-                      ),
-
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => _openPromptDialog(
-                              labelText: 'Audio Prompt',
-                              initialText: widget.settings.summaryPrompt,
-                              onSave: (val) async {
-                                widget.settings.setSummaryPrompt(val);
-                                await _storage.saveSummaryPrompt(val);
-                              },
-                              onReset: () async {
-                                await _storage.deleteSummaryPrompt();
-                                _resetAudioPromptToDefault();
-                              },
-                            ),
-                            icon: const Icon(Icons.graphic_eq, size: 18),
-                            label: const Text('Audio Prompt', style: TextStyle(fontSize: 13)),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => _openPromptDialog(
-                              labelText: 'URL Prompt',
-                              initialText: widget.settings.urlSummaryPrompt,
-                              onSave: (val) async {
-                                widget.settings.setUrlSummaryPrompt(val);
-                                await _storage.saveUrlSummaryPrompt(val);
-                              },
-                              onReset: () async {
-                                await _storage.deleteUrlSummaryPrompt();
-                                _resetUrlPromptToDefault();
-                              },
-                            ),
-                            icon: const Icon(Icons.link, size: 18),
-                            label: const Text('URL Prompt', style: TextStyle(fontSize: 13)),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                          ),
-                        ),
-                      ],
                     ),
-
-                    const SizedBox(height: 8),
-                    Card(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      margin: EdgeInsets.zero,
-                      child: Column(
-                        children: [
-                          SwitchListTile.adaptive(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                            visualDensity: VisualDensity.compact,
-                            secondary: const Icon(Icons.cloud_download_outlined, size: 20),
-                            title: const Text('App extracts URL content', style: TextStyle(fontSize: 14)),
-                            subtitle: const Text('App fetches content locally and sends text to AI', style: TextStyle(fontSize: 12)),
-                            value: widget.settings.provider.mustExtractUrl ? true : widget.settings.appFetchUrl,
-                            onChanged: widget.settings.provider.mustExtractUrl ? null : (val) async {
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Card(
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+                margin: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    SwitchListTile.adaptive(
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 12),
+                      visualDensity: VisualDensity.compact,
+                      secondary:
+                          const Icon(Icons.cloud_download_outlined, size: 20),
+                      title: const Text('App extracts URL content',
+                          style: TextStyle(fontSize: 14)),
+                      subtitle: const Text(
+                          'App fetches content locally and sends text to AI',
+                          style: TextStyle(fontSize: 12)),
+                      value: widget.settings.provider.mustExtractUrl
+                          ? true
+                          : widget.settings.appFetchUrl,
+                      onChanged: widget.settings.provider.mustExtractUrl
+                          ? null
+                          : (val) async {
                               widget.settings.setAppFetchUrl(val);
                               await _storage.saveAppFetchUrl(val);
                               setState(() {});
                             },
-                          ),
-                          const Divider(height: 1, indent: 12, endIndent: 12),
-                          SwitchListTile.adaptive(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                            visualDensity: VisualDensity.compact,
-                            secondary: const Icon(Icons.bug_report, size: 20),
-                            title: const Text('Debug Mode', style: TextStyle(fontSize: 14)),
-                            value: _debugMode,
-                            onChanged: (val) async {
-                              setState(() => _debugMode = val);
-                              widget.settings.setDebugMode(val);
-                              await _storage.saveDebugMode(val);
-                            },
-                          ),
-                        ],
-                      ),
                     ),
-                  ]),
+                    const Divider(height: 1, indent: 12, endIndent: 12),
+                    SwitchListTile.adaptive(
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 12),
+                      visualDensity: VisualDensity.compact,
+                      secondary: const Icon(Icons.bug_report, size: 20),
+                      title: const Text('Debug Mode',
+                          style: TextStyle(fontSize: 14)),
+                      value: _debugMode,
+                      onChanged: (val) async {
+                        setState(() => _debugMode = val);
+                        widget.settings.setDebugMode(val);
+                        await _storage.saveDebugMode(val);
+                      },
+                    ),
+                  ],
                 ),
               ),
-      ),
-    );
-  }
-}
-
-class _ProviderRadioTile extends StatelessWidget {
-  final AiProviderType value;
-  final String label;
-  final String iconPath;
-  final AiProviderType groupValue;
-  final ValueChanged<AiProviderType?> onChanged;
-
-  const _ProviderRadioTile({
-    required this.value,
-    required this.label,
-    required this.iconPath,
-    required this.groupValue,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return RadioListTile<AiProviderType>(
-      value: value,
-      groupValue: groupValue,
-      onChanged: onChanged,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-      visualDensity: VisualDensity.compact,
-      title: Row(
-        children: [
-          iconPath.toLowerCase().endsWith('.svg')
-              ? SvgPicture.asset(iconPath, width: 24, height: 24)
-              : Image.asset(iconPath, width: 24, height: 24),
-          const SizedBox(width: 12),
-          Text(label, style: const TextStyle(fontSize: 14)),
-        ],
+            ]),
+          ),
+        ),
       ),
     );
   }
@@ -501,7 +447,9 @@ class _ApiKeyCard extends StatelessWidget {
                   hintText: hintText,
                   prefixIcon: const Icon(Icons.vpn_key, size: 18),
                   suffixIcon: IconButton(
-                    icon: Icon(obscure ? Icons.visibility : Icons.visibility_off, size: 18),
+                    icon: Icon(
+                        obscure ? Icons.visibility : Icons.visibility_off,
+                        size: 18),
                     onPressed: onObscureToggle,
                   ),
                 ),
@@ -519,8 +467,12 @@ class _ApiKeyCard extends StatelessWidget {
                       builder: (context) => AlertDialog(
                         title: Text('Remove ${labelText.split(' ')[0]} key?'),
                         actions: [
-                          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-                          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Remove')),
+                          TextButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: const Text('Cancel')),
+                          TextButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              child: const Text('Remove')),
                         ],
                       ),
                     );
@@ -547,11 +499,103 @@ class _ApiKeyCard extends StatelessWidget {
   }
 }
 
+class ProviderSelectorCard extends StatelessWidget {
+  final AiProviderType selectedProvider;
+  final Future<void> Function(AiProviderType provider) onProviderSelected;
+
+  const ProviderSelectorCard({
+    super.key,
+    required this.selectedProvider,
+    required this.onProviderSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      margin: EdgeInsets.zero,
+      child: Column(
+        children: [
+          _ProviderOptionTile(
+            value: AiProviderType.openai,
+            label: 'OpenAI',
+            iconPath: 'assets/images/chatgpt-icon.svg',
+            selectedProvider: selectedProvider,
+            onSelected: onProviderSelected,
+          ),
+          const Divider(height: 1, indent: 56),
+          _ProviderOptionTile(
+            value: AiProviderType.gemini,
+            label: 'Gemini',
+            iconPath: 'assets/images/gemini-color.png',
+            selectedProvider: selectedProvider,
+            onSelected: onProviderSelected,
+          ),
+          const Divider(height: 1, indent: 56),
+          _ProviderOptionTile(
+            value: AiProviderType.anthropic,
+            label: 'Claude (no-audio) 🦀',
+            iconPath: 'assets/images/claude-ai-icon.svg',
+            selectedProvider: selectedProvider,
+            onSelected: onProviderSelected,
+          ),
+          const Divider(height: 1, indent: 56),
+          _ProviderOptionTile(
+            value: AiProviderType.xai,
+            label: 'Grok (no-audio)',
+            iconPath: 'assets/images/Grok-icon.svg',
+            selectedProvider: selectedProvider,
+            onSelected: onProviderSelected,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProviderOptionTile extends StatelessWidget {
+  final AiProviderType value;
+  final String label;
+  final String iconPath;
+  final AiProviderType selectedProvider;
+  final Future<void> Function(AiProviderType provider) onSelected;
+
+  const _ProviderOptionTile({
+    required this.value,
+    required this.label,
+    required this.iconPath,
+    required this.selectedProvider,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = value == selectedProvider;
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+      visualDensity: VisualDensity.compact,
+      selected: selected,
+      leading: iconPath.toLowerCase().endsWith('.svg')
+          ? SvgPicture.asset(iconPath, width: 24, height: 24)
+          : Image.asset(iconPath, width: 24, height: 24),
+      title: Text(label, style: const TextStyle(fontSize: 14)),
+      trailing: Icon(
+        selected ? Icons.radio_button_checked : Icons.radio_button_off,
+        color: selected ? Theme.of(context).colorScheme.primary : null,
+      ),
+      onTap: () => onSelected(value),
+    );
+  }
+}
+
 class _EditPromptDialog extends StatefulWidget {
   final String labelText;
   final String initialText;
 
-  const _EditPromptDialog({super.key, required this.labelText, required this.initialText});
+  const _EditPromptDialog({
+    required this.labelText,
+    required this.initialText,
+  });
 
   @override
   State<_EditPromptDialog> createState() => _EditPromptDialogState();
@@ -608,17 +652,18 @@ class _EditPromptDialogState extends State<_EditPromptDialog> {
               ),
               const Spacer(),
               TextButton(
-                onPressed: () => Navigator.of(context).pop({'action': 'cancel'}),
+                onPressed: () =>
+                    Navigator.of(context).pop({'action': 'cancel'}),
                 child: const Text('Cancel'),
               ),
               const SizedBox(width: 8),
               FilledButton(
-                onPressed: () => Navigator.of(context).pop({'action': 'save', 'text': _controller.text.trim()}),
+                onPressed: () => Navigator.of(context)
+                    .pop({'action': 'save', 'text': _controller.text.trim()}),
                 child: const Text('Save'),
               ),
             ],
           ),
-          const SizedBox(height: 16),
         ],
       ),
     );

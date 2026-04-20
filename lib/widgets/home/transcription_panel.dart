@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -118,9 +117,15 @@ class TranscriptionPanelState extends State<TranscriptionPanel> {
               onTap: () async {
                 Navigator.pop(context);
                 final tempDir = await getTemporaryDirectory();
-                final file = await File('${tempDir.path}/generated_image.png').create();
+                final file =
+                    await File('${tempDir.path}/generated_image.png').create();
                 await file.writeAsBytes(bytes);
-                await Share.shareXFiles([XFile(file.path)], text: 'Generated with EchoScribe');
+                await SharePlus.instance.share(
+                  ShareParams(
+                    files: [XFile(file.path)],
+                    text: 'Generated with EchoScribe',
+                  ),
+                );
               },
             ),
             ListTile(
@@ -132,26 +137,26 @@ class TranscriptionPanelState extends State<TranscriptionPanel> {
                   Directory? dir;
                   if (Platform.isAndroid) {
                     dir = Directory('/storage/emulated/0/Download');
-                    if (!await dir.exists()) dir = await getExternalStorageDirectory();
+                    if (!await dir.exists()) {
+                      dir = await getExternalStorageDirectory();
+                    }
                   } else {
                     dir = await getApplicationDocumentsDirectory();
                   }
-                  
-                  final fileName = 'EchoScribe_${DateTime.now().millisecondsSinceEpoch}.png';
+
+                  final fileName =
+                      'EchoScribe_${DateTime.now().millisecondsSinceEpoch}.png';
                   final file = File('${dir!.path}/$fileName');
                   await file.writeAsBytes(bytes);
-                  
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Saved to ${dir.path}/$fileName')),
-                    );
-                  }
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Saved to ${dir.path}/$fileName')),
+                  );
                 } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Failed to save image')),
-                    );
-                  }
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Failed to save image')),
+                  );
                 }
               },
             ),
@@ -163,7 +168,7 @@ class TranscriptionPanelState extends State<TranscriptionPanel> {
 
   Widget _buildHeader(BuildContext context, String displayText) {
     final bool hasText = displayText.trim().isNotEmpty;
-    
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
       child: Row(
@@ -179,7 +184,9 @@ class TranscriptionPanelState extends State<TranscriptionPanel> {
           ),
           IconButton(
             icon: const Icon(Icons.paste, size: 20),
-            onPressed: (widget.isLoading || widget.isRecording) ? null : widget.onPaste,
+            onPressed: (widget.isLoading || widget.isRecording)
+                ? null
+                : widget.onPaste,
             tooltip: 'Paste',
           ),
           IconButton(
@@ -212,10 +219,14 @@ class TranscriptionPanelState extends State<TranscriptionPanel> {
         widget.imageBytesNotifier,
       ]),
       builder: (context, child) {
-        final bool showAsLog = (widget.isDebugMode || widget.isLoading || widget.isRecording) && widget.logTextNotifier.value.isNotEmpty;
-        final String displayText = showAsLog 
-            ? widget.logTextNotifier.value 
-            : (widget.isSummaryMode ? widget.summaryNotifier.value : widget.transcriptNotifier.value);
+        final bool showAsLog =
+            (widget.isDebugMode || widget.isLoading || widget.isRecording) &&
+                widget.logTextNotifier.value.isNotEmpty;
+        final String displayText = showAsLog
+            ? widget.logTextNotifier.value
+            : (widget.isSummaryMode
+                ? widget.summaryNotifier.value
+                : widget.transcriptNotifier.value);
 
         return GestureDetector(
           onDoubleTap: () {
@@ -232,7 +243,11 @@ class TranscriptionPanelState extends State<TranscriptionPanel> {
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.2)),
+              border: Border.all(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .outlineVariant
+                      .withValues(alpha: 0.2)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -242,14 +257,22 @@ class TranscriptionPanelState extends State<TranscriptionPanel> {
                 Expanded(
                   child: Stack(
                     children: [
-                      if (displayText.isEmpty && widget.imageBytesNotifier.value == null && !widget.isLoading && !widget.isRecording)
+                      if (displayText.isEmpty &&
+                          widget.imageBytesNotifier.value == null &&
+                          !widget.isLoading &&
+                          !widget.isRecording)
                         Center(
                           child: Text(
                             "Your transcription will appear here...",
-                            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
+                            style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant
+                                    .withValues(alpha: 0.5)),
                           ),
                         )
-                      else if (displayText.isNotEmpty || widget.imageBytesNotifier.value != null)
+                      else if (displayText.isNotEmpty ||
+                          widget.imageBytesNotifier.value != null)
                         SingleChildScrollView(
                           padding: const EdgeInsets.all(16.0),
                           child: Column(
@@ -257,29 +280,35 @@ class TranscriptionPanelState extends State<TranscriptionPanel> {
                             children: [
                               if (displayText.isNotEmpty)
                                 showAsLog
-                                  ? Text(
-                                      displayText,
-                                      style: const TextStyle(fontFamily: "monospace", fontSize: 12),
-                                    )
-                                  : MarkdownBody(
-                                      data: displayText,
-                                      selectable: true,
-                                      styleSheet: AppMarkdownStyle.of(context),
-                                    ),
+                                    ? Text(
+                                        displayText,
+                                        style: const TextStyle(
+                                            fontFamily: "monospace",
+                                            fontSize: 12),
+                                      )
+                                    : MarkdownBody(
+                                        data: displayText,
+                                        selectable: true,
+                                        styleSheet:
+                                            AppMarkdownStyle.of(context),
+                                      ),
                               if (widget.imageBytesNotifier.value != null) ...[
-                                if (displayText.isNotEmpty) const SizedBox(height: 16),
+                                if (displayText.isNotEmpty)
+                                  const SizedBox(height: 16),
                                 GestureDetector(
                                   onTap: () {
                                     Navigator.of(context).push(
                                       MaterialPageRoute(
                                         builder: (_) => _FullScreenImageViewer(
-                                          imageBytes: widget.imageBytesNotifier.value!,
+                                          imageBytes:
+                                              widget.imageBytesNotifier.value!,
                                         ),
                                       ),
                                     );
                                   },
                                   onLongPress: () {
-                                    _showImageOptions(context, widget.imageBytesNotifier.value!);
+                                    _showImageOptions(context,
+                                        widget.imageBytesNotifier.value!);
                                   },
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(12),
@@ -297,7 +326,9 @@ class TranscriptionPanelState extends State<TranscriptionPanel> {
                         Positioned(
                           bottom: 16,
                           left: 16,
-                          child: FileLimitPill(durationNotifier: widget.recordDurationNotifier, maxDuration: widget.maxRecordDuration),
+                          child: FileLimitPill(
+                              durationNotifier: widget.recordDurationNotifier,
+                              maxDuration: widget.maxRecordDuration),
                         ),
                     ],
                   ),
@@ -320,7 +351,8 @@ class _FullScreenImageViewer extends StatefulWidget {
 }
 
 class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
-  final TransformationController _transformationController = TransformationController();
+  final TransformationController _transformationController =
+      TransformationController();
   TapDownDetails? _doubleTapDetails;
 
   void _handleDoubleTap() {
@@ -330,8 +362,8 @@ class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
       final position = _doubleTapDetails!.localPosition;
       // zoom in 3x
       _transformationController.value = Matrix4.identity()
-        ..translate(-position.dx * 2, -position.dy * 2)
-        ..scale(3.0);
+        ..translateByDouble(-position.dx * 2, -position.dy * 2, 0, 1)
+        ..scaleByDouble(3.0, 3.0, 1.0, 1.0);
     }
   }
 

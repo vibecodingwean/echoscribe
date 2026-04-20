@@ -7,10 +7,12 @@ class RecorderService {
   final AudioRecorder _record = AudioRecorder();
 
   Future<bool> hasPermission() async => await _record.hasPermission();
+  Future<bool> isRecording() async => await _record.isRecording();
 
   // Stream a normalized input level (0..1) derived from mic amplitude.
   // More sensitive mapping with a gentle gamma curve to amplify quiet signals.
-  Stream<double> levelStream({Duration interval = const Duration(milliseconds: 120)}) {
+  Stream<double> levelStream(
+      {Duration interval = const Duration(milliseconds: 120)}) {
     return _record.onAmplitudeChanged(interval).map((amp) {
       // Amplitude.current is in dB, typically [-160, 0]. Map roughly [-90, 0] to [0, 1]
       // and apply a gamma (<1) to boost lower levels for a more responsive flicker.
@@ -30,9 +32,10 @@ class RecorderService {
       encoder: AudioEncoder.aacLc,
       bitRate: 128000,
       sampleRate: 44100,
+      numChannels: 1,
     );
 
-    String path;
+    final String path;
     final dir = await getApplicationDocumentsDirectory();
     final path = '${dir.path}/echoscribe_$now.m4a';
 
