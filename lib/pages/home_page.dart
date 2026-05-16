@@ -176,11 +176,13 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void _clearTranscription() {
+  Future<void> _clearTranscription() async {
     _controller.cancelActiveOperations();
     _hideProgressToast();
     _content.clearTranscription();
     _playback.stopAudio();
+    _settings.setLastSharedIntentId('');
+    await _sl.secureStorage.saveLastSharedIntentId('');
   }
 
   void _showLanguagePicker() {
@@ -328,7 +330,11 @@ class _HomePageState extends State<HomePage> {
                   icon: const Icon(Icons.history),
                   tooltip: "History",
                   onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => HistoryPage(content: _content))),
+                      builder: (_) => HistoryPage(
+                            content: _content,
+                            settings: _settings,
+                            secureStorage: _sl.secureStorage,
+                          ))),
                 ),
                 IconButton(
                   icon: const Icon(Icons.language),

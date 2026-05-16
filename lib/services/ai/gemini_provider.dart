@@ -16,10 +16,10 @@ class GeminiProvider implements AiProvider {
     required SummaryService summary,
     required TranslationService translation,
     required ImageService image,
-  }) : _gemini = gemini,
-       _summary = summary,
-       _translation = translation,
-       _image = image;
+  })  : _gemini = gemini,
+        _summary = summary,
+        _translation = translation,
+        _image = image;
 
   @override
   Future<String> summarize({
@@ -28,6 +28,7 @@ class GeminiProvider implements AiProvider {
     required String model,
     required String targetLanguageCode,
     String? summaryPrompt,
+    String? reasoningEffort,
   }) {
     return _summary.summarizeGemini(
       apiKey: apiKey,
@@ -44,6 +45,7 @@ class GeminiProvider implements AiProvider {
     required String text,
     required String targetLanguageCode,
     required String model,
+    String? reasoningEffort,
   }) {
     return _translation.translateGemini(
       apiKey: apiKey,

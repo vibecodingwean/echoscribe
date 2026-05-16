@@ -10,8 +10,8 @@ class AnthropicProvider implements AiProvider {
   AnthropicProvider({
     required SummaryService summary,
     required TranslationService translation,
-  }) : _summary = summary,
-       _translation = translation;
+  })  : _summary = summary,
+        _translation = translation;
 
   @override
   Future<String> summarize({
@@ -20,6 +20,7 @@ class AnthropicProvider implements AiProvider {
     required String model,
     required String targetLanguageCode,
     String? summaryPrompt,
+    String? reasoningEffort,
   }) {
     return _summary.summarizeAnthropic(
       apiKey: apiKey,
@@ -36,6 +37,7 @@ class AnthropicProvider implements AiProvider {
     required String text,
     required String targetLanguageCode,
     required String model,
+    String? reasoningEffort,
   }) {
     return _translation.translateAnthropic(
       apiKey: apiKey,
@@ -54,7 +56,8 @@ class AnthropicProvider implements AiProvider {
     required String model,
   }) {
     // Claude does not support audio transcription
-    return Future.error(Exception("Claude does not support audio transcription"));
+    return Future.error(
+        Exception("Claude does not support audio transcription"));
   }
 
   @override

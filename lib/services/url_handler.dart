@@ -168,7 +168,8 @@ class UrlHandler {
         }
 
         // Use the cache check directly to provide a specific log entry
-        if (UrlContentService.hasCached(effectiveUrl)) {
+        final hadCachedContent = UrlContentService.hasCached(effectiveUrl);
+        if (hadCachedContent) {
           content.appendLogLine('📦 Content found in local cache');
         } else {
           content.appendLogLine('🌐 Requesting page content...');
@@ -176,7 +177,7 @@ class UrlHandler {
 
         try {
           final text = await UrlContentService.fetchText(effectiveUrl);
-          if (!UrlContentService.hasCached(effectiveUrl)) {
+          if (!hadCachedContent) {
             content.appendLogLine('✅ Content retrieved (${text.length} chars)');
           }
           content.appendLogLine('📄 Extracting visible text...');
@@ -232,8 +233,14 @@ class UrlHandler {
       }
 
       final model = getModelForSummary();
+      final reasoningEffort = settings.provider == AiProviderType.xai
+          ? AiModelConfig.xaiReasoningEffort(pro: settings.xaiPro)
+          : null;
       final providerName = '🤖 ${settings.provider.brandName}';
       content.appendLogLine('$providerName\n($model) is analyzing...');
+      if (reasoningEffort != null) {
+        content.appendLogLine('🧠 Reasoning Effort: $reasoningEffort');
+      }
 
       final summary = await ai.summarize(
         apiKey: settings.activeApiKey,
@@ -241,6 +248,7 @@ class UrlHandler {
         model: model,
         targetLanguageCode: settings.targetLanguageCode,
         summaryPrompt: settings.urlSummaryPrompt,
+        reasoningEffort: reasoningEffort,
       );
       content.appendLogLine('✨ Summary received successfully');
       content.appendLogLine('Received summary');

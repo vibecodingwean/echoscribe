@@ -11,9 +11,18 @@ class UrlContentService {
 
   static bool hasCached(String url) => _cache.containsKey(url);
 
+  static void removeCached(String url) {
+    _cache.remove(url);
+  }
+
+  static void clearCache() {
+    _cache.clear();
+  }
+
   /// Fetches the HTML content of a URL and extracts the visible text.
   /// Removes <script>, <style>, and other non-content tags.
-  static Future<String> fetchText(String url, {Duration timeout = const Duration(seconds: 10)}) async {
+  static Future<String> fetchText(String url,
+      {Duration timeout = const Duration(seconds: 10)}) async {
     if (_cache.containsKey(url)) {
       return _cache[url]!;
     }
@@ -22,15 +31,20 @@ class UrlContentService {
     if (uri == null) throw Exception('Invalid URL');
 
     final sw = Stopwatch()..start();
-    DebugConsole.logApiStart(method: 'GET', url: uri, note: 'Fetching URL content for extraction');
+    DebugConsole.logApiStart(
+        method: 'GET', url: uri, note: 'Fetching URL content for extraction');
 
     try {
       final response = await http.get(uri, headers: {
         'Accept-Encoding': 'gzip, deflate, br',
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+        'User-Agent':
+            'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
       }).timeout(timeout);
       sw.stop();
-      DebugConsole.logApiEnd(status: response.statusCode, elapsedMs: sw.elapsedMilliseconds, responseBytes: response.bodyBytes.length);
+      DebugConsole.logApiEnd(
+          status: response.statusCode,
+          elapsedMs: sw.elapsedMilliseconds,
+          responseBytes: response.bodyBytes.length);
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw Exception('Failed to fetch URL: ${response.statusCode}');
@@ -48,10 +62,10 @@ class UrlContentService {
           throw Exception('Brotli decompression failed: $e');
         }
       } else if (encoding == 'gzip') {
-         // Manual gzip if needed (though http package usually handles it)
-         try {
-           bytes = gzip.decode(bytes);
-         } catch (_) {}
+        // Manual gzip if needed (though http package usually handles it)
+        try {
+          bytes = gzip.decode(bytes);
+        } catch (_) {}
       }
 
       // Robust decoding
@@ -62,13 +76,16 @@ class UrlContentService {
         html = latin1.decode(bytes);
       }
 
-      final document = parse(html);      
+      final document = parse(html);
       // Remove noise
-      document.querySelectorAll('script, style, head, nav, footer, iframe, noscript').forEach((e) => e.remove());
+      document
+          .querySelectorAll(
+              'script, style, head, nav, footer, iframe, noscript')
+          .forEach((e) => e.remove());
 
       // Extract text
       final text = document.body?.text ?? '';
-      
+
       // Clean up whitespace: replace multiple spaces/newlines with a single one
       final cleanedText = text.replaceAll(RegExp(r'\s+'), ' ').trim();
 
