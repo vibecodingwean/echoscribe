@@ -19,12 +19,14 @@ class SecureStorageService {
   static const _keyGemini = 'gemini_api_key';
   static const _keySummaryPrompt = 'summary_prompt';
   static const _keyUrlSummaryPrompt = 'url_summary_prompt';
+  static const _keyDictationPrompt = 'dictation_prompt';
   static const _keyTargetLanguage = 'target_language_code';
   static const _keyDebugMode = 'debug_mode_enabled';
   static const _keyOpenAiPro = 'openai_pro_enabled';
   static const _keyGeminiPro = 'gemini_pro_enabled';
   static const _keyAnthropicPro = 'anthropic_pro_enabled';
   static const _keyAppFetchUrl = 'app_fetch_url_enabled';
+  static const _keyFloatingDictation = 'floating_dictation_enabled';
   static const _keyAnthropic = 'anthropic_api_key';
   static const _keyXai = 'xai_api_key';
   static const _keyXaiPro = 'xai_pro_enabled';
@@ -135,6 +137,12 @@ class SecureStorageService {
       _safeRead(_keyUrlSummaryPrompt);
   Future<void> deleteUrlSummaryPrompt() => _safeDelete(_keyUrlSummaryPrompt);
 
+  // Dictation prompt
+  Future<void> saveDictationPrompt(String prompt) =>
+      _safeWrite(_keyDictationPrompt, prompt);
+  Future<String> readDictationPrompt() async => _safeRead(_keyDictationPrompt);
+  Future<void> deleteDictationPrompt() => _safeDelete(_keyDictationPrompt);
+
   // Target language
   Future<void> saveTargetLanguageCode(String code) =>
       _safeWrite(_keyTargetLanguage, code);
@@ -167,6 +175,11 @@ class SecureStorageService {
       _safeWrite(_keyAppFetchUrl, enabled ? '1' : '0');
   Future<bool> readAppFetchUrl() async =>
       (await _safeRead(_keyAppFetchUrl, fallback: '1')) == '1';
+
+  Future<void> saveFloatingDictationEnabled(bool enabled) =>
+      _safeWrite(_keyFloatingDictation, enabled ? '1' : '0');
+  Future<bool> readFloatingDictationEnabled() async =>
+      (await _safeRead(_keyFloatingDictation, fallback: '1')) == '1';
 
   // xAI Key
   Future<void> saveXaiKey(String key) => _safeWrite(_keyXai, key);

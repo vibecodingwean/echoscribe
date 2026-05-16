@@ -85,10 +85,15 @@ class HomeController extends ChangeNotifier {
   }
 
   String _getModelForTranscription() {
-    if (settings.provider == AiProviderType.gemini) {
-      return AiModelConfig.geminiTranscription(pro: settings.geminiPro);
+    switch (settings.provider) {
+      case AiProviderType.gemini:
+        return AiModelConfig.geminiTranscription(pro: settings.geminiPro);
+      case AiProviderType.xai:
+        return AiModelConfig.xaiTranscription(pro: settings.xaiPro);
+      case AiProviderType.openai:
+      case AiProviderType.anthropic:
+        return AiModelConfig.openAiTranscription(pro: settings.openAiPro);
     }
-    return AiModelConfig.openAiTranscription(pro: settings.openAiPro);
   }
 
   String _getModelForTranslation() {
@@ -127,7 +132,7 @@ class HomeController extends ChangeNotifier {
       case AiProviderType.gemini:
         return "Zephyr";
       case AiProviderType.xai:
-        return "Eve";
+        return "eve";
       default:
         return "alloy";
     }
@@ -377,7 +382,7 @@ class HomeController extends ChangeNotifier {
   }) async {
     if (!settings.provider.supportsAudio) {
       showError(
-          '${settings.provider.brandName} does not support audio files - Please select GPT or Gemini.');
+          '${settings.provider.brandName} does not support audio files - Please select GPT, Gemini, or Grok.');
       return false;
     }
 
@@ -486,7 +491,7 @@ class HomeController extends ChangeNotifier {
   Future<void> startRecording() async {
     if (!settings.provider.supportsAudio) {
       showError(
-          '${settings.provider.brandName} does not support audio files - Please select GPT or Gemini.');
+          '${settings.provider.brandName} does not support audio files - Please select GPT, Gemini, or Grok.');
       return;
     }
     try {
@@ -644,7 +649,7 @@ class HomeController extends ChangeNotifier {
 
     if (playback.canResumeCurrentAudio(
         content.currentSummaryValue, settings.provider,
-        openAiVoice: "alloy", geminiVoice: "Zephyr", xaiVoice: "Eve")) {
+        openAiVoice: "alloy", geminiVoice: "Zephyr", xaiVoice: "eve")) {
       await playback.resumeAudio();
     } else {
       final cached = playback.hasCachedSummaryAudio(
@@ -672,14 +677,14 @@ class HomeController extends ChangeNotifier {
         activeApiKey: settings.activeApiKey,
         openAiVoice: "alloy",
         geminiVoice: "Zephyr",
-        xaiVoice: "Eve",
+        xaiVoice: "eve",
         languageCode: lang,
       );
       hideProgressToast();
     }
     final size = playback.cachedSummaryAudioSize(
         content.currentSummaryValue, settings.provider,
-        openAiVoice: "alloy", geminiVoice: "Zephyr", xaiVoice: "Eve");
+        openAiVoice: "alloy", geminiVoice: "Zephyr", xaiVoice: "eve");
     if (size != null && size > 0) {
       final mb = size / (1024 * 1024);
       showSuccess("Playing ${mb.toStringAsFixed(2)} MB Audio ...");

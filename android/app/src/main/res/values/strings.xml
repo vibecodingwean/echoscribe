@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Echo Scribe</string>
+    <string name="floating_dictation_accessibility_description">Shows the Echo Scribe floating dictation button near editable text fields and inserts only the text you explicitly approve.</string>
+</resources>

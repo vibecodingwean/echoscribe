@@ -23,9 +23,9 @@ enum AiProviderType {
     switch (this) {
       case AiProviderType.openai:
       case AiProviderType.gemini:
+      case AiProviderType.xai:
         return true;
       case AiProviderType.anthropic:
-      case AiProviderType.xai:
         return false;
     }
   }

@@ -8,6 +8,7 @@ import 'package:echoscribe/services/gemini_service.dart';
 import 'package:echoscribe/services/summary_service.dart';
 import 'package:echoscribe/services/translation_service.dart';
 import 'package:echoscribe/services/image_service.dart';
+import 'package:echoscribe/services/xai_speech_service.dart';
 import 'package:echoscribe/models/enums.dart';
 
 class AiProviderFactory {
@@ -16,6 +17,7 @@ class AiProviderFactory {
   final SummaryService summary;
   final TranslationService translation;
   final ImageService image;
+  final XaiSpeechService xaiSpeech;
 
   AiProviderFactory({
     required this.whisper,
@@ -23,6 +25,7 @@ class AiProviderFactory {
     required this.summary,
     required this.translation,
     required this.image,
+    required this.xaiSpeech,
   });
 
   AiProvider create(AiProviderType provider) {
@@ -44,6 +47,7 @@ class AiProviderFactory {
           summary: summary,
           translation: translation,
           image: image,
+          speech: xaiSpeech,
         );
       case AiProviderType.openai:
         return OpenAiProvider(

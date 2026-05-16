@@ -7,6 +7,7 @@ import "package:share_handler/share_handler.dart";
 
 import "package:echoscribe/services/service_locator.dart";
 import "package:echoscribe/services/debug_console.dart";
+import "package:echoscribe/services/floating_dictation_service.dart";
 import "package:echoscribe/services/url_handler.dart";
 
 import "package:echoscribe/state/settings_state.dart";
@@ -99,6 +100,7 @@ class _HomePageState extends State<HomePage> {
       final ant = await secure.readAnthropicKey();
       final prompt = await secure.readSummaryPrompt();
       final urlPrompt = await secure.readUrlSummaryPrompt();
+      final dictationPrompt = await secure.readDictationPrompt();
       final targetLanguageCode = await secure.readTargetLanguageCode();
       final dbg = await secure.readDebugMode();
       final openAiPro = await secure.readOpenAiPro();
@@ -107,6 +109,8 @@ class _HomePageState extends State<HomePage> {
       final xai = await secure.readXaiKey();
       final xaiPro = await secure.readXaiPro();
       final appFetchUrl = await secure.readAppFetchUrl();
+      final floatingDictationEnabled =
+          await secure.readFloatingDictationEnabled();
       final lastIntent = await secure.readLastSharedIntentId();
 
       _settings.setProvider(provider);
@@ -116,6 +120,10 @@ class _HomePageState extends State<HomePage> {
       if (xai.isNotEmpty) _settings.setXaiKey(xai);
       if (prompt.isNotEmpty) _settings.setSummaryPrompt(prompt);
       if (urlPrompt.isNotEmpty) _settings.setUrlSummaryPrompt(urlPrompt);
+      if (dictationPrompt.isNotEmpty &&
+          !_isLegacyDefaultDictationPrompt(dictationPrompt)) {
+        _settings.setDictationPrompt(dictationPrompt);
+      }
       _settings.setTargetLanguageCode(targetLanguageCode);
       _settings.setDebugMode(dbg);
       _settings.setOpenAiPro(openAiPro);
@@ -123,8 +131,15 @@ class _HomePageState extends State<HomePage> {
       _settings.setAnthropicPro(anthropicPro);
       _settings.setXaiPro(xaiPro);
       _settings.setAppFetchUrl(appFetchUrl);
+      _settings.setFloatingDictationEnabled(floatingDictationEnabled);
       _settings.setLastSharedIntentId(lastIntent);
+      await FloatingDictationService.syncSettings(_settings);
     } catch (_) {}
+  }
+
+  bool _isLegacyDefaultDictationPrompt(String prompt) {
+    return prompt.startsWith('Formatiere den folgenden') ||
+        prompt.startsWith('Polish this dictated raw transcript');
   }
 
   Future<void> _initShareHandling() async {
@@ -234,6 +249,7 @@ class _HomePageState extends State<HomePage> {
                   final oldLang = _settings.targetLanguageCode;
                   _settings.setTargetLanguageCode(value);
                   await _sl.secureStorage.saveTargetLanguageCode(value);
+                  await FloatingDictationService.syncSettings(_settings);
                   if (!context.mounted) return;
                   navigator.pop();
                   if (oldLang != value &&
@@ -370,8 +386,7 @@ class _HomePageState extends State<HomePage> {
                             ? const Duration(minutes: 25)
                             : (_settings.provider == AiProviderType.gemini
                                 ? const Duration(minutes: 10)
-                                : const Duration(
-                                    minutes: 5)), // N/A for no-audio providers
+                                : const Duration(minutes: 10)),
                     isSummaryMode: _content.isSummaryMode,
                     isDebugMode: _settings.debugMode,
                     onCopy: () async {
@@ -707,7 +722,7 @@ class _HomePageState extends State<HomePage> {
                                                 if (!_settings
                                                     .provider.supportsAudio) {
                                                   _showError(
-                                                      '${_settings.provider.brandName} does not support audio - Please select GPT or Gemini.');
+                                                      '${_settings.provider.brandName} does not support audio - Please select GPT, Gemini, or Grok.');
                                                   return;
                                                 }
                                                 if (!_content.isRecording) {

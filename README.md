@@ -15,9 +15,14 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 
 ### 🎙️ Audio & Transcription
 - **On-Device Recording:** Capture high-quality audio with live amplitude feedback.
-- **Whisper & Gemini Support:** Choose between OpenAI Whisper or Google Gemini for near-perfect transcriptions.
+- **OpenAI, Gemini & xAI Support:** Choose OpenAI, Google Gemini, or xAI Grok for voice transcription.
 - **Voice Message Summary:** Share voice messages from WhatsApp or other apps directly to EchoScribe.
-- **Note:** Claude 🦀 and Grok 𝕏 are text-only providers (no audio recording/transcription).
+- **Note:** Claude 🦀 is text-only for app-side speech input.
+
+### ✍️ Floating Dictation on Android
+- **System-Wide Voice Input:** Enable the Android accessibility service and overlay permission to use a movable EchoScribe dictation button in editable text fields.
+- **Explicit Insert:** EchoScribe records only after you tap the floating button, shows a preview, and inserts text only after you tap Insert.
+- **Safety Guards:** The floating button hides in password, PIN, credit-card, phone-pad, banking, and payment fields.
 
 ### ✍️ Smart Summarization
 - **Audio • Text • URL:** Summarize everything in one tap.
@@ -36,7 +41,7 @@ Need a result in another language? Change the target language via the globe icon
 Double-tap any transcription or summary to enter an immersive, distraction-free reading mode with smooth animations.
 
 ### 🔊 Text-to-Speech (TTS)
-Listen to your summaries on the go. Supports high-quality neural voices from OpenAI (MP3) and Google (WAV) with local caching.
+Listen to your summaries on the go. Supports high-quality neural voices from OpenAI (MP3), Google (WAV), and xAI Grok (MP3) with local caching.
 
 ---
 
