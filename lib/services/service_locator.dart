@@ -6,6 +6,7 @@ import 'package:echoscribe/services/summary_service.dart';
 import 'package:echoscribe/services/tts_service.dart';
 import 'package:echoscribe/services/secure_storage_service.dart';
 import 'package:echoscribe/services/image_service.dart';
+import 'package:echoscribe/services/xai_speech_service.dart';
 import 'package:echoscribe/services/ai/ai_provider_factory.dart';
 
 class ServiceLocator {
@@ -24,6 +25,7 @@ class ServiceLocator {
     final summary = SummaryService();
     final translation = TranslationService();
     final image = ImageService();
+    final xaiSpeech = XaiSpeechService();
 
     recorder = RecorderService();
     tts = TtsService();
@@ -35,6 +37,7 @@ class ServiceLocator {
       summary: summary,
       translation: translation,
       image: image,
+      xaiSpeech: xaiSpeech,
     );
   }
 }

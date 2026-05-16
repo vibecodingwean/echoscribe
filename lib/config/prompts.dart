@@ -31,6 +31,15 @@ const String kDefaultUrlSummaryPrompt =
     '- If the content is simple, write a short paragraph instead (1–3 sentences).\n\n'
     'If the content is missing or insufficient, state the reason or describe why a summary cannot be created.';
 
+const String kDefaultDictationPrompt =
+    'Clean up this dictated transcript for direct text input. '
+    'Keep language, meaning, tone, names, and numbers. '
+    'Make it slightly nicer without summarizing. '
+    'Do not add a final period to short casual messages unless spoken. '
+    'For emails or lists, add clear paragraphs, line breaks, and bullets when implied. '
+    'Add 0-2 fitting emojis only when natural. '
+    'Return only the final text.';
+
 /// Centralized AI model configuration. Update these values to change defaults app-wide.
 class AiModelConfig {
   // ---------- OpenAI ----------
@@ -91,11 +100,13 @@ class AiModelConfig {
   // ---------- xAI (Grok) ----------
   static const String xaiSummaryPro = 'grok-4.3';
   static const String xaiTranslationPro = 'grok-4.3';
+  static const String xaiTranscriptionPro = 'xai-stt';
   static const String xaiImagePro = 'grok-imagine-image-quality';
   static const String xaiReasoningEffortPro = 'medium';
 
   static const String xaiSummaryFast = 'grok-4.3';
   static const String xaiTranslationFast = 'grok-4.3';
+  static const String xaiTranscriptionFast = 'xai-stt';
   static const String xaiImageFast = 'grok-imagine-image';
   static const String xaiReasoningEffortFast = 'none';
 
@@ -103,6 +114,8 @@ class AiModelConfig {
       pro ? xaiSummaryPro : xaiSummaryFast;
   static String xaiTranslation({required bool pro}) =>
       pro ? xaiTranslationPro : xaiTranslationFast;
+  static String xaiTranscription({required bool pro}) =>
+      pro ? xaiTranscriptionPro : xaiTranscriptionFast;
   static String xaiImage({required bool pro}) =>
       pro ? xaiImagePro : xaiImageFast;
   static String xaiReasoningEffort({required bool pro}) =>

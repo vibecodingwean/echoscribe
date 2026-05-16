@@ -3,19 +3,23 @@ import "package:echoscribe/services/ai/ai_provider.dart";
 import "package:echoscribe/services/summary_service.dart";
 import "package:echoscribe/services/translation_service.dart";
 import "package:echoscribe/services/image_service.dart";
+import "package:echoscribe/services/xai_speech_service.dart";
 
 class XaiProvider implements AiProvider {
   final SummaryService _summary;
   final TranslationService _translation;
   final ImageService _image;
+  final XaiSpeechService _speech;
 
   XaiProvider({
     required SummaryService summary,
     required TranslationService translation,
     required ImageService image,
+    required XaiSpeechService speech,
   })  : _summary = summary,
         _translation = translation,
-        _image = image;
+        _image = image,
+        _speech = speech;
 
   @override
   Future<String> summarize({
@@ -61,7 +65,11 @@ class XaiProvider implements AiProvider {
     required String mimeType,
     required String model,
   }) {
-    return Future.error(Exception("Grok does not support audio transcription"));
+    return _speech.transcribe(
+      apiKey: apiKey,
+      filePath: filePath,
+      fileName: fileName,
+    );
   }
 
   @override

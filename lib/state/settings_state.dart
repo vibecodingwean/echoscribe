@@ -14,9 +14,11 @@ class SettingsState extends ChangeNotifier {
   bool _anthropicPro = false;
   bool _xaiPro = false;
   bool _appFetchUrl = true;
+  bool _floatingDictationEnabled = true;
   String _targetLanguageCode = "auto";
   String _summaryPrompt = kDefaultSummaryPrompt;
   String _urlSummaryPrompt = kDefaultUrlSummaryPrompt;
+  String _dictationPrompt = kDefaultDictationPrompt;
   String _lastSharedIntentId = "";
 
   bool get debugMode => _debugMode;
@@ -100,6 +102,12 @@ class SettingsState extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool get floatingDictationEnabled => _floatingDictationEnabled;
+  void setFloatingDictationEnabled(bool enabled) {
+    _floatingDictationEnabled = enabled;
+    notifyListeners();
+  }
+
   String get targetLanguageCode => _targetLanguageCode;
   void setTargetLanguageCode(String code) {
     _targetLanguageCode = code;
@@ -115,6 +123,12 @@ class SettingsState extends ChangeNotifier {
   String get urlSummaryPrompt => _urlSummaryPrompt;
   void setUrlSummaryPrompt(String prompt) {
     _urlSummaryPrompt = prompt.trim();
+    notifyListeners();
+  }
+
+  String get dictationPrompt => _dictationPrompt;
+  void setDictationPrompt(String prompt) {
+    _dictationPrompt = prompt.trim();
     notifyListeners();
   }
 

@@ -31,34 +31,53 @@ class PlaybackState extends ChangeNotifier {
     });
   }
 
-  bool hasCachedSummaryAudio(String text, AiProviderType provider, {String voice = "default"}) {
+  bool hasCachedSummaryAudio(String text, AiProviderType provider,
+      {String voice = "default"}) {
     final key = _audioCacheKey(text, provider, voice: voice);
     return key != null && _audioCache.containsKey(key);
   }
 
-  String? _audioCacheKey(String text, AiProviderType provider, {String voice = "default"}) {
+  String? _audioCacheKey(String text, AiProviderType provider,
+      {String voice = "default"}) {
     final t = text.trim();
     if (t.isEmpty) return null;
     final md5sum = md5.convert(utf8.encode(t)).toString();
     return "${provider.name}|$voice|$md5sum";
   }
 
-  String _voiceForProvider(AiProviderType provider, {String openAiVoice = "alloy", String geminiVoice = "Zephyr", String xaiVoice = "Eve"}) {
+  String _voiceForProvider(AiProviderType provider,
+      {String openAiVoice = "alloy",
+      String geminiVoice = "Zephyr",
+      String xaiVoice = "eve"}) {
     switch (provider) {
-      case AiProviderType.gemini: return geminiVoice;
-      case AiProviderType.xai: return xaiVoice;
-      default: return openAiVoice;
+      case AiProviderType.gemini:
+        return geminiVoice;
+      case AiProviderType.xai:
+        return xaiVoice;
+      default:
+        return openAiVoice;
     }
   }
 
-  bool canResumeCurrentAudio(String text, AiProviderType provider, {String openAiVoice = "alloy", String geminiVoice = "Zephyr", String xaiVoice = "Eve"}) {
-    final voice = _voiceForProvider(provider, openAiVoice: openAiVoice, geminiVoice: geminiVoice, xaiVoice: xaiVoice);
+  bool canResumeCurrentAudio(String text, AiProviderType provider,
+      {String openAiVoice = "alloy",
+      String geminiVoice = "Zephyr",
+      String xaiVoice = "eve"}) {
+    final voice = _voiceForProvider(provider,
+        openAiVoice: openAiVoice, geminiVoice: geminiVoice, xaiVoice: xaiVoice);
     final key = _audioCacheKey(text, provider, voice: voice);
-    return key != null && key == _currentAudioKey && !_isPlaying && !_playbackCompleted;
+    return key != null &&
+        key == _currentAudioKey &&
+        !_isPlaying &&
+        !_playbackCompleted;
   }
 
-  int? cachedSummaryAudioSize(String text, AiProviderType provider, {String openAiVoice = "alloy", String geminiVoice = "Zephyr", String xaiVoice = "Eve"}) {
-    final voice = _voiceForProvider(provider, openAiVoice: openAiVoice, geminiVoice: geminiVoice, xaiVoice: xaiVoice);
+  int? cachedSummaryAudioSize(String text, AiProviderType provider,
+      {String openAiVoice = "alloy",
+      String geminiVoice = "Zephyr",
+      String xaiVoice = "eve"}) {
+    final voice = _voiceForProvider(provider,
+        openAiVoice: openAiVoice, geminiVoice: geminiVoice, xaiVoice: xaiVoice);
     final key = _audioCacheKey(text, provider, voice: voice);
     if (key == null) return null;
     final bytes = _audioCache[key];
@@ -72,13 +91,14 @@ class PlaybackState extends ChangeNotifier {
     required String activeApiKey,
     String openAiVoice = "alloy",
     String geminiVoice = "Zephyr",
-    String xaiVoice = "Eve",
+    String xaiVoice = "eve",
     String languageCode = "en",
   }) async {
     final t = text.trim();
     if (t.isEmpty) return;
     if (_isAudioLoading) return;
-    final voice = _voiceForProvider(provider, openAiVoice: openAiVoice, geminiVoice: geminiVoice, xaiVoice: xaiVoice);
+    final voice = _voiceForProvider(provider,
+        openAiVoice: openAiVoice, geminiVoice: geminiVoice, xaiVoice: xaiVoice);
     final key = _audioCacheKey(t, provider, voice: voice);
     if (key == null) return;
 
@@ -90,16 +110,23 @@ class PlaybackState extends ChangeNotifier {
       if (bytes == null) {
         switch (provider) {
           case AiProviderType.gemini:
-            bytes = await tts.generateSpeechGemini(apiKey: activeApiKey, text: t, voice: geminiVoice);
+            bytes = await tts.generateSpeechGemini(
+                apiKey: activeApiKey, text: t, voice: geminiVoice);
           case AiProviderType.xai:
-            bytes = await tts.generateSpeechXai(apiKey: activeApiKey, text: t, voice: xaiVoice, language: languageCode);
+            bytes = await tts.generateSpeechXai(
+                apiKey: activeApiKey,
+                text: t,
+                voice: xaiVoice,
+                language: languageCode);
           default:
-            bytes = await tts.generateSpeechOpenAI(apiKey: activeApiKey, text: t, voice: openAiVoice);
+            bytes = await tts.generateSpeechOpenAI(
+                apiKey: activeApiKey, text: t, voice: openAiVoice);
         }
         _audioCache[key] = bytes;
       }
 
-      final mime = provider == AiProviderType.gemini ? "audio/wav" : "audio/mpeg";
+      final mime =
+          provider == AiProviderType.gemini ? "audio/wav" : "audio/mpeg";
       await _audio.stop();
       await _audio.playBytes(bytes, mimeType: mime);
       _currentAudioKey = key;

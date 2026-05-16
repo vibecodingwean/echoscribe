@@ -1,8 +1,10 @@
 import 'package:echoscribe/services/secure_storage_service.dart';
+import 'package:echoscribe/services/floating_dictation_service.dart';
 import 'package:echoscribe/state/settings_state.dart';
 import 'package:echoscribe/models/enums.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
 
 class SettingsPage extends StatefulWidget {
@@ -13,7 +15,8 @@ class SettingsPage extends StatefulWidget {
   State<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _SettingsPageState extends State<SettingsPage>
+    with WidgetsBindingObserver {
   final _openAiFormKey = GlobalKey<FormState>();
   final _geminiFormKey = GlobalKey<FormState>();
   final _anthropicFormKey = GlobalKey<FormState>();
@@ -21,6 +24,7 @@ class _SettingsPageState extends State<SettingsPage> {
   late final TextEditingController _geminiCtrl;
   late final TextEditingController _anthropicCtrl;
   late final TextEditingController _xaiCtrl;
+  final ScrollController _scrollController = ScrollController();
   final _xaiFormKey = GlobalKey<FormState>();
   final _storage = SecureStorageService();
   bool _obscureOpenAi = true;
@@ -32,11 +36,14 @@ class _SettingsPageState extends State<SettingsPage> {
   late bool _geminiPro;
   late bool _anthropicPro;
   late bool _xaiPro;
+  FloatingDictationStatus _floatingStatus =
+      FloatingDictationStatus.unavailable();
   Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _openAiCtrl = TextEditingController(text: widget.settings.openAiKey);
     _geminiCtrl = TextEditingController(text: widget.settings.geminiKey);
     _anthropicCtrl = TextEditingController(text: widget.settings.anthropicKey);
@@ -46,15 +53,26 @@ class _SettingsPageState extends State<SettingsPage> {
     _geminiPro = widget.settings.geminiPro;
     _anthropicPro = widget.settings.anthropicPro;
     _xaiPro = widget.settings.xaiPro;
+    _syncAndRefreshFloatingStatus();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _scrollController.dispose();
     _openAiCtrl.dispose();
     _geminiCtrl.dispose();
     _anthropicCtrl.dispose();
     _xaiCtrl.dispose();
+    _debounce?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _syncAndRefreshFloatingStatus();
+    }
   }
 
   void _resetAudioPromptToDefault() {
@@ -65,6 +83,19 @@ class _SettingsPageState extends State<SettingsPage> {
   void _resetUrlPromptToDefault() {
     final defaultPrompt = SettingsState().urlSummaryPrompt;
     widget.settings.setUrlSummaryPrompt(defaultPrompt);
+  }
+
+  void _resetDictationPromptToDefault() {
+    final defaultPrompt = SettingsState().dictationPrompt;
+    widget.settings.setDictationPrompt(defaultPrompt);
+  }
+
+  Future<void> _syncAndRefreshFloatingStatus() async {
+    await FloatingDictationService.syncSettings(widget.settings);
+    final status = await FloatingDictationService.getStatus();
+    if (mounted) {
+      setState(() => _floatingStatus = status);
+    }
   }
 
   Future<void> _openPromptDialog(
@@ -125,6 +156,7 @@ class _SettingsPageState extends State<SettingsPage> {
     await _storage.saveGeminiKey(gemKey);
     await _storage.saveAnthropicKey(antKey);
     await _storage.saveXaiKey(xaiKey);
+    await _syncAndRefreshFloatingStatus();
   }
 
   void _scheduleAutoSaveImmediate() {
@@ -142,10 +174,116 @@ class _SettingsPageState extends State<SettingsPage> {
       await _storage.saveGeminiKey(gemKey);
       await _storage.saveAnthropicKey(antKey);
       await _storage.saveXaiKey(xaiKey);
+      await _syncAndRefreshFloatingStatus();
     });
   }
 
   bool _snackShownOnExit = false;
+
+  Widget _buildFloatingDictationCard(BuildContext context) {
+    final status = _floatingStatus;
+    final color = Theme.of(context).colorScheme;
+    final enabled = widget.settings.floatingDictationEnabled;
+    final providerLabel = !enabled
+        ? 'Disabled'
+        : widget.settings.provider == AiProviderType.anthropic
+            ? 'Claude: speech input unsupported'
+            : '${widget.settings.provider.brandName}: ready after permissions';
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      margin: const EdgeInsets.only(top: 8),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
+              secondary: Icon(Icons.keyboard_voice, color: color.primary),
+              title: Text('Floating Dictation',
+                  style: Theme.of(context).textTheme.titleSmall),
+              subtitle: Text(
+                FloatingDictationService.isAndroid
+                    ? providerLabel
+                    : 'Available on Android.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              value: enabled,
+              onChanged: FloatingDictationService.isAndroid
+                  ? (val) async {
+                      widget.settings.setFloatingDictationEnabled(val);
+                      await _storage.saveFloatingDictationEnabled(val);
+                      await _syncAndRefreshFloatingStatus();
+                    }
+                  : null,
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _FloatingStatusPill(
+                  label: 'Microphone',
+                  ok: status.microphoneGranted,
+                  onPressed: FloatingDictationService.isAndroid
+                      ? () async {
+                          await Permission.microphone.request();
+                          await _syncAndRefreshFloatingStatus();
+                        }
+                      : null,
+                ),
+                _FloatingStatusPill(
+                  label: 'Overlay',
+                  ok: status.overlayGranted,
+                  onPressed: FloatingDictationService.isAndroid
+                      ? () async {
+                          await FloatingDictationService.openOverlaySettings();
+                          await _syncAndRefreshFloatingStatus();
+                        }
+                      : null,
+                ),
+                _FloatingStatusPill(
+                  label: 'Accessibility',
+                  ok: status.accessibilityEnabled,
+                  onPressed: FloatingDictationService.isAndroid
+                      ? () async {
+                          await FloatingDictationService
+                              .openAccessibilitySettings();
+                          await _syncAndRefreshFloatingStatus();
+                        }
+                      : null,
+                ),
+                _FloatingStatusPill(
+                  label: widget.settings.provider.brandName,
+                  ok: status.configReady,
+                  onPressed: FloatingDictationService.isAndroid
+                      ? () async {
+                          await _scrollController.animateTo(
+                            0,
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutCubic,
+                          );
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(status.configReady
+                                  ? 'Provider settings are ready'
+                                  : 'Add the ${widget.settings.provider.brandName} API key above'),
+                              duration: const Duration(milliseconds: 1400),
+                            ),
+                          );
+                        }
+                      : null,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -183,6 +321,7 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         body: SafeArea(
           child: SingleChildScrollView(
+            controller: _scrollController,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -198,6 +337,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     widget.settings.setAppFetchUrl(true);
                     await _storage.saveAppFetchUrl(true);
                   }
+                  await _syncAndRefreshFloatingStatus();
                   if (mounted) {
                     setState(() {});
                   }
@@ -217,11 +357,13 @@ class _SettingsPageState extends State<SettingsPage> {
                     setState(() => _openAiPro = val);
                     widget.settings.setOpenAiPro(val);
                     await _storage.saveOpenAiPro(val);
+                    await _syncAndRefreshFloatingStatus();
                   },
                   onDelete: () async {
                     await _storage.deleteOpenAiKey();
                     widget.settings.setOpenAiKey('');
                     _openAiCtrl.clear();
+                    await _syncAndRefreshFloatingStatus();
                   },
                   formKey: _openAiFormKey,
                 ),
@@ -239,11 +381,13 @@ class _SettingsPageState extends State<SettingsPage> {
                     setState(() => _geminiPro = val);
                     widget.settings.setGeminiPro(val);
                     await _storage.saveGeminiPro(val);
+                    await _syncAndRefreshFloatingStatus();
                   },
                   onDelete: () async {
                     await _storage.deleteGeminiKey();
                     widget.settings.setGeminiKey('');
                     _geminiCtrl.clear();
+                    await _syncAndRefreshFloatingStatus();
                   },
                   formKey: _geminiFormKey,
                 ),
@@ -261,11 +405,13 @@ class _SettingsPageState extends State<SettingsPage> {
                     setState(() => _anthropicPro = val);
                     widget.settings.setAnthropicPro(val);
                     await _storage.saveAnthropicPro(val);
+                    await _syncAndRefreshFloatingStatus();
                   },
                   onDelete: () async {
                     await _storage.deleteAnthropicKey();
                     widget.settings.setAnthropicKey('');
                     _anthropicCtrl.clear();
+                    await _syncAndRefreshFloatingStatus();
                   },
                   formKey: _anthropicFormKey,
                 ),
@@ -283,18 +429,23 @@ class _SettingsPageState extends State<SettingsPage> {
                     setState(() => _xaiPro = val);
                     widget.settings.setXaiPro(val);
                     await _storage.saveXaiPro(val);
+                    await _syncAndRefreshFloatingStatus();
                   },
                   onDelete: () async {
                     await _storage.deleteXaiKey();
                     widget.settings.setXaiKey('');
                     _xaiCtrl.clear();
+                    await _syncAndRefreshFloatingStatus();
                   },
                   formKey: _xaiFormKey,
                 ),
               const SizedBox(height: 8),
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  Expanded(
+                  SizedBox(
+                    width: (MediaQuery.sizeOf(context).width - 48) / 2,
                     child: OutlinedButton.icon(
                       onPressed: () => _openPromptDialog(
                         labelText: 'Audio Prompt',
@@ -318,8 +469,8 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
+                  SizedBox(
+                    width: (MediaQuery.sizeOf(context).width - 48) / 2,
                     child: OutlinedButton.icon(
                       onPressed: () => _openPromptDialog(
                         labelText: 'URL Prompt',
@@ -343,8 +494,36 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ),
                   ),
+                  SizedBox(
+                    width: MediaQuery.sizeOf(context).width - 32,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _openPromptDialog(
+                        labelText: 'Floating Dictation Prompt',
+                        initialText: widget.settings.dictationPrompt,
+                        onSave: (val) async {
+                          widget.settings.setDictationPrompt(val);
+                          await _storage.saveDictationPrompt(val);
+                          await _syncAndRefreshFloatingStatus();
+                        },
+                        onReset: () async {
+                          await _storage.deleteDictationPrompt();
+                          _resetDictationPromptToDefault();
+                          await _syncAndRefreshFloatingStatus();
+                        },
+                      ),
+                      icon: const Icon(Icons.keyboard_voice, size: 18),
+                      label: const Text('Dictation Prompt',
+                          style: TextStyle(fontSize: 13)),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
                 ],
               ),
+              _buildFloatingDictationCard(context),
               const SizedBox(height: 8),
               Card(
                 shape: RoundedRectangleBorder(
@@ -393,6 +572,45 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
             ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FloatingStatusPill extends StatelessWidget {
+  final String label;
+  final bool ok;
+  final VoidCallback? onPressed;
+
+  const _FloatingStatusPill({
+    required this.label,
+    required this.ok,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme;
+    final bg = ok ? color.primaryContainer : color.errorContainer;
+    final fg = ok ? color.onPrimaryContainer : color.onErrorContainer;
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(ok ? Icons.check_circle : Icons.error_outline,
+                  size: 16, color: fg),
+              const SizedBox(width: 6),
+              Text(label, style: TextStyle(color: fg, fontSize: 12)),
+            ],
           ),
         ),
       ),
@@ -542,7 +760,7 @@ class ProviderSelectorCard extends StatelessWidget {
           const Divider(height: 1, indent: 56),
           _ProviderOptionTile(
             value: AiProviderType.xai,
-            label: 'Grok (no-audio)',
+            label: 'Grok',
             iconPath: 'assets/images/Grok-icon.svg',
             selectedProvider: selectedProvider,
             onSelected: onProviderSelected,
