@@ -36,6 +36,7 @@ class TranslationService {
           text: text,
           targetLanguageCode: targetLanguageCode,
           model: AiModelConfig.xaiTranslation(pro: pro),
+          reasoningEffort: AiModelConfig.xaiReasoningEffort(pro: pro),
         );
       case AiProviderType.openai:
         return await translateOpenAI(
@@ -189,6 +190,7 @@ class TranslationService {
     required String text,
     required String targetLanguageCode,
     String model = AiModelConfig.xaiTranslationFast,
+    String? reasoningEffort,
   }) async {
     if (text.trim().isEmpty) return text;
 
@@ -197,7 +199,7 @@ class TranslationService {
       'Authorization': 'Bearer $apiKey',
       'Content-Type': 'application/json',
     };
-    final body = json.encode({
+    final payload = <String, dynamic>{
       'model': model,
       'messages': [
         {
@@ -211,7 +213,11 @@ class TranslationService {
               'Translate the following text to ${_codeToHuman(targetLanguageCode)}. Keep tone and meaning. Text:\n\n$text'
         }
       ],
-    });
+    };
+    if (reasoningEffort != null && reasoningEffort.trim().isNotEmpty) {
+      payload['reasoning_effort'] = reasoningEffort.trim();
+    }
+    final body = json.encode(payload);
 
     final sw = Stopwatch()..start();
     DebugConsole.logApiStart(

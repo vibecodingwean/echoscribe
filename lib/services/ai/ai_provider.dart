@@ -7,6 +7,7 @@ abstract class AiProvider {
     required String model,
     required String targetLanguageCode,
     String? summaryPrompt,
+    String? reasoningEffort,
   });
 
   Future<String> translate({
@@ -14,6 +15,7 @@ abstract class AiProvider {
     required String text,
     required String targetLanguageCode,
     required String model,
+    String? reasoningEffort,
   });
 
   Future<String> transcribe({

@@ -104,6 +104,11 @@ class HomeController extends ChangeNotifier {
     }
   }
 
+  String? _getReasoningEffort() {
+    if (settings.provider != AiProviderType.xai) return null;
+    return AiModelConfig.xaiReasoningEffort(pro: settings.xaiPro);
+  }
+
   String _getModelForImage() {
     switch (settings.provider) {
       case AiProviderType.gemini:
@@ -160,9 +165,13 @@ class HomeController extends ChangeNotifier {
     if (targetLanguage == 'auto') return text;
 
     final transModel = _getModelForTranslation();
+    final reasoningEffort = _getReasoningEffort();
     final brand = settings.provider.brandName;
     content.appendLogLine('🌐 Translating via $brand...');
     content.appendLogLine('🤖 Translation Model: $transModel');
+    if (reasoningEffort != null) {
+      content.appendLogLine('🧠 Reasoning Effort: $reasoningEffort');
+    }
     content.appendLogLine('🌍 Target: $targetLanguage');
 
     final translated = await ai.translate(
@@ -170,6 +179,7 @@ class HomeController extends ChangeNotifier {
       text: text,
       targetLanguageCode: targetLanguage,
       model: transModel,
+      reasoningEffort: reasoningEffort,
     );
     content.appendLogLine('✅ Translation successful');
     return translated;
@@ -178,8 +188,12 @@ class HomeController extends ChangeNotifier {
   Future<String> _summarize(AiProvider ai, String text) async {
     final brand = settings.provider.brandName;
     final sumModel = _getModelForSummary();
+    final reasoningEffort = _getReasoningEffort();
     content.appendLogLine('🤖 Summarizing with $brand...');
     content.appendLogLine('🤖 Summary Model: $sumModel');
+    if (reasoningEffort != null) {
+      content.appendLogLine('🧠 Reasoning Effort: $reasoningEffort');
+    }
 
     final summary = await ai.summarize(
       apiKey: settings.activeApiKey,
@@ -187,6 +201,7 @@ class HomeController extends ChangeNotifier {
       model: sumModel,
       targetLanguageCode: settings.targetLanguageCode,
       summaryPrompt: settings.summaryPrompt,
+      reasoningEffort: reasoningEffort,
     );
 
     content.setCurrentSummary(summary);

@@ -5,6 +5,7 @@ import "package:flutter/services.dart";
 import "package:shared_preferences/shared_preferences.dart";
 import "package:echoscribe/models/transcription_item.dart";
 import "package:echoscribe/models/enums.dart";
+import "package:echoscribe/services/url_content_service.dart";
 
 class ContentState extends ChangeNotifier {
   OutputMode _outputMode = OutputMode.transcription;
@@ -36,13 +37,22 @@ class ContentState extends ChangeNotifier {
   }
 
   bool get isRecording => _isRecording;
-  void setRecording(bool value) { _isRecording = value; notifyListeners(); }
+  void setRecording(bool value) {
+    _isRecording = value;
+    notifyListeners();
+  }
 
   bool get isTranscribing => _isTranscribing;
-  void setTranscribing(bool value) { _isTranscribing = value; notifyListeners(); }
+  void setTranscribing(bool value) {
+    _isTranscribing = value;
+    notifyListeners();
+  }
 
   bool get isGeneratingImage => _isGeneratingImage;
-  void setGeneratingImage(bool value) { _isGeneratingImage = value; notifyListeners(); }
+  void setGeneratingImage(bool value) {
+    _isGeneratingImage = value;
+    notifyListeners();
+  }
 
   void setCurrentTranscript(String text, {bool isSource = false}) {
     currentTranscript.value = text;
@@ -118,13 +128,34 @@ class ContentState extends ChangeNotifier {
     await prefs.setString(_historyKey, encoded);
   }
 
+  String? _cachedUrlForHistoryItem(TranscriptionItem item) {
+    final t = item.transcript ?? "";
+    final isSummary =
+        (item.mode == OutputMode.summary.name) || (item.summary != null);
+    if (!isSummary || t.isEmpty) return null;
+    final uri = Uri.tryParse(t);
+    if (uri == null ||
+        (uri.scheme != "http" && uri.scheme != "https") ||
+        uri.host.isEmpty) {
+      return null;
+    }
+    return t;
+  }
+
   void addHistory(TranscriptionItem item) {
     _history.insert(0, item);
     notifyListeners();
     _saveHistory();
   }
 
-  void updateActiveHistory({String? transcript, String? summary, String? mode, String? text, DateTime? createdAt, Duration? duration, String? language}) {
+  void updateActiveHistory(
+      {String? transcript,
+      String? summary,
+      String? mode,
+      String? text,
+      DateTime? createdAt,
+      Duration? duration,
+      String? language}) {
     if (_activeHistoryId == null) return;
     final idx = _history.indexWhere((e) => e.id == _activeHistoryId);
     if (idx == -1) return;
@@ -143,6 +174,12 @@ class ContentState extends ChangeNotifier {
   }
 
   void deleteHistoryItem(String id) {
+    for (final item in _history.where((e) => e.id == id)) {
+      final cachedUrl = _cachedUrlForHistoryItem(item);
+      if (cachedUrl != null) {
+        UrlContentService.removeCached(cachedUrl);
+      }
+    }
     _history.removeWhere((e) => e.id == id);
     if (_activeHistoryId == id) _activeHistoryId = null;
     notifyListeners();
@@ -150,6 +187,7 @@ class ContentState extends ChangeNotifier {
   }
 
   void clearHistory() {
+    UrlContentService.clearCache();
     _history.clear();
     _activeHistoryId = null;
     notifyListeners();
