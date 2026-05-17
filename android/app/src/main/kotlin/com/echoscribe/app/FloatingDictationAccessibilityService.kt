@@ -149,8 +149,12 @@ class FloatingDictationAccessibilityService : AccessibilityService() {
         if (uiState != UiState.Idle || overlayTouchActive) {
             return
         }
-        val candidate = rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+        val root = rootInActiveWindow
+        val candidate = root?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
         focusedNode = if (candidate != null && isSafeEditableNode(candidate)) candidate else null
+        if (focusedNode == null && root != null) {
+            focusedNode = findFocusedEditableNode(root)
+        }
         showOrHideOverlay()
     }
 
@@ -769,6 +773,17 @@ class FloatingDictationAccessibilityService : AccessibilityService() {
             node.contentDescription?.toString(),
         ).joinToString(" ").lowercase()
         return denylistedFieldHints.none { metadata.contains(it) }
+    }
+
+    private fun findFocusedEditableNode(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        if (node.isFocused && isSafeEditableNode(node)) return node
+
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            val match = findFocusedEditableNode(child)
+            if (match != null) return match
+        }
+        return null
     }
 
     private fun hasMicrophonePermission(): Boolean {
