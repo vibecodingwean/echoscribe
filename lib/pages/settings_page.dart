@@ -98,6 +98,45 @@ class _SettingsPageState extends State<SettingsPage>
     }
   }
 
+  Future<void> _openAccessibilitySettingsWithDisclosure(
+      FloatingDictationStatus status) async {
+    if (!FloatingDictationService.isAndroid) return;
+
+    if (!status.accessibilityEnabled) {
+      final accepted = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Accessibility for Floating Dictation'),
+          content: const SingleChildScrollView(
+            child: Text(
+              'EchoScribe uses the Android Accessibility Service only to detect editable text fields, show the floating microphone button, and insert dictated text after you approve the preview.\n\n'
+              'The service does not collect, store, or send the contents of other apps to EchoScribe. It also avoids password, PIN, payment, banking, credit-card, and phone fields.\n\n'
+              'Audio is recorded only after you tap the floating button. Dictation requests go directly from your device to the AI provider you selected, using your own API key.',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Agree & open settings'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      if (accepted != true) {
+        await _syncAndRefreshFloatingStatus();
+        return;
+      }
+    }
+
+    await FloatingDictationService.openAccessibilitySettings();
+    await _syncAndRefreshFloatingStatus();
+  }
+
   Future<void> _openPromptDialog(
       {required String labelText,
       required String initialText,
@@ -249,9 +288,8 @@ class _SettingsPageState extends State<SettingsPage>
                   ok: status.accessibilityEnabled,
                   onPressed: FloatingDictationService.isAndroid
                       ? () async {
-                          await FloatingDictationService
-                              .openAccessibilitySettings();
-                          await _syncAndRefreshFloatingStatus();
+                          await _openAccessibilitySettingsWithDisclosure(
+                              status);
                         }
                       : null,
                 ),
