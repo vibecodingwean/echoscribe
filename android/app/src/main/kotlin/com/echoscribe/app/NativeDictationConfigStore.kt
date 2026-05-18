@@ -129,7 +129,10 @@ class NativeDictationConfigStore(private val context: Context) {
 
     private fun isLegacyDefaultDictationPrompt(prompt: String): Boolean {
         return prompt.startsWith("Formatiere den folgenden") ||
-            prompt.startsWith("Polish this dictated raw transcript")
+            prompt.startsWith("Polish this dictated raw transcript") ||
+            (prompt.startsWith("Clean up this dictated transcript for direct text input.") &&
+                (prompt.contains("Add 0-2 fitting emojis only when natural.") ||
+                    prompt.contains("Add 1-2 fitting emojis only when natural.")))
     }
 
     companion object {
@@ -140,7 +143,7 @@ class NativeDictationConfigStore(private val context: Context) {
                 "Make it slightly nicer without summarizing. " +
                 "Do not add a final period to short casual messages unless spoken. " +
                 "For emails or lists, add clear paragraphs, line breaks, and bullets when implied. " +
-                "Add 0-2 fitting emojis only when natural. " +
+                "Add 1-2 fitting emojis when natural. " +
                 "Return only the final text."
     }
 }
