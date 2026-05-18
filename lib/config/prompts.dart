@@ -37,7 +37,7 @@ const String kDefaultDictationPrompt =
     'Make it slightly nicer without summarizing. '
     'Do not add a final period to short casual messages unless spoken. '
     'For emails or lists, add clear paragraphs, line breaks, and bullets when implied. '
-    'Add 0-2 fitting emojis only when natural. '
+    'Add 1-2 fitting emojis when natural. '
     'Return only the final text.';
 
 /// Centralized AI model configuration. Update these values to change defaults app-wide.

@@ -139,7 +139,11 @@ class _HomePageState extends State<HomePage> {
 
   bool _isLegacyDefaultDictationPrompt(String prompt) {
     return prompt.startsWith('Formatiere den folgenden') ||
-        prompt.startsWith('Polish this dictated raw transcript');
+        prompt.startsWith('Polish this dictated raw transcript') ||
+        (prompt.startsWith(
+                'Clean up this dictated transcript for direct text input.') &&
+            (prompt.contains('Add 0-2 fitting emojis only when natural.') ||
+                prompt.contains('Add 1-2 fitting emojis only when natural.')));
   }
 
   Future<void> _initShareHandling() async {
