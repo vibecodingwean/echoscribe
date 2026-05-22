@@ -10,6 +10,7 @@ class SettingsState extends ChangeNotifier {
   String _anthropicKey = "";
   String _xaiKey = "";
   bool _openAiPro = false;
+  bool _openAiRealtime = false;
   bool _geminiPro = false;
   bool _anthropicPro = false;
   bool _xaiPro = false;
@@ -72,12 +73,18 @@ class SettingsState extends ChangeNotifier {
   bool get hasXaiKey => _xaiKey.isNotEmpty;
 
   bool get openAiPro => _openAiPro;
+  bool get openAiRealtime => _openAiRealtime;
   bool get geminiPro => _geminiPro;
   bool get anthropicPro => _anthropicPro;
   bool get xaiPro => _xaiPro;
 
   void setOpenAiPro(bool enabled) {
     _openAiPro = enabled;
+    notifyListeners();
+  }
+
+  void setOpenAiRealtime(bool enabled) {
+    _openAiRealtime = enabled;
     notifyListeners();
   }
 

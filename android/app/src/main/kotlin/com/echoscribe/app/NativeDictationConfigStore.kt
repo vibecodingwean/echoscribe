@@ -132,16 +132,19 @@ class NativeDictationConfigStore(private val context: Context) {
             prompt.startsWith("Polish this dictated raw transcript") ||
             (prompt.startsWith("Clean up this dictated transcript for direct text input.") &&
                 (prompt.contains("Add 0-2 fitting emojis only when natural.") ||
-                    prompt.contains("Add 1-2 fitting emojis only when natural.")))
+                    prompt.contains("Add 1-2 fitting emojis only when natural.") ||
+                    prompt.contains("Add 1-2 fitting emojis when natural.")))
     }
 
     companion object {
         private const val keyAlias = "echoscribe_floating_dictation_config"
         private const val defaultDictationPrompt =
-            "Clean up this dictated transcript for direct text input. " +
-                "Keep language, meaning, tone, names, and numbers. " +
-                "Make it slightly nicer without summarizing. " +
-                "Do not add a final period to short casual messages unless spoken. " +
+            "Rewrite this dictated transcript for direct text input. " +
+                "Output in the same language as the input; for mixed or unclear input, use the dominant language. " +
+                "Keep the core meaning, tone level, names, and numbers, but make it polite, respectful, and natural. " +
+                "Remove filler words and speech artifacts. " +
+                "Never preserve insults, profanity, slurs, threats, or aggressive wording; turn them into calm, friendly wording with the same intent. " +
+                "Do not summarize. " +
                 "For emails or lists, add clear paragraphs, line breaks, and bullets when implied. " +
                 "Add 1-2 fitting emojis when natural. " +
                 "Return only the final text."

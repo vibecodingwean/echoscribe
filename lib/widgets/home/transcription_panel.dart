@@ -69,6 +69,7 @@ class TranscriptionPanel extends StatefulWidget {
   final Duration maxRecordDuration;
   final bool isSummaryMode;
   final bool isDebugMode;
+  final bool isRealtime;
   final VoidCallback onCopy;
   final VoidCallback onShare;
   final VoidCallback onPaste;
@@ -91,6 +92,7 @@ class TranscriptionPanel extends StatefulWidget {
     required this.maxRecordDuration,
     required this.isSummaryMode,
     required this.isDebugMode,
+    this.isRealtime = false,
     required this.onCopy,
     required this.onShare,
     required this.onPaste,
@@ -220,7 +222,7 @@ class TranscriptionPanelState extends State<TranscriptionPanel> {
       ]),
       builder: (context, child) {
         final bool showAsLog =
-            (widget.isDebugMode || widget.isLoading || widget.isRecording) &&
+            (widget.isDebugMode || (widget.isLoading || (widget.isRecording && !widget.isRealtime))) &&
                 widget.logTextNotifier.value.isNotEmpty;
         final String displayText = showAsLog
             ? widget.logTextNotifier.value
@@ -258,12 +260,12 @@ class TranscriptionPanelState extends State<TranscriptionPanel> {
                   child: Stack(
                     children: [
                       if (displayText.isEmpty &&
-                          widget.imageBytesNotifier.value == null &&
-                          !widget.isLoading &&
-                          !widget.isRecording)
+                          widget.imageBytesNotifier.value == null)
                         Center(
                           child: Text(
-                            "Your transcription will appear here...",
+                            widget.isRecording
+                                ? "Listening..."
+                                : (widget.isLoading ? "Transcribing..." : "Your transcription will appear here..."),
                             style: TextStyle(
                                 color: Theme.of(context)
                                     .colorScheme

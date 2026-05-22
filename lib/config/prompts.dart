@@ -32,10 +32,12 @@ const String kDefaultUrlSummaryPrompt =
     'If the content is missing or insufficient, state the reason or describe why a summary cannot be created.';
 
 const String kDefaultDictationPrompt =
-    'Clean up this dictated transcript for direct text input. '
-    'Keep language, meaning, tone, names, and numbers. '
-    'Make it slightly nicer without summarizing. '
-    'Do not add a final period to short casual messages unless spoken. '
+    'Rewrite this dictated transcript for direct text input. '
+    'Output in the same language as the input; for mixed or unclear input, use the dominant language. '
+    'Keep the core meaning, tone level, names, and numbers, but make it polite, respectful, and natural. '
+    'Remove filler words and speech artifacts. '
+    'Never preserve insults, profanity, slurs, threats, or aggressive wording; turn them into calm, friendly wording with the same intent. '
+    'Do not summarize. '
     'For emails or lists, add clear paragraphs, line breaks, and bullets when implied. '
     'Add 1-2 fitting emojis when natural. '
     'Return only the final text.';

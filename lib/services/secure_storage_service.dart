@@ -23,6 +23,7 @@ class SecureStorageService {
   static const _keyTargetLanguage = 'target_language_code';
   static const _keyDebugMode = 'debug_mode_enabled';
   static const _keyOpenAiPro = 'openai_pro_enabled';
+  static const _keyOpenAiRealtime = 'openai_realtime_enabled';
   static const _keyGeminiPro = 'gemini_pro_enabled';
   static const _keyAnthropicPro = 'anthropic_pro_enabled';
   static const _keyAppFetchUrl = 'app_fetch_url_enabled';
@@ -160,6 +161,12 @@ class SecureStorageService {
       _safeWrite(_keyOpenAiPro, enabled ? '1' : '0');
   Future<bool> readOpenAiPro() async =>
       (await _safeRead(_keyOpenAiPro, fallback: '0')) == '1';
+
+  // Realtime toggles
+  Future<void> saveOpenAiRealtime(bool enabled) =>
+      _safeWrite(_keyOpenAiRealtime, enabled ? '1' : '0');
+  Future<bool> readOpenAiRealtime() async =>
+      (await _safeRead(_keyOpenAiRealtime, fallback: '0')) == '1';
 
   Future<void> saveGeminiPro(bool enabled) =>
       _safeWrite(_keyGeminiPro, enabled ? '1' : '0');
