@@ -104,6 +104,7 @@ class _HomePageState extends State<HomePage> {
       final targetLanguageCode = await secure.readTargetLanguageCode();
       final dbg = await secure.readDebugMode();
       final openAiPro = await secure.readOpenAiPro();
+      final openAiRealtime = await secure.readOpenAiRealtime();
       final geminiPro = await secure.readGeminiPro();
       final anthropicPro = await secure.readAnthropicPro();
       final xai = await secure.readXaiKey();
@@ -127,6 +128,7 @@ class _HomePageState extends State<HomePage> {
       _settings.setTargetLanguageCode(targetLanguageCode);
       _settings.setDebugMode(dbg);
       _settings.setOpenAiPro(openAiPro);
+      _settings.setOpenAiRealtime(openAiRealtime);
       _settings.setGeminiPro(geminiPro);
       _settings.setAnthropicPro(anthropicPro);
       _settings.setXaiPro(xaiPro);
@@ -143,7 +145,8 @@ class _HomePageState extends State<HomePage> {
         (prompt.startsWith(
                 'Clean up this dictated transcript for direct text input.') &&
             (prompt.contains('Add 0-2 fitting emojis only when natural.') ||
-                prompt.contains('Add 1-2 fitting emojis only when natural.')));
+                prompt.contains('Add 1-2 fitting emojis only when natural.') ||
+                prompt.contains('Add 1-2 fitting emojis when natural.')));
   }
 
   Future<void> _initShareHandling() async {
@@ -384,6 +387,7 @@ class _HomePageState extends State<HomePage> {
                     supportsImage: _settings.provider.supportsImage,
                     isLoading: _content.isTranscribing,
                     isRecording: _content.isRecording,
+                    isRealtime: _settings.provider == AiProviderType.openai && _settings.openAiRealtime,
                     recordDurationNotifier: _content.recordDuration,
                     maxRecordDuration:
                         _settings.provider == AiProviderType.openai
@@ -401,7 +405,7 @@ class _HomePageState extends State<HomePage> {
                               ? _content.logText.value
                               : (_content.isSummaryMode
                                   ? _content.currentSummaryValue
-                                  : _content.currentTranscriptValue))
+                                  : HomeController.cleanTranscriptText(_content.currentTranscriptValue)))
                           .trim();
                       if (t.isEmpty) return;
                       await _content.addToClipboard(t);
@@ -415,7 +419,7 @@ class _HomePageState extends State<HomePage> {
                               ? _content.logText.value
                               : (_content.isSummaryMode
                                   ? _content.currentSummaryValue
-                                  : _content.currentTranscriptValue))
+                                  : HomeController.cleanTranscriptText(_content.currentTranscriptValue)))
                           .trim();
                       if (text.isEmpty) return;
                       await SharePlus.instance.share(ShareParams(text: text));

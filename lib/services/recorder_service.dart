@@ -46,6 +46,16 @@ class RecorderService {
     return null;
   }
 
+  Future<Stream<List<int>>?> startAudioStream() async {
+    if (!await hasPermission()) return null;
+    const config = RecordConfig(
+      encoder: AudioEncoder.pcm16bits,
+      sampleRate: 24000,
+      numChannels: 1,
+    );
+    return await _record.startStream(config);
+  }
+
   Future<String?> stopRecording() async {
     if (!await _record.isRecording()) return null;
     return await _record.stop();

@@ -14,6 +14,8 @@ import 'package:echoscribe/services/tts_service.dart';
 import 'package:echoscribe/models/enums.dart';
 import 'package:echoscribe/models/app_exception.dart';
 
+import 'package:echoscribe/services/ai/openai_realtime_client.dart';
+
 class HomeController extends ChangeNotifier {
   final SettingsState settings;
   final ContentState content;
@@ -27,6 +29,9 @@ class HomeController extends ChangeNotifier {
   CancelableOperation? _imageOp;
   Timer? _imageCycleTimer;
   bool _imageCycleDone = false;
+
+  OpenAiRealtimeClient? _realtimeClient;
+  StreamSubscription<List<int>>? _audioStreamSub;
 
   // Expose these for the UI to use
   final ValueNotifier<double> levelNotifier = ValueNotifier<double>(0.0);
@@ -47,6 +52,8 @@ class HomeController extends ChangeNotifier {
   @override
   void dispose() {
     _ampSub?.cancel();
+    _audioStreamSub?.cancel();
+    _realtimeClient?.close();
     _imageOp?.cancel();
     _imageCycleTimer?.cancel();
     levelNotifier.dispose();
@@ -488,92 +495,269 @@ class HomeController extends ChangeNotifier {
     }
   }
 
+  void _cleanupRealtime() {
+    _ampSub?.cancel();
+    _ampSub = null;
+    _audioStreamSub?.cancel();
+    _audioStreamSub = null;
+    _realtimeClient?.close();
+    _realtimeClient = null;
+    levelNotifier.value = 0;
+    smoothedLevelNotifier.value = 0;
+  }
+
   Future<void> startRecording() async {
     if (!settings.provider.supportsAudio) {
       showError(
           '${settings.provider.brandName} does not support audio files - Please select GPT, Gemini, or Grok.');
       return;
     }
+
+    final bool isRealtime =
+        settings.provider == AiProviderType.openai && settings.openAiRealtime;
+
     try {
       if (playback.isPlaying) {
         await playback.stopAudio();
       }
       content.clearTranscription();
 
-      await recorder.startRecording();
-      final didStart = await recorder.isRecording();
-      if (!didStart) {
-        throw const AppException(
-          'Recording could not be started on this device.',
+      if (isRealtime) {
+        if (!settings.hasActiveApiKey) {
+          throw const AppException('Please add your OpenAI API key first.');
+        }
+
+        final String modelName = settings.targetLanguageCode == 'auto'
+            ? 'gpt-realtime-whisper'
+            : 'gpt-realtime-translate';
+
+        final StringBuffer logsBuffer = StringBuffer();
+
+        void updateDisplayWithLogs(String transcriptText) {
+          final String logsStr = logsBuffer.toString();
+          final String fullText = logsStr.isNotEmpty
+              ? '```\n$logsStr────────────────────────────────────────\n```\n$transcriptText'
+              : transcriptText;
+          content.setCurrentTranscript(fullText,
+              isSource: settings.targetLanguageCode == 'auto');
+        }
+
+        content.appendLogLine('🔌 Connecting to OpenAI Realtime WebSocket...');
+        logsBuffer.writeln('🔌 Connecting to OpenAI Realtime WebSocket...');
+        updateDisplayWithLogs("");
+
+        _realtimeClient = OpenAiRealtimeClient();
+        String finalizedTextAccumulated = "";
+        final StringBuffer currentWordBuffer = StringBuffer();
+
+        await _realtimeClient!.connect(
+          apiKey: settings.activeApiKey,
+          model: modelName,
+          targetLanguageCode: settings.targetLanguageCode,
+          onTranscriptDelta: (delta) {
+            currentWordBuffer.write(delta);
+            final transcriptText = (finalizedTextAccumulated.isNotEmpty)
+                ? '$finalizedTextAccumulated${currentWordBuffer.toString()}'
+                : currentWordBuffer.toString();
+            updateDisplayWithLogs(transcriptText);
+          },
+          onTranscriptCompleted: (finalizedText) {
+            finalizedTextAccumulated = finalizedText;
+            currentWordBuffer.clear();
+            updateDisplayWithLogs(finalizedText);
+          },
+          onError: (err) {
+            content.appendLogLine('⚠️ Realtime Error: $err');
+            showError('Realtime Error: $err');
+            _cleanupRealtime();
+            content.setRecording(false);
+            content.stopTimer();
+          },
+          onConnected: () {
+            content.appendLogLine('⚡ Realtime connected!');
+            logsBuffer.writeln('⚡ Realtime connected! (Model: $modelName)');
+            updateDisplayWithLogs("");
+          },
+          onDisconnected: () {
+            content.appendLogLine('🔌 Realtime disconnected.');
+            logsBuffer.writeln('🔌 Realtime disconnected.');
+            final latestText = finalizedTextAccumulated.isNotEmpty
+                ? finalizedTextAccumulated
+                : currentWordBuffer.toString();
+            if (latestText.isNotEmpty) {
+              updateDisplayWithLogs(latestText);
+            }
+          },
         );
+
+        final stream = await recorder.startAudioStream();
+        if (stream == null) {
+          throw const AppException(
+              'Recording could not be started (no permission or audio stream).');
+        }
+
+        content.setRecording(true);
+        content.startTimer();
+
+        _ampSub?.cancel();
+        _ampSub = recorder
+            .levelStream(interval: const Duration(milliseconds: 60))
+            .listen((lv) {
+          levelNotifier.value = lv;
+          smoothedLevelNotifier.value =
+              (smoothedLevelNotifier.value * 0.70) + (lv * 0.30);
+        });
+
+        _audioStreamSub = stream.listen((chunk) {
+          _realtimeClient?.sendAudioChunk(chunk);
+        });
+
+        content.appendLogLine('🎙️ Realtime recording & streaming started...');
+        logsBuffer.writeln('🎙️ Realtime recording & streaming started...');
+        updateDisplayWithLogs("");
+      } else {
+        await recorder.startRecording();
+        final didStart = await recorder.isRecording();
+        if (!didStart) {
+          throw const AppException(
+            'Recording could not be started on this device.',
+          );
+        }
+
+        content.setRecording(true);
+        content.startTimer();
+
+        _ampSub?.cancel();
+        _ampSub = recorder
+            .levelStream(interval: const Duration(milliseconds: 60))
+            .listen((lv) {
+          levelNotifier.value = lv;
+          smoothedLevelNotifier.value =
+              (smoothedLevelNotifier.value * 0.70) + (lv * 0.30);
+        });
+        content.appendLogLine('🎙️ Recording started...');
       }
-
-      content.setRecording(true);
-      content.startTimer();
-
-      _ampSub?.cancel();
-      _ampSub = recorder
-          .levelStream(interval: const Duration(milliseconds: 60))
-          .listen((lv) {
-        levelNotifier.value = lv;
-        smoothedLevelNotifier.value =
-            (smoothedLevelNotifier.value * 0.70) + (lv * 0.30);
-      });
-      content.appendLogLine('🎙️ Recording started...');
     } on AppException catch (e) {
+      if (isRealtime) _cleanupRealtime();
       content.setRecording(false);
       content.stopTimer();
       showError(e.userMessage);
     } catch (e) {
+      if (isRealtime) _cleanupRealtime();
       content.setRecording(false);
       content.stopTimer();
-      showError('Microphone permission required');
+      showError('Microphone permission required or connection failed');
     }
   }
 
+  static String cleanTranscriptText(String rawText) {
+    final trimmed = rawText.trim();
+    if (trimmed.startsWith('```')) {
+      final endIndex = trimmed.indexOf('```', 3);
+      if (endIndex != -1) {
+        final contentIndex = endIndex + 3;
+        if (contentIndex < trimmed.length) {
+          return trimmed.substring(contentIndex).trim();
+        }
+        return '';
+      }
+    }
+    return trimmed;
+  }
+
   Future<void> stopAndTranscribe() async {
+    final bool isRealtime =
+        settings.provider == AiProviderType.openai && settings.openAiRealtime;
     try {
-      final path = await recorder.stopRecording();
-      _ampSub?.cancel();
-      _ampSub = null;
-      levelNotifier.value = 0;
-      smoothedLevelNotifier.value = 0;
+      if (isRealtime) {
+        // Stop the microphone stream immediately to stop sending audio chunks
+        _audioStreamSub?.cancel();
+        _audioStreamSub = null;
 
-      content.setRecording(false);
-      content.stopTimer();
-      if (path == null) {
-        content.appendLogLine('⚠️ Recording path is null.');
-        return;
-      }
+        await recorder.stopRecording();
 
-      content.setTranscribing(true);
+        content.setRecording(false);
+        content.stopTimer();
 
-      final text = await _transcribeAudio(path, 'audio.m4a', 'audio/m4a');
-      content.setCurrentTranscript(text, isSource: true);
+        await _realtimeClient?.finishAudio();
 
-      final ai = aiFactory.create(settings.provider);
-      final translated =
-          await _translateIfNeeded(ai, text, settings.targetLanguageCode);
-      if (settings.targetLanguageCode != 'auto') {
-        content.setCurrentTranscript(translated);
-      }
+        // Wait briefly for final transcription or translation chunks to arrive.
+        await Future.delayed(const Duration(milliseconds: 2500));
 
-      _saveToHistory(translated, settings.targetLanguageCode);
+        final text = content.currentTranscriptValue;
+        _cleanupRealtime();
 
-      if (content.isSummaryMode) {
-        final summary = await _summarize(ai, translated);
-        try {
-          await content.addToClipboard(summary);
-          showSuccess('Copied to clipboard');
-        } catch (_) {}
+        if (text.trim().isEmpty) {
+          content.appendLogLine('⚠️ Realtime transcript is empty.');
+          return;
+        }
+
+        content.setTranscribing(true);
+
+        final cleanedText = cleanTranscriptText(text);
+        content.setCurrentTranscript(cleanedText,
+            isSource: settings.targetLanguageCode == 'auto');
+
+        _saveToHistory(cleanedText, settings.targetLanguageCode);
+
+        final ai = aiFactory.create(settings.provider);
+        if (content.isSummaryMode) {
+          final summary = await _summarize(ai, cleanedText);
+          try {
+            await content.addToClipboard(summary);
+            showSuccess('Copied to clipboard');
+          } catch (_) {}
+        } else {
+          try {
+            await content.addToClipboard(cleanedText);
+            showSuccess('Copied to clipboard');
+          } catch (_) {}
+        }
+
+        _logFinalResponse(cleanedText);
       } else {
-        try {
-          await content.addToClipboard(translated);
-          showSuccess('Copied to clipboard');
-        } catch (_) {}
-      }
+        final path = await recorder.stopRecording();
+        _ampSub?.cancel();
+        _ampSub = null;
+        levelNotifier.value = 0;
+        smoothedLevelNotifier.value = 0;
 
-      _logFinalResponse(translated);
+        content.setRecording(false);
+        content.stopTimer();
+        if (path == null) {
+          content.appendLogLine('⚠️ Recording path is null.');
+          return;
+        }
+
+        content.setTranscribing(true);
+
+        final text = await _transcribeAudio(path, 'audio.m4a', 'audio/m4a');
+        content.setCurrentTranscript(text, isSource: true);
+
+        final ai = aiFactory.create(settings.provider);
+        final translated =
+            await _translateIfNeeded(ai, text, settings.targetLanguageCode);
+        if (settings.targetLanguageCode != 'auto') {
+          content.setCurrentTranscript(translated);
+        }
+
+        _saveToHistory(translated, settings.targetLanguageCode);
+
+        if (content.isSummaryMode) {
+          final summary = await _summarize(ai, translated);
+          try {
+            await content.addToClipboard(summary);
+            showSuccess('Copied to clipboard');
+          } catch (_) {}
+        } else {
+          try {
+            await content.addToClipboard(translated);
+            showSuccess('Copied to clipboard');
+          } catch (_) {}
+        }
+
+        _logFinalResponse(translated);
+      }
     } on AppException catch (e) {
       content.appendLogLine('⚠️ ${e.userMessage}');
       showError(e.userMessage);
@@ -597,13 +781,41 @@ class HomeController extends ChangeNotifier {
     content.clearLog();
     content.setTranscribing(true);
 
+    final StringBuffer logsBuffer = StringBuffer();
+
+    void updateDisplayWithLogs(String textVal) {
+      final String logsStr = logsBuffer.toString();
+      final String fullText = logsStr.isNotEmpty
+          ? '```\n$logsStr────────────────────────────────────────\n```\n$textVal'
+          : textVal;
+      content.setCurrentTranscript(fullText, isSource: false);
+    }
+
     try {
-      content.appendLogLine('🔄 Re-processing original text...');
+      final String providerName = settings.provider.brandName;
+      final String targetLanguage = settings.targetLanguageCode;
+
+      logsBuffer.writeln('🔌 Connecting to AI translation service...');
+      updateDisplayWithLogs(src);
+      final reprocessModel = _getModelForTranslation();
+      logsBuffer.writeln('🤖 Model: $reprocessModel ($providerName)');
+      updateDisplayWithLogs(src);
+      logsBuffer.writeln('🔄 Re-processing original text...');
+      updateDisplayWithLogs(src);
+      logsBuffer.writeln('🌍 Translating to language: $targetLanguage...');
+      updateDisplayWithLogs(src);
+
       final ai = aiFactory.create(settings.provider);
       final translated =
           await _translateIfNeeded(ai, src, settings.targetLanguageCode);
 
-      content.setCurrentTranscript(translated);
+      logsBuffer.writeln('✅ Translation completed successfully!');
+      updateDisplayWithLogs(translated);
+
+      // Kurzer Delay, damit der Benutzer das fertige Log sieht, bevor wir es löschen
+      await Future.delayed(const Duration(milliseconds: 800));
+
+      content.setCurrentTranscript(translated, isSource: false);
       content.updateActiveHistory(
           transcript: translated,
           text: translated,
@@ -624,10 +836,12 @@ class HomeController extends ChangeNotifier {
 
       _logFinalResponse(translated);
     } on AppException catch (e) {
-      content.appendLogLine('⚠️ ${e.userMessage}');
+      logsBuffer.writeln('⚠️ Error: ${e.userMessage}');
+      updateDisplayWithLogs(src);
       showError(e.userMessage);
     } catch (e) {
-      content.appendLogLine('⚠️ $e');
+      logsBuffer.writeln('⚠️ Error: $e');
+      updateDisplayWithLogs(src);
       showError('Re-processing failed');
     } finally {
       content.setTranscribing(false);

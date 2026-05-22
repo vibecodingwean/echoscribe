@@ -33,6 +33,7 @@ class _SettingsPageState extends State<SettingsPage>
   bool _obscureXai = true;
   late bool _debugMode;
   late bool _openAiPro;
+  late bool _openAiRealtime;
   late bool _geminiPro;
   late bool _anthropicPro;
   late bool _xaiPro;
@@ -50,6 +51,7 @@ class _SettingsPageState extends State<SettingsPage>
     _xaiCtrl = TextEditingController(text: widget.settings.xaiKey);
     _debugMode = widget.settings.debugMode;
     _openAiPro = widget.settings.openAiPro;
+    _openAiRealtime = widget.settings.openAiRealtime;
     _geminiPro = widget.settings.geminiPro;
     _anthropicPro = widget.settings.anthropicPro;
     _xaiPro = widget.settings.xaiPro;
@@ -388,6 +390,7 @@ class _SettingsPageState extends State<SettingsPage>
                   controller: _openAiCtrl,
                   obscure: _obscureOpenAi,
                   proValue: _openAiPro,
+                  realtimeValue: _openAiRealtime,
                   onObscureToggle: () =>
                       setState(() => _obscureOpenAi = !_obscureOpenAi),
                   onChanged: (_) => _scheduleAutoSaveImmediate(),
@@ -396,6 +399,11 @@ class _SettingsPageState extends State<SettingsPage>
                     widget.settings.setOpenAiPro(val);
                     await _storage.saveOpenAiPro(val);
                     await _syncAndRefreshFloatingStatus();
+                  },
+                  onRealtimeChanged: (val) async {
+                    setState(() => _openAiRealtime = val);
+                    widget.settings.setOpenAiRealtime(val);
+                    await _storage.saveOpenAiRealtime(val);
                   },
                   onDelete: () async {
                     await _storage.deleteOpenAiKey();
@@ -667,6 +675,8 @@ class _ApiKeyCard extends StatelessWidget {
   final ValueChanged<bool> onProChanged;
   final VoidCallback onDelete;
   final GlobalKey<FormState> formKey;
+  final bool? realtimeValue;
+  final ValueChanged<bool>? onRealtimeChanged;
 
   const _ApiKeyCard({
     required this.labelText,
@@ -679,6 +689,8 @@ class _ApiKeyCard extends StatelessWidget {
     required this.onProChanged,
     required this.onDelete,
     required this.formKey,
+    this.realtimeValue,
+    this.onRealtimeChanged,
   });
 
   @override
@@ -738,6 +750,17 @@ class _ApiKeyCard extends StatelessWidget {
                   label: const Text('Remove', style: TextStyle(fontSize: 11)),
                 ),
                 const Spacer(),
+                if (realtimeValue != null && onRealtimeChanged != null) ...[
+                  const Text('Realtime', style: TextStyle(fontSize: 11)),
+                  SizedBox(
+                    height: 32,
+                    child: Switch.adaptive(
+                      value: realtimeValue!,
+                      onChanged: onRealtimeChanged,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
                 const Text('Pro', style: TextStyle(fontSize: 11)),
                 SizedBox(
                   height: 32,

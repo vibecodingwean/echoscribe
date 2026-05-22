@@ -208,6 +208,20 @@ class AppMarkdownStyle {
         borderRadius: const BorderRadius.only(topRight: Radius.circular(4), bottomRight: Radius.circular(4)),
       ),
       blockquotePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      code: TextStyle(
+        fontFamily: "monospace",
+        fontSize: 11 * scaleFactor,
+        height: 1.3,
+        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.9),
+        backgroundColor: Colors.transparent,
+      ),
+      codeblockDecoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.15),
+        ),
+      ),
     );
   }
 }
