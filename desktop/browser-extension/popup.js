@@ -24,13 +24,13 @@ async function loadLatest() {
 }
 
 async function summarize() {
-  setBusy(true, "Zusammenfassung laeuft...");
+  setBusy(true, "Summarizing...");
   try {
     const response = await chrome.runtime.sendMessage({ type: "summarizeActiveTab" });
-    if (!response || response.ok === false) throw new Error(response?.error || "Zusammenfassung fehlgeschlagen.");
+    if (!response || response.ok === false) throw new Error(response?.error || "Summary failed.");
     summaryEl.textContent = response.summary || "";
     providerEl.textContent = [response.provider, response.model].filter(Boolean).join(" / ");
-    statusEl.textContent = "Fertig";
+    statusEl.textContent = "Done";
   } catch (error) {
     statusEl.textContent = error.message || String(error);
   } finally {
@@ -42,7 +42,7 @@ async function copySummary() {
   const text = summaryEl.textContent.trim();
   if (!text) return;
   await navigator.clipboard.writeText(text);
-  statusEl.textContent = "Kopiert";
+  statusEl.textContent = "Copied";
 }
 
 function setBusy(busy, message = "") {

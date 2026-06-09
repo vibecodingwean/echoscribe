@@ -114,17 +114,17 @@ class EchoScribeQuickToggle extends QuickSettings.QuickMenuToggle {
             this._extensionObject.cancelDictation();
         });
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        this._browserItem = this.menu.addAction('Chrome Plugin installieren / registrieren', () => {
+        this._browserItem = this.menu.addAction('Register Chrome Plugin', () => {
             this._extensionObject.installBrowserPlugin();
         });
-        this._extensionsItem = this.menu.addAction('chrome://extensions oeffnen', () => {
+        this._extensionsItem = this.menu.addAction('Open chrome://extensions', () => {
             this._extensionObject.openChromeExtensions();
         });
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this._quitItem = this.menu.addAction('Quit EchoScribe', () => {
             this._extensionObject.quitEchoScribe();
         });
-        const settingsItem = this.menu.addAction('Einstellungen...', () => {
+        const settingsItem = this.menu.addAction('Settings...', () => {
             try {
                 const result = this._extensionObject.openPreferences();
                 if (result && typeof result.catch === 'function')
@@ -305,7 +305,7 @@ export default class EchoScribeExtension extends Extension {
     }
 
     installBrowserPlugin() {
-        this._runProjectScript(['./scripts/register_chrome_host.sh'], 'Browser Plugin registriert');
+        this._runProjectScript(['./scripts/register_chrome_host.sh'], 'Browser plugin registered');
     }
 
     openChromeExtensions() {
@@ -697,4 +697,3 @@ export default class EchoScribeExtension extends Extension {
         return this._settings?.get_strv('toggle-shortcut')[0] || '<Super><Alt>a';
     }
 }
-
