@@ -63,13 +63,13 @@ class AiModelConfig {
   static const String geminiSummaryPro = 'gemini-3.1-pro-preview';
   static const String geminiTranscriptionPro = 'gemini-3.1-pro-preview';
   static const String geminiTranslationPro = 'gemini-3.1-pro-preview';
-  static const String geminiImagePro = 'gemini-3-pro-image-preview';
+  static const String geminiImagePro = 'gemini-3-pro-image';
 
   // Fast models
   static const String geminiSummaryFast = 'gemini-3.1-flash-lite';
   static const String geminiTranscriptionFast = 'gemini-3.1-flash-lite';
   static const String geminiTranslationFast = 'gemini-3.1-flash-lite';
-  static const String geminiImageFast = 'gemini-3.1-flash-image-preview';
+  static const String geminiImageFast = 'gemini-3.1-flash-image';
   static const String geminiTts = 'gemini-3.1-flash-tts-preview';
 
   // Helper methods to get the right model based on 'Pro' toggle
@@ -88,8 +88,8 @@ class AiModelConfig {
       pro ? geminiTranscriptionPro : geminiTranscriptionFast;
 
   // ---------- Anthropic (Claude) ----------
-  static const String anthropicSummaryPro = 'claude-opus-4-7';
-  static const String anthropicTranslationPro = 'claude-opus-4-7';
+  static const String anthropicSummaryPro = 'claude-opus-4-8';
+  static const String anthropicTranslationPro = 'claude-opus-4-8';
 
   static const String anthropicSummaryFast = 'claude-sonnet-4-6';
   static const String anthropicTranslationFast = 'claude-sonnet-4-6';
