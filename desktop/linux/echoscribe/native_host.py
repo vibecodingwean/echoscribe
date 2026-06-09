@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import base64
 import html
 import json
@@ -42,29 +41,9 @@ class SummaryRequest:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="echoscribe native-host")
-    parser.add_argument("--self-test-config", action="store_true")
-    parser.add_argument("--test-summary", nargs="?")
-    parser.add_argument("--provider", default="")
-    args, _unknown = parser.parse_known_args(argv)
+    del argv
     project_dir = Path(__file__).resolve().parents[1]
     config = load_config(project_dir)
-    if args.self_test_config:
-        write_plain_json(describe_config(config))
-        return 0
-    if args.test_summary is not None:
-        response = handle_summary(
-            {
-                "type": "summarize",
-                "url": args.test_summary if looks_like_url(args.test_summary) else "",
-                "text": "" if looks_like_url(args.test_summary) else args.test_summary,
-                "title": "EchoScribe API test",
-                "provider": args.provider,
-            },
-            config,
-        )
-        write_plain_json(response)
-        return 0 if response.get("ok") else 1
     try:
         request = read_native_message(sys.stdin.buffer)
         response = handle_message(request, config)
@@ -100,24 +79,6 @@ def handle_summary(message: dict[str, Any], config: Config) -> dict[str, Any]:
         return {"ok": True, "summary": result["summary"], "provider": result["provider"], "model": result["model"], "error": ""}
     except Exception as exc:
         return {"ok": False, "summary": "", "provider": "", "model": "", "error": str(exc)}
-
-
-def describe_config(config: Config) -> dict[str, Any]:
-    providers = []
-    for provider in ("openai", "gemini", "anthropic", "xai"):
-        providers.append(
-            {
-                "provider": provider,
-                "hasKey": bool(config.provider_api_key(provider)),
-                "model": config.summary_model(provider),
-            }
-        )
-    return {
-        "configPath": str(config.path or "~/.config/echoscribe/config.toml"),
-        "envFile": str(config.env_file),
-        "summaryProvider": config.active_provider("summary"),
-        "providers": providers,
-    }
 
 
 def build_source_text(request: SummaryRequest, config: Config) -> str:
@@ -234,10 +195,6 @@ def write_native_message(stream: Any, value: dict[str, Any]) -> None:
     stream.write(struct.pack("<I", len(payload)))
     stream.write(payload)
     stream.flush()
-
-
-def write_plain_json(value: dict[str, Any]) -> None:
-    print(json.dumps(value, ensure_ascii=False, indent=2))
 
 
 def first_non_empty(*values: str) -> str:
