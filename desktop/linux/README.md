@@ -72,11 +72,8 @@ Summary providers:
 ## Verification
 
 ```bash
-.venv/bin/python -m unittest discover -s tests
 .venv/bin/python -m echoscribe doctor
-.venv/bin/python -m echoscribe native-host --self-test-config
 .venv/bin/python -m echoscribe gnome-worker status --json
-./scripts/verify_gnome_extension.sh --skip-live-shell
 ```
 
 For an isolated GNOME extension install check:

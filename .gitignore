@@ -69,7 +69,6 @@ _dev_tools/
 # Desktop companion local state
 desktop/**/.venv/
 desktop/**/__pycache__/
-desktop/**/.pytest_cache/
 desktop/**/*.pyc
 desktop/**/config.toml
 desktop/**/*.env
