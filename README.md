@@ -19,6 +19,10 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 - **Voice Message Summary:** Share voice messages from WhatsApp or other apps directly to EchoScribe.
 - **Note:** Claude 🦀 is text-only for app-side speech input.
 
+### 🖥️ Desktop Companions
+- **Linux:** GNOME Shell integration for push-to-talk dictation plus a local Chrome/Chromium summary extension.
+- **Same BYOK model:** Desktop requests go directly from your computer to the selected AI provider using your own API keys.
+
 ### ✍️ Floating Dictation on Android
 - **System-Wide Voice Input:** Enable the Android accessibility service and overlay permission to use a movable EchoScribe dictation button in editable text fields.
 - **Explicit Insert:** EchoScribe records only after you tap the floating button, shows a preview, and inserts text only after you tap Insert.
@@ -67,6 +71,10 @@ To use EchoScribe, you'll need at least one API key:
 2. Clone the repository.
 3. Run `flutter pub get`.
 4. Connect your device and run `flutter run`.
+
+### Desktop Setup
+- Linux: see `desktop/linux/README.md`.
+- Model defaults are tracked in `config/ai_models.json`; run `tooling/verify_ai_models.py` after model updates.
 
 ---
 

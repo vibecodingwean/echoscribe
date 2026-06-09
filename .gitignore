@@ -63,3 +63,17 @@ Podfile.lock
 
 # Project specific
 _dev_tools/
+
+# Desktop companion local state
+desktop/**/.venv/
+desktop/**/__pycache__/
+desktop/**/.pytest_cache/
+desktop/**/*.pyc
+desktop/**/config.toml
+desktop/**/*.env
+desktop/**/appsettings.json
+desktop/**/bin/
+desktop/**/obj/
+desktop/**/publish/
+desktop/**/*.zip
+desktop/**/gschemas.compiled

@@ -1,0 +1,9 @@
+{
+  "uuid": "echoscribe@wean.de",
+  "name": "EchoScribe",
+  "description": "GNOME Shell controls for EchoScribe speech transcription.",
+  "shell-version": ["45", "46", "47", "48", "49", "50"],
+  "settings-schema": "org.gnome.shell.extensions.echoscribe",
+  "url": "https://wean.de"
+}
+

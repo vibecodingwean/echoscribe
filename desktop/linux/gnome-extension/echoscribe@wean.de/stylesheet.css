@@ -1,0 +1,19 @@
+.echoscribe-panel-recording .system-status-icon {
+  color: #38bdf8;
+}
+
+.echoscribe-panel-processing .system-status-icon {
+  color: #f59e0b;
+}
+
+.echoscribe-panel-error .system-status-icon {
+  color: #ef4444;
+}
+
+.echoscribe-sideband {
+  background-color: rgba(248, 250, 252, 0.96);
+  border: 1px solid rgba(148, 163, 184, 0.65);
+  border-radius: 999px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.28);
+}
+

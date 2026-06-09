@@ -1,0 +1,2 @@
+# EchoScribe intentionally has no third-party Python runtime dependencies.
+
