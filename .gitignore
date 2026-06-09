@@ -64,6 +64,7 @@ release/
 
 # Project specific
 _dev_tools/
+/tooling/
 
 # Desktop companion local state
 desktop/**/.venv/
