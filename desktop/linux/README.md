@@ -12,11 +12,16 @@ Core behavior:
 
 ## Setup
 
+From a GitHub release, extract `EchoScribe-Linux-GNOME-<version>.tar.gz`, then run:
+
 ```bash
+cd EchoScribe-Linux-GNOME-<version>/linux
 ./install.sh
 ```
 
 The wizard installs Linux dependencies, creates `.venv`, writes `~/.config/echoscribe/config.toml`, stores provider keys in `~/.secrets/echoscribe.env`, installs the GNOME Shell extension, and can register browser native hosts for Chromium-based browsers and Firefox.
+
+On GNOME, EchoScribe starts through the installed GNOME Shell extension when you log into the desktop. The helper service installed by `install_user_service.sh` is only for `ydotool`; it is not an EchoScribe background app service.
 
 Manual setup:
 
@@ -35,8 +40,8 @@ gnome-extensions prefs echoscribe@wean.de
 
 Then load the browser extension manually:
 
-1. Chrome, Edge, Brave, or Chromium: open the browser extensions page, enable developer mode, and load `../browser-extension` as an unpacked extension.
-2. Firefox: open `about:debugging#/runtime/this-firefox` and load `../firefox-extension/manifest.json` as a temporary add-on.
+1. Chrome, Edge, Brave, or Chromium: open the browser extensions page, enable developer mode, and load the package's `browser-extension` folder as an unpacked extension.
+2. Firefox: open `about:debugging#/runtime/this-firefox` and load the package's `firefox-extension/manifest.json` as a temporary add-on.
 
 ## Configuration
 

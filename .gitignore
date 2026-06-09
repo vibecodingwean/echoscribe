@@ -56,6 +56,7 @@ Podfile.lock
 *.aab
 *.app
 *.ipa
+release/
 
 # Symbolication related
 *.pdb

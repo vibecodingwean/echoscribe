@@ -60,6 +60,41 @@ To use EchoScribe, you'll need at least one API key:
 
 ---
 
+## 📦 Installation
+
+### Android
+
+Install EchoScribe on Android from the Play Store or from a GitHub release APK.
+
+After installing:
+
+1. Open EchoScribe.
+2. Add at least one provider API key in settings.
+3. Optional: enable Floating Dictation by granting the Android accessibility service and overlay permission.
+
+Floating Dictation only shows a dictation button in editable fields, records after an explicit tap, and inserts text only after confirmation. It hides in password, PIN, payment, banking, credit-card, and phone fields.
+
+
+### Linux / GNOME
+
+Download `EchoScribe-Linux-GNOME-<version>.tar.gz` from GitHub releases, extract it, then run:
+
+```bash
+cd EchoScribe-Linux-GNOME-<version>/linux
+./install.sh
+```
+
+The wizard is intended for Debian-based GNOME systems. It installs dependencies, creates the Python environment, writes local config, stores provider keys in `~/.secrets/echoscribe.env`, installs the GNOME Shell extension, and can register Native Messaging hosts for Chromium-based browsers and Firefox.
+
+Browser extensions are loaded manually:
+
+1. Chrome, Edge, Brave, or Chromium: enable developer mode and load the `browser-extension` folder from the extracted package.
+2. Firefox: open `about:debugging#/runtime/this-firefox` and load `firefox-extension/manifest.json`.
+
+More details: [`desktop/linux/README.md`](desktop/linux/README.md).
+
+---
+
 ## 🛠️ Tech Stack & Development
 - **Framework:** Flutter (Dart)
 - **State Management:** Provider-based architecture.
@@ -76,6 +111,30 @@ To use EchoScribe, you'll need at least one API key:
 - Linux: see `desktop/linux/README.md`.
 - Browser summaries use manually loaded Chromium-based or Firefox extensions plus a local Native Messaging host. The native host is registered by the installer but only runs when an extension sends a summary request.
 - Model defaults are tracked in `config/ai_models.json`; run `tooling/verify_ai_models.py` after model updates.
+
+### Release Assets
+
+GitHub releases should attach the installable artifacts users need:
+
+- `EchoScribe-Android-v<version>.apk`
+- `EchoScribe-Linux-GNOME-v<version>.tar.gz`
+- `SHA256SUMS.txt`
+
+For Play Store publishing, upload the Android App Bundle from `build/app/outputs/bundle/release/app-release.aab`. The AAB is for Play Console, not a user-facing GitHub install artifact.
+
+Build Android and Linux release assets on Linux:
+
+```bash
+tooling/build_release_assets.sh
+```
+
+Build the Windows release ZIP on Windows:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tooling\build_windows_release.ps1
+```
+
+Release packages must not contain signing keys, local `appsettings.json`, API keys, `.env` files, or local agent context files.
 
 ---
 
