@@ -8,15 +8,15 @@ Core behavior:
 - Release the hotkey to transcribe.
 - The transcript is copied to the clipboard and pasted into the focused window.
 - Errors use the `[ECHOSCRIBE ERROR]` prefix.
-- The Chrome extension can summarize the current page, selected text, or PDF content through the local Native Messaging host.
+- The browser extensions can summarize the current page, selected text, or PDF content through the local Native Messaging host.
 
 ## Setup
 
 ```bash
-./scripts/setup_wizard.sh
+./install.sh
 ```
 
-The wizard installs Linux dependencies, creates `.venv`, writes `~/.config/echoscribe/config.toml`, stores provider keys in `~/.secrets/echoscribe.env`, installs the GNOME Shell extension, and can register the browser native host.
+The wizard installs Linux dependencies, creates `.venv`, writes `~/.config/echoscribe/config.toml`, stores provider keys in `~/.secrets/echoscribe.env`, installs the GNOME Shell extension, and can register browser native hosts for Chromium-based browsers and Firefox.
 
 Manual setup:
 
@@ -33,7 +33,10 @@ gnome-extensions enable echoscribe@wean.de
 gnome-extensions prefs echoscribe@wean.de
 ```
 
-Then open `chrome://extensions`, enable developer mode, and load `../browser-extension` as an unpacked extension.
+Then load the browser extension manually:
+
+1. Chrome, Edge, Brave, or Chromium: open the browser extensions page, enable developer mode, and load `../browser-extension` as an unpacked extension.
+2. Firefox: open `about:debugging#/runtime/this-firefox` and load `../firefox-extension/manifest.json` as a temporary add-on.
 
 ## Configuration
 

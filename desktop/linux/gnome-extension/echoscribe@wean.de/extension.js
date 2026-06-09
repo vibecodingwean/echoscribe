@@ -114,11 +114,11 @@ class EchoScribeQuickToggle extends QuickSettings.QuickMenuToggle {
             this._extensionObject.cancelDictation();
         });
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        this._browserItem = this.menu.addAction('Register Chrome Plugin', () => {
-            this._extensionObject.installBrowserPlugin();
+        this._browserItem = this.menu.addAction('Register Browser Extensions', () => {
+            this._extensionObject.installBrowserExtensions();
         });
-        this._extensionsItem = this.menu.addAction('Open chrome://extensions', () => {
-            this._extensionObject.openChromeExtensions();
+        this._extensionsItem = this.menu.addAction('Open Extension Setup', () => {
+            this._extensionObject.openBrowserExtensionSetup();
         });
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this._quitItem = this.menu.addAction('Quit EchoScribe', () => {
@@ -304,12 +304,12 @@ export default class EchoScribeExtension extends Extension {
         this._syncEnabled();
     }
 
-    installBrowserPlugin() {
-        this._runProjectScript(['./scripts/register_chrome_host.sh'], 'Browser plugin registered');
+    installBrowserExtensions() {
+        this._runProjectScript(['./scripts/register_chrome_host.sh'], 'Browser extensions registered');
     }
 
-    openChromeExtensions() {
-        this._runProjectScript(['xdg-open', 'chrome://extensions'], '');
+    openBrowserExtensionSetup() {
+        this._runProjectScript(['./scripts/register_chrome_host.sh'], '');
     }
 
     refreshStatus() {

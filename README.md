@@ -20,7 +20,7 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 - **Note:** Claude 🦀 is text-only for app-side speech input.
 
 ### 🖥️ Desktop Companions
-- **Linux:** GNOME Shell integration for push-to-talk dictation plus a local Chrome/Chromium summary extension.
+- **Linux:** GNOME Shell integration for push-to-talk dictation plus local browser summary extensions.
 - **Same BYOK model:** Desktop requests go directly from your computer to the selected AI provider using your own API keys.
 
 ### ✍️ Floating Dictation on Android
@@ -74,7 +74,7 @@ To use EchoScribe, you'll need at least one API key:
 
 ### Desktop Setup
 - Linux: see `desktop/linux/README.md`.
-- Browser summaries use a manually loaded Chrome/Chromium extension plus a local Native Messaging host. The native host is registered by the installer but only runs when the extension sends a summary request.
+- Browser summaries use manually loaded Chromium-based or Firefox extensions plus a local Native Messaging host. The native host is registered by the installer but only runs when an extension sends a summary request.
 - Model defaults are tracked in `config/ai_models.json`; run `tooling/verify_ai_models.py` after model updates.
 
 ---

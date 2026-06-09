@@ -8,6 +8,89 @@ config_dir="$HOME/.config/echoscribe"
 config_file="$config_dir/config.toml"
 secrets_dir="$HOME/.secrets"
 env_file="${ECHOSCRIBE_ENV_FILE:-$secrets_dir/echoscribe.env}"
+dry_run="no"
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --dry-run)
+      dry_run="yes"
+      shift
+      ;;
+    --help|-h)
+      echo "Usage: ./install.sh [--dry-run]"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      exit 2
+      ;;
+  esac
+done
+
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+  c_reset="$(printf '\033[0m')"
+  c_blue="$(printf '\033[1;34m')"
+  c_green="$(printf '\033[1;32m')"
+  c_yellow="$(printf '\033[1;33m')"
+  c_red="$(printf '\033[1;31m')"
+  c_dim="$(printf '\033[2m')"
+else
+  c_reset=""
+  c_blue=""
+  c_green=""
+  c_yellow=""
+  c_red=""
+  c_dim=""
+fi
+
+step_current=0
+step_total=9
+
+banner() {
+  echo
+  echo "${c_blue}EchoScribe Linux Setup${c_reset}"
+  echo "${c_dim}======================${c_reset}"
+  echo
+}
+
+step() {
+  step_current=$((step_current + 1))
+  printf '%s[%d/%d]%s %s\n' "$c_green" "$step_current" "$step_total" "$c_reset" "$1"
+}
+
+note() {
+  printf '%s%s%s\n' "$c_yellow" "$1" "$c_reset"
+}
+
+fail() {
+  printf '%s%s%s\n' "$c_red" "$1" "$c_reset" >&2
+}
+
+if [ "$dry_run" = "yes" ]; then
+  banner
+  step "Checking platform"
+  if command -v apt-get >/dev/null 2>&1; then
+    echo "Debian-based package manager: found"
+  else
+    note "apt-get not found; dependency installation may need a different command."
+  fi
+  step "Checking project files"
+  test -f "$repo_dir/pyproject.toml" && echo "Python package: ok"
+  test -f "$repo_dir/scripts/setup_dev.sh" && echo "Python setup script: ok"
+  test -f "$repo_dir/scripts/register_chrome_host.sh" && echo "Browser native-host script: ok"
+  test -d "$repo_dir/../browser-extension" && echo "Chromium extension: ok"
+  test -d "$repo_dir/../firefox-extension" && echo "Firefox extension: ok"
+  step "Checking optional tools"
+  for tool in python3 gnome-shell gnome-extensions xdg-open google-chrome chromium microsoft-edge brave-browser firefox; do
+    if command -v "$tool" >/dev/null 2>&1; then
+      echo "$tool: found"
+    else
+      echo "$tool: missing"
+    fi
+  done
+  note "Dry run only. No files, packages, secrets, extensions, or services were changed."
+  exit 0
+fi
 
 if [ ! -t 0 ]; then
   echo "This setup wizard is interactive. Run it from a terminal." >&2
@@ -237,15 +320,17 @@ out.write_text(text, encoding="utf-8")
 PY
 }
 
-echo "EchoScribe setup wizard"
+banner
 echo "Repository: $repo_dir"
 echo
 
+step "System dependencies"
 if ask_yes_no "Install/update Linux packages and input/uinput permissions?" "y"; then
   run_root_script "$USER" || true
 fi
 
 echo
+step "Python environment"
 echo "Setting up Python environment..."
 ./scripts/setup_dev.sh
 
@@ -256,9 +341,11 @@ if [ ! -f "$env_file" ] && [ -f "$secrets_dir/wispr.env" ]; then
 fi
 
 echo
+step "Providers"
 choose_providers
 show_api_key_links
 echo
+step "API keys"
 configure_env_key "OPENAI_API_KEY" "OpenAI API key" "$(provider_required_flag openai)"
 configure_env_key "GEMINI_API_KEY" "Gemini API key" "$(provider_required_flag gemini)"
 configure_env_key "ANTHROPIC_API_KEY" "Anthropic API key" "$(provider_required_flag anthropic)"
@@ -266,12 +353,14 @@ configure_env_key "XAI_API_KEY" "xAI/Grok API key" "$(provider_required_flag xai
 configure_env_key "ELEVENLABS_API_KEY" "ElevenLabs API key" "$(provider_required_flag elevenlabs)"
 chmod 600 "$env_file" 2>/dev/null || true
 
+step "Hotkeys"
 choose_hotkeys
 echo
 paste_shortcut="$(prompt_default "Paste shortcut (auto, ctrl+v, ctrl+shift+v)" "auto")"
 write_config
 
 echo
+step "Desktop integration"
 if command -v gnome-shell >/dev/null 2>&1; then
   echo "Installing GNOME Shell extension..."
   ./scripts/install_gnome_extension.sh
@@ -280,11 +369,13 @@ elif ask_yes_no "Install ydotool paste helper service for manual worker use?" "n
 fi
 
 echo
-if ask_yes_no "Register the EchoScribe Chrome browser plugin/native host?" "y"; then
+step "Browser extension"
+if ask_yes_no "Register EchoScribe browser extensions/native hosts?" "y"; then
   ./scripts/register_chrome_host.sh
 fi
 
 echo
+step "Doctor"
 echo "Running doctor..."
 if command -v sg >/dev/null 2>&1 && getent group input >/dev/null 2>&1; then
   sg input -c "$repo_dir/.venv/bin/python -m echoscribe doctor" || "$repo_dir/.venv/bin/python" -m echoscribe doctor
@@ -293,6 +384,7 @@ else
 fi
 
 echo
+step "Done"
 echo "Config: $config_file"
 echo "Env:    $env_file"
 echo "If the GNOME extension is not visible yet, log out and back in once, then run:"
