@@ -1,18 +1,20 @@
 const HOST_NAME = "de.echoscribe.nativehost";
 const PDF_BYTE_LIMIT = 16 * 1024 * 1024;
+const extensionApi = typeof browser !== "undefined" ? browser : chrome;
+const usesPromiseApi = typeof browser !== "undefined";
 
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
+extensionApi.runtime.onInstalled.addListener(() => {
+  extensionApi.contextMenus.create({
     id: "echoscribe-summarize",
-    title: "Mit EchoScribe zusammenfassen",
+    title: "Summarize with EchoScribe",
     contexts: ["page", "selection"]
   });
 });
 
-chrome.contextMenus.onClicked.addListener((info, tab) => {
+extensionApi.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId !== "echoscribe-summarize" || !tab) return;
   summarizeTab(tab, info.selectionText || "").catch(async (error) => {
-    await chrome.storage.local.set({
+    await setLocalStorage({
       latestSummary: "",
       latestError: error.message || String(error),
       latestUpdatedAt: Date.now()
@@ -20,18 +22,23 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   });
 });
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+extensionApi.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type !== "summarizeActiveTab") return false;
 
-  summarizeActiveTab()
-    .then((response) => sendResponse(response))
-    .catch((error) => sendResponse({ ok: false, error: error.message || String(error) }));
+  const response = summarizeActiveTab()
+    .catch((error) => ({ ok: false, error: error.message || String(error) }));
+
+  if (usesPromiseApi) {
+    return response;
+  }
+
+  response.then((value) => sendResponse(value));
 
   return true;
 });
 
 async function summarizeActiveTab() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const [tab] = await queryTabs({ active: true, currentWindow: true });
   if (!tab) throw new Error("No active tab found.");
   return summarizeTab(tab, "");
 }
@@ -46,7 +53,7 @@ async function summarizeTab(tab, selectionText) {
     ...result
   });
 
-  await chrome.storage.local.set({
+  await setLocalStorage({
     latestSummary: response.summary || "",
     latestProvider: response.provider || "",
     latestModel: response.model || "",
@@ -68,11 +75,7 @@ async function buildPagePayload(tab, selectionText) {
   };
 
   try {
-    const [injection] = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: extractPagePayload,
-      args: [selectionText]
-    });
+    const [injection] = await executePageScript(tab.id, selectionText);
     if (injection?.result) result = injection.result;
   } catch (error) {
     result.text = "";
@@ -151,6 +154,10 @@ function uint8ToBase64(bytes) {
 }
 
 function sendNativeMessage(payload) {
+  if (usesPromiseApi) {
+    return extensionApi.runtime.sendNativeMessage(HOST_NAME, payload).then(validateNativeResponse);
+  }
+
   return new Promise((resolve, reject) => {
     chrome.runtime.sendNativeMessage(HOST_NAME, payload, (response) => {
       const lastError = chrome.runtime.lastError;
@@ -158,15 +165,86 @@ function sendNativeMessage(payload) {
         reject(new Error(lastError.message));
         return;
       }
-      if (!response) {
-        reject(new Error("EchoScribe Native Host returned no response."));
-        return;
+      try {
+        resolve(validateNativeResponse(response));
+      } catch (error) {
+        reject(error);
       }
-      if (response.ok === false) {
-        reject(new Error(response.error || "EchoScribe summary failed."));
-        return;
-      }
-      resolve(response);
+    });
+  });
+}
+
+function validateNativeResponse(response) {
+  if (!response) {
+    throw new Error("EchoScribe Native Host returned no response.");
+  }
+  if (response.ok === false) {
+    throw new Error(response.error || "EchoScribe summary failed.");
+  }
+  return response;
+}
+
+function queryTabs(query) {
+  if (usesPromiseApi) {
+    return extensionApi.tabs.query(query);
+  }
+  return new Promise((resolve, reject) => {
+    chrome.tabs.query(query, (tabs) => {
+      const lastError = chrome.runtime.lastError;
+      if (lastError) reject(new Error(lastError.message));
+      else resolve(tabs);
+    });
+  });
+}
+
+function setLocalStorage(value) {
+  if (usesPromiseApi) {
+    return extensionApi.storage.local.set(value);
+  }
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.set(value, () => {
+      const lastError = chrome.runtime.lastError;
+      if (lastError) reject(new Error(lastError.message));
+      else resolve();
+    });
+  });
+}
+
+function executePageScript(tabId, selectionText) {
+  if (extensionApi.scripting?.executeScript) {
+    if (usesPromiseApi) {
+      return extensionApi.scripting.executeScript({
+        target: { tabId },
+        func: extractPagePayload,
+        args: [selectionText]
+      });
+    }
+
+    return new Promise((resolve, reject) => {
+      chrome.scripting.executeScript({
+        target: { tabId },
+        func: extractPagePayload,
+        args: [selectionText]
+      }, (result) => {
+        const lastError = chrome.runtime.lastError;
+        if (lastError) reject(new Error(lastError.message));
+        else resolve(result);
+      });
+    });
+  }
+
+  const code = `(${extractPagePayload.toString()})(${JSON.stringify(selectionText)})`;
+  if (usesPromiseApi) {
+    return extensionApi.tabs.executeScript(tabId, { code }).then((results) => {
+      return (results || []).map((result) => ({ result }));
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    chrome.tabs.executeScript(tabId, { code }, (results) => {
+      const lastError = chrome.runtime.lastError;
+      if (lastError) reject(new Error(lastError.message));
+      else resolve((results || []).map((result) => ({ result })));
     });
   });
 }

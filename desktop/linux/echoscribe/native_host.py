@@ -1,4 +1,4 @@
-"""Chrome Native Messaging host for EchoScribe Web Summary."""
+"""Browser Native Messaging host for EchoScribe Web Summary."""
 
 from __future__ import annotations
 
