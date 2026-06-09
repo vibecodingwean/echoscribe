@@ -36,7 +36,7 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 ### 🚀 Pro Mode & Models
 Access the world's most powerful AI models with a single toggle:
 - **Standard (Fast):** GPT-5.4-mini, Gemini 3.1 Flash-Lite, Claude 4.6 Sonnet, Grok 4.3.
-- **Pro Mode (Premium):** GPT-5.5, Gemini 3.1 Pro, Claude 4.7 Opus, Grok 4.3.
+- **Pro Mode (Premium):** GPT-5.5, Gemini 3.1 Pro, Claude 4.8 Opus, Grok 4.3.
 
 ### 🌍 Intelligent Re-Translation
 Need a result in another language? Change the target language via the globe icon, and EchoScribe will automatically re-process the source content to provide a high-quality summary in the new language.
@@ -110,31 +110,6 @@ More details: [`desktop/linux/README.md`](desktop/linux/README.md).
 ### Desktop Setup
 - Linux: see `desktop/linux/README.md`.
 - Browser summaries use manually loaded Chromium-based or Firefox extensions plus a local Native Messaging host. The native host is registered by the installer but only runs when an extension sends a summary request.
-- Model defaults are tracked in `config/ai_models.json`; run `tooling/verify_ai_models.py` after model updates.
-
-### Release Assets
-
-GitHub releases should attach the installable artifacts users need:
-
-- `EchoScribe-Android-v<version>.apk`
-- `EchoScribe-Linux-GNOME-v<version>.tar.gz`
-- `SHA256SUMS.txt`
-
-For Play Store publishing, upload the Android App Bundle from `build/app/outputs/bundle/release/app-release.aab`. The AAB is for Play Console, not a user-facing GitHub install artifact.
-
-Build Android and Linux release assets on Linux:
-
-```bash
-tooling/build_release_assets.sh
-```
-
-Build the Windows release ZIP on Windows:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tooling\build_windows_release.ps1
-```
-
-Release packages must not contain signing keys, local `appsettings.json`, API keys, `.env` files, or local agent context files.
 
 ---
 
