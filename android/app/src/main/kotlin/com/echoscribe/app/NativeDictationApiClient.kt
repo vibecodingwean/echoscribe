@@ -6,8 +6,6 @@ import java.io.BufferedOutputStream
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 class NativeDictationApiClient(private val config: NativeDictationConfig) {
     fun preflightLocalAi() {
@@ -98,53 +96,35 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
     }
 
     private fun preflightLocalAiWhisper() {
-        val testFile = silentWavFile()
-        try {
-            postMultipart(
-                endpoint = config.localAiWhisperUrl.ifBlank {
-                    throw IllegalStateException("Local AI Whisper URL is not configured")
-                },
-                headers = emptyMap(),
-                fields = linkedMapOf(
-                    "model" to config.transcriptionModel.ifBlank { "whisper-1" },
-                    "response_format" to "json",
-                ),
-                fileField = "file",
-                file = testFile,
-                connectTimeoutMs = 5_000,
-                readTimeoutMs = 15_000,
-            )
-        } finally {
-            runCatching { testFile.delete() }
+        val endpoint = config.localAiWhisperUrl.ifBlank {
+            throw IllegalStateException("Local AI Whisper URL is not configured")
         }
+        val health = originEndpoint(endpoint, "/health")
+        try {
+            requestStatus(health, "GET", 1_500, 1_500, allowClientError = false)
+            return
+        } catch (e: Exception) {
+            if (e.message?.contains("404") != true && e.message?.contains("405") != true) {
+                throw e
+            }
+        }
+        requestStatus(endpoint, "HEAD", 1_500, 1_500, allowClientError = true)
     }
 
     private fun preflightLocalAiLlm() {
-        val messages = JSONArray()
-            .put(
-                JSONObject()
-                    .put("role", "user")
-                    .put("content", "Reply with exactly: ok"),
-            )
-        val body = JSONObject()
-            .put("model", config.formattingModel.ifBlank { "qwen2.5:3b" })
-            .put("stream", false)
-            .put(
-                "options",
-                JSONObject()
-                    .put("num_predict", 8)
-                    .put("temperature", 0),
-            )
-            .put("messages", messages)
-        postJson(
-            endpoint = config.localAiLlmUrl.ifBlank {
-                throw IllegalStateException("Local AI LLM URL is not configured")
-            },
-            headers = mapOf("Content-Type" to "application/json"),
-            body = body,
-            connectTimeoutMs = 5_000,
-            readTimeoutMs = 15_000,
+        val endpoint = config.localAiLlmUrl.ifBlank {
+            throw IllegalStateException("Local AI LLM URL is not configured")
+        }
+        val model = config.formattingModel.ifBlank { "qwen2.5:3b" }
+        val body = requestText(
+            endpoint = originEndpoint(endpoint, "/api/tags"),
+            method = "GET",
+            connectTimeoutMs = 1_500,
+            readTimeoutMs = 1_500,
         )
+        if (!ollamaModelExists(body, model)) {
+            throw IllegalStateException("Local AI model \"$model\" was not found in Ollama. Pull it or change the model.")
+        }
     }
 
     private fun transcribeGemini(file: File): String {
@@ -325,6 +305,46 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
         return readJson(connection)
     }
 
+    private fun requestText(
+        endpoint: String,
+        method: String,
+        connectTimeoutMs: Int,
+        readTimeoutMs: Int,
+    ): String {
+        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+            requestMethod = method
+            connectTimeout = connectTimeoutMs
+            readTimeout = readTimeoutMs
+            doOutput = false
+        }
+        val status = connection.responseCode
+        val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+        val body = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+        if (status !in 200..299) {
+            throw IllegalStateException(apiErrorMessage(body).ifBlank { "Request failed ($status)" })
+        }
+        return body
+    }
+
+    private fun requestStatus(
+        endpoint: String,
+        method: String,
+        connectTimeoutMs: Int,
+        readTimeoutMs: Int,
+        allowClientError: Boolean,
+    ) {
+        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+            requestMethod = method
+            connectTimeout = connectTimeoutMs
+            readTimeout = readTimeoutMs
+            doOutput = false
+        }
+        val status = connection.responseCode
+        if (status == 401 || status == 403 || status >= 500 || (!allowClientError && status !in 200..299)) {
+            throw IllegalStateException("Request failed ($status)")
+        }
+    }
+
     private fun postMultipart(
         endpoint: String,
         headers: Map<String, String>,
@@ -398,39 +418,20 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
         }
     }
 
-    private fun silentWavFile(): File {
-        val file = File.createTempFile("echoscribe_local_ai_test_", ".wav")
-        file.writeBytes(silentWavBytes())
-        return file
+    private fun originEndpoint(endpoint: String, path: String): String {
+        val url = URL(endpoint)
+        return URL(url.protocol, url.host, url.port, path).toString()
     }
 
-    private fun silentWavBytes(): ByteArray {
-        val sampleRate = 16_000
-        val channels = 1
-        val bitsPerSample = 16
-        val samples = sampleRate / 4
-        val byteRate = sampleRate * channels * bitsPerSample / 8
-        val blockAlign = channels * bitsPerSample / 8
-        val dataSize = samples * blockAlign
-        val bytes = ByteArray(44 + dataSize)
-        fun ascii(offset: Int, value: String) {
-            value.toByteArray(Charsets.US_ASCII).copyInto(bytes, offset)
+    private fun ollamaModelExists(body: String, expectedModel: String): Boolean {
+        val models = JSONObject(body).optJSONArray("models") ?: return false
+        for (index in 0 until models.length()) {
+            val item = models.optJSONObject(index) ?: continue
+            if (item.optString("name") == expectedModel || item.optString("model") == expectedModel) {
+                return true
+            }
         }
-        val data = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
-        ascii(0, "RIFF")
-        data.putInt(4, 36 + dataSize)
-        ascii(8, "WAVE")
-        ascii(12, "fmt ")
-        data.putInt(16, 16)
-        data.putShort(20, 1.toShort())
-        data.putShort(22, channels.toShort())
-        data.putInt(24, sampleRate)
-        data.putInt(28, byteRate)
-        data.putShort(32, blockAlign.toShort())
-        data.putShort(34, bitsPerSample.toShort())
-        ascii(36, "data")
-        data.putInt(40, dataSize)
-        return bytes
+        return false
     }
 
 }
