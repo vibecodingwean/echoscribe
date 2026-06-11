@@ -6,13 +6,22 @@ import java.io.BufferedOutputStream
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 class NativeDictationApiClient(private val config: NativeDictationConfig) {
+    fun preflightLocalAi() {
+        if (config.provider != "localAi") return
+        preflightLocalAiWhisper()
+        preflightLocalAiLlm()
+    }
+
     fun transcribe(file: File): String {
         return when (config.provider) {
             "openai" -> transcribeOpenAi(file)
             "gemini" -> transcribeGemini(file)
             "xai" -> transcribeXai(file)
+            "localAi" -> transcribeLocalAi(file)
             else -> throw IllegalStateException("Speech input not supported for ${config.brandName.ifBlank { "this provider" }}")
         }
     }
@@ -32,6 +41,7 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
                 includeReasoning = true,
                 rawText = raw,
             )
+            "localAi" -> formatLocalAi(raw)
             else -> throw IllegalStateException("Speech input not supported for ${config.brandName.ifBlank { "this provider" }}")
         }
     }
@@ -63,6 +73,78 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
         return json.optString("text").trim().ifBlank {
             throw IllegalStateException("Transcription returned empty text")
         }
+    }
+
+    private fun transcribeLocalAi(file: File): String {
+        val fields = linkedMapOf(
+            "model" to config.transcriptionModel.ifBlank { "whisper-1" },
+            "response_format" to "json",
+        )
+        if (config.targetLanguageCode.isNotBlank() && config.targetLanguageCode != "auto") {
+            fields["language"] = config.targetLanguageCode
+        }
+        val json = postMultipart(
+            endpoint = config.localAiWhisperUrl.ifBlank {
+                throw IllegalStateException("Local AI Whisper URL is not configured")
+            },
+            headers = emptyMap(),
+            fields = fields,
+            fileField = "file",
+            file = file,
+        )
+        return json.optString("text").trim().ifBlank {
+            throw IllegalStateException("Transcription returned empty text")
+        }
+    }
+
+    private fun preflightLocalAiWhisper() {
+        val testFile = silentWavFile()
+        try {
+            postMultipart(
+                endpoint = config.localAiWhisperUrl.ifBlank {
+                    throw IllegalStateException("Local AI Whisper URL is not configured")
+                },
+                headers = emptyMap(),
+                fields = linkedMapOf(
+                    "model" to config.transcriptionModel.ifBlank { "whisper-1" },
+                    "response_format" to "json",
+                ),
+                fileField = "file",
+                file = testFile,
+                connectTimeoutMs = 5_000,
+                readTimeoutMs = 15_000,
+            )
+        } finally {
+            runCatching { testFile.delete() }
+        }
+    }
+
+    private fun preflightLocalAiLlm() {
+        val messages = JSONArray()
+            .put(
+                JSONObject()
+                    .put("role", "user")
+                    .put("content", "Reply with exactly: ok"),
+            )
+        val body = JSONObject()
+            .put("model", config.formattingModel.ifBlank { "qwen2.5:3b" })
+            .put("stream", false)
+            .put(
+                "options",
+                JSONObject()
+                    .put("num_predict", 8)
+                    .put("temperature", 0),
+            )
+            .put("messages", messages)
+        postJson(
+            endpoint = config.localAiLlmUrl.ifBlank {
+                throw IllegalStateException("Local AI LLM URL is not configured")
+            },
+            headers = mapOf("Content-Type" to "application/json"),
+            body = body,
+            connectTimeoutMs = 5_000,
+            readTimeoutMs = 15_000,
+        )
     }
 
     private fun transcribeGemini(file: File): String {
@@ -104,7 +186,7 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
                 ),
             )
         val json = postJson(
-            endpoint = "https://generativelanguage.googleapis.com/v1beta/models/${config.transcriptionModel.ifBlank { "gemini-3.1-flash-lite" }}:generateContent?key=${config.apiKey}",
+            endpoint = "https://generativelanguage.googleapis.com/v1beta/models/${config.transcriptionModel.ifBlank { "gemini-3.5-flash" }}:generateContent?key=${config.apiKey}",
             headers = mapOf("Content-Type" to "application/json"),
             body = body,
         )
@@ -150,6 +232,37 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
         return content
     }
 
+    private fun formatLocalAi(rawText: String): String {
+        val messages = JSONArray()
+            .put(
+                JSONObject()
+                    .put("role", "system")
+                    .put("content", "You format dictated speech transcripts into final text input. Output only the final text."),
+            )
+            .put(
+                JSONObject()
+                    .put("role", "user")
+                    .put("content", "${config.dictationPrompt}\n\nRaw text:\n$rawText"),
+            )
+        val body = JSONObject()
+            .put("model", config.formattingModel.ifBlank { "qwen2.5:3b" })
+            .put("stream", false)
+            .put("messages", messages)
+        val json = postJson(
+            endpoint = config.localAiLlmUrl.ifBlank {
+                throw IllegalStateException("Local AI LLM URL is not configured")
+            },
+            headers = mapOf("Content-Type" to "application/json"),
+            body = body,
+        )
+        val content = json.optJSONObject("message")
+            ?.optString("content")
+            .orEmpty()
+            .trim()
+        if (content.isBlank()) throw IllegalStateException("Formatting returned empty text")
+        return content
+    }
+
     private fun formatGemini(rawText: String): String {
         val body = JSONObject()
             .put(
@@ -178,13 +291,19 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
         return text
     }
 
-    private fun postJson(endpoint: String, headers: Map<String, String>, body: JSONObject): JSONObject {
+    private fun postJson(
+        endpoint: String,
+        headers: Map<String, String>,
+        body: JSONObject,
+        connectTimeoutMs: Int = 30_000,
+        readTimeoutMs: Int = 120_000,
+    ): JSONObject {
         val bytes = body.toString().toByteArray(Charsets.UTF_8)
-        return requestJson(endpoint, "POST", headers, bytes)
+        return requestJson(endpoint, "POST", headers, bytes, connectTimeoutMs, readTimeoutMs)
     }
 
     private fun postBytes(endpoint: String, headers: Map<String, String>, bytes: ByteArray): JSONObject {
-        return requestJson(endpoint, "POST", headers, bytes)
+        return requestJson(endpoint, "POST", headers, bytes, 30_000, 120_000)
     }
 
     private fun requestJson(
@@ -192,11 +311,13 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
         method: String,
         headers: Map<String, String>,
         bytes: ByteArray,
+        connectTimeoutMs: Int,
+        readTimeoutMs: Int,
     ): JSONObject {
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
             requestMethod = method
-            connectTimeout = 30_000
-            readTimeout = 120_000
+            connectTimeout = connectTimeoutMs
+            readTimeout = readTimeoutMs
             doOutput = true
             headers.forEach { (key, value) -> setRequestProperty(key, value) }
         }
@@ -210,12 +331,14 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
         fields: LinkedHashMap<String, String>,
         fileField: String,
         file: File,
+        connectTimeoutMs: Int = 30_000,
+        readTimeoutMs: Int = 180_000,
     ): JSONObject {
         val boundary = "EchoScribeBoundary${System.currentTimeMillis()}"
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
-            connectTimeout = 30_000
-            readTimeout = 180_000
+            connectTimeout = connectTimeoutMs
+            readTimeout = readTimeoutMs
             doOutput = true
             setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
             headers.forEach { (key, value) -> setRequestProperty(key, value) }
@@ -274,4 +397,40 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
             else -> "application/octet-stream"
         }
     }
+
+    private fun silentWavFile(): File {
+        val file = File.createTempFile("echoscribe_local_ai_test_", ".wav")
+        file.writeBytes(silentWavBytes())
+        return file
+    }
+
+    private fun silentWavBytes(): ByteArray {
+        val sampleRate = 16_000
+        val channels = 1
+        val bitsPerSample = 16
+        val samples = sampleRate / 4
+        val byteRate = sampleRate * channels * bitsPerSample / 8
+        val blockAlign = channels * bitsPerSample / 8
+        val dataSize = samples * blockAlign
+        val bytes = ByteArray(44 + dataSize)
+        fun ascii(offset: Int, value: String) {
+            value.toByteArray(Charsets.US_ASCII).copyInto(bytes, offset)
+        }
+        val data = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+        ascii(0, "RIFF")
+        data.putInt(4, 36 + dataSize)
+        ascii(8, "WAVE")
+        ascii(12, "fmt ")
+        data.putInt(16, 16)
+        data.putShort(20, 1.toShort())
+        data.putShort(22, channels.toShort())
+        data.putInt(24, sampleRate)
+        data.putInt(28, byteRate)
+        data.putShort(32, blockAlign.toShort())
+        data.putShort(34, bitsPerSample.toShort())
+        ascii(36, "data")
+        data.putInt(40, dataSize)
+        return bytes
+    }
+
 }

@@ -24,7 +24,7 @@ def run_config_tui(config: Config) -> int:
         if choice == "1":
             provider = choose(
                 "Transcription provider",
-                ["openai", "gemini", "xai", "elevenlabs"],
+                ["openai", "gemini", "xai", "elevenlabs", "localai"],
                 str(config.data["providers"].get("transcription", "openai")),
             )
             set_value(path, "providers", "transcription", provider)
@@ -32,7 +32,7 @@ def run_config_tui(config: Config) -> int:
         elif choice == "2":
             provider = choose(
                 "Summary provider",
-                ["openai", "gemini", "anthropic", "xai"],
+                ["openai", "gemini", "anthropic", "xai", "localai"],
                 str(config.data["providers"].get("summary", "openai")),
             )
             set_value(path, "providers", "summary", provider)
@@ -138,4 +138,3 @@ def find_next_section(lines: list[str], start: int) -> int | None:
         if stripped.startswith("[") and stripped.endswith("]"):
             return index
     return None
-

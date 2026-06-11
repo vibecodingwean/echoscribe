@@ -86,9 +86,29 @@ def main(argv: list[str] | None = None) -> int:
                 return 2
             print(config.summary_model(provider))
             return 0
+        if len(args.worker_args) == 2 and args.worker_args[0] == "transcription-model":
+            from .config import TRANSCRIPTION_PROVIDERS, normalize_provider
+
+            provider = normalize_provider(args.worker_args[1])
+            if provider not in TRANSCRIPTION_PROVIDERS:
+                print(f"echoscribe: {provider} does not support speech-to-text", file=sys.stderr)
+                return 2
+            section = config.data.get(provider, {})
+            model = str(section.get("transcription_model", "") if isinstance(section, dict) else "").strip()
+            print(model)
+            return 0
+        if args.worker_args == ["local-ai-llm-url"]:
+            section = config.data.get("localai", {})
+            print(str(section.get("llm_url", "") if isinstance(section, dict) else "").strip())
+            return 0
+        if args.worker_args == ["local-ai-whisper-url"]:
+            section = config.data.get("localai", {})
+            print(str(section.get("whisper_url", "") if isinstance(section, dict) else "").strip())
+            return 0
         print(
             "echoscribe: supported config-get keys: transcription-provider, summary-provider, "
-            "api-key-status <provider>, api-key <provider>, summary-model <provider>",
+            "api-key-status <provider>, api-key <provider>, summary-model <provider>, "
+            "transcription-model <provider>, local-ai-llm-url, local-ai-whisper-url",
             file=sys.stderr,
         )
         return 2
@@ -144,10 +164,54 @@ def main(argv: list[str] | None = None) -> int:
             set_value(path, provider, "summary_model", model)
             print(model)
             return 0
+        if len(args.worker_args) == 3 and args.worker_args[0] == "transcription-model":
+            from .config import TRANSCRIPTION_PROVIDERS, normalize_provider
+            from .config_tui import ensure_config_file, set_value
+
+            provider = normalize_provider(args.worker_args[1])
+            if provider not in TRANSCRIPTION_PROVIDERS:
+                print(f"echoscribe: {provider} does not support speech-to-text", file=sys.stderr)
+                return 2
+            model = args.worker_args[2].strip()
+            if not model:
+                print("echoscribe: refusing to store empty transcription model", file=sys.stderr)
+                return 2
+            path = config.path or Path("~/.config/echoscribe/config.toml").expanduser()
+            ensure_config_file(path)
+            set_value(path, provider, "transcription_model", model)
+            print(model)
+            return 0
+        if len(args.worker_args) == 2 and args.worker_args[0] == "local-ai-llm-url":
+            from .config_tui import ensure_config_file, set_value
+
+            value = args.worker_args[1].strip()
+            if not value:
+                print("echoscribe: refusing to store empty Local AI LLM URL", file=sys.stderr)
+                return 2
+            path = config.path or Path("~/.config/echoscribe/config.toml").expanduser()
+            ensure_config_file(path)
+            set_value(path, "localai", "llm_url", value)
+            print(value)
+            return 0
+        if len(args.worker_args) == 2 and args.worker_args[0] == "local-ai-whisper-url":
+            from .config_tui import ensure_config_file, set_value
+
+            value = args.worker_args[1].strip()
+            if not value:
+                print("echoscribe: refusing to store empty Local AI Whisper URL", file=sys.stderr)
+                return 2
+            path = config.path or Path("~/.config/echoscribe/config.toml").expanduser()
+            ensure_config_file(path)
+            set_value(path, "localai", "whisper_url", value)
+            print(value)
+            return 0
         print(
             "echoscribe: usage: echoscribe config-set transcription-provider <provider> | "
             "echoscribe config-set summary-provider <provider> | "
             "echoscribe config-set summary-model <provider> <model> | "
+            "echoscribe config-set transcription-model <provider> <model> | "
+            "echoscribe config-set local-ai-llm-url <url> | "
+            "echoscribe config-set local-ai-whisper-url <url> | "
             "echoscribe config-set api-key <provider>",
             file=sys.stderr,
         )

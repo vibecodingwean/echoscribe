@@ -114,17 +114,17 @@ class EchoScribeQuickToggle extends QuickSettings.QuickMenuToggle {
             this._extensionObject.cancelDictation();
         });
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        this._browserItem = this.menu.addAction('Register Browser Extensions', () => {
+        this._browserItem = this.menu.addAction('Register Browser Native Host', () => {
             this._extensionObject.installBrowserExtensions();
         });
-        this._extensionsItem = this.menu.addAction('Open Extension Setup', () => {
+        this._extensionsItem = this.menu.addAction('Open Browser Extension Folder', () => {
             this._extensionObject.openBrowserExtensionSetup();
         });
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this._quitItem = this.menu.addAction('Quit EchoScribe', () => {
             this._extensionObject.quitEchoScribe();
         });
-        const settingsItem = this.menu.addAction('Settings...', () => {
+        const settingsItem = this.menu.addAction('Open Preferences...', () => {
             try {
                 const result = this._extensionObject.openPreferences();
                 if (result && typeof result.catch === 'function')
@@ -305,11 +305,30 @@ export default class EchoScribeExtension extends Extension {
     }
 
     installBrowserExtensions() {
-        this._runProjectScript(['./scripts/register_chrome_host.sh'], 'Browser extensions registered');
+        this._runProjectScript(
+            ['./scripts/register_chrome_host.sh', '--no-open'],
+            'Browser native host registered'
+        );
     }
 
     openBrowserExtensionSetup() {
-        this._runProjectScript(['./scripts/register_chrome_host.sh'], '');
+        if (!this._settings || this._destroyed)
+            return;
+        const repoPath = this._settings.get_string('repo-path').trim();
+        if (!repoPath) {
+            Main.notify('EchoScribe', 'Repository path is not configured');
+            return;
+        }
+        const folder = GLib.build_filenamev([repoPath, '..', 'browser-extension']);
+        try {
+            Gio.AppInfo.launch_default_for_uri(
+                Gio.File.new_for_path(folder).get_uri(),
+                null
+            );
+        } catch (error) {
+            logError(error);
+            Main.notify('EchoScribe', String(error));
+        }
     }
 
     refreshStatus() {
@@ -367,11 +386,18 @@ export default class EchoScribeExtension extends Extension {
     _handleWorkerPayload(payload, notify) {
         if (!payload || !this._settings || this._destroyed)
             return;
-        const state = payload.state || 'idle';
-        const message = payload.message || STATE_TITLE[state] || STATE_TITLE.idle;
+        let state = payload.state || 'idle';
+        let message = payload.message || STATE_TITLE[state] || STATE_TITLE.idle;
+        let updatedAt = Number(payload.updated_at || 0);
+        if (TERMINAL_STATES.has(state) && updatedAt &&
+            (Date.now() / 1000 - updatedAt) * 1000 >= TERMINAL_STATE_MS) {
+            state = 'idle';
+            message = STATE_TITLE.idle;
+            updatedAt = 0;
+        }
         const enabled = this._settings.get_boolean('enabled');
         this._state = state;
-        this._stateUpdatedAt = Number(payload.updated_at || 0);
+        this._stateUpdatedAt = updatedAt;
         this._indicator?.setState(state, message, enabled);
         const shellWidget = this._usesShellWidget();
         if (shellWidget)
@@ -545,7 +571,7 @@ export default class EchoScribeExtension extends Extension {
                 const [, stdout, stderr] = source.communicate_utf8_finish(result);
                 const message = (stderr || stdout || '').trim();
                 if (!source.get_successful()) {
-                    Main.notify('EchoScribe', message || 'Befehl fehlgeschlagen');
+                    Main.notify('EchoScribe', message || 'Command failed');
                     return;
                 }
                 if (successMessage)
@@ -568,11 +594,12 @@ export default class EchoScribeExtension extends Extension {
         return GLib.build_filenamev([stateHome, 'echoscribe', 'focus-app-hint']);
     }
 
-    _applyFocusHintEnv(launcher, directHint = false) {
+    _applyFocusHintEnv(launcher, directHint = false, trustHintFile = true) {
         const hint = this._writeFocusHint();
         const path = this._focusHintPath || this._buildFocusHintPath();
         launcher.setenv('ECHOSCRIBE_GNOME_FOCUS_HINT_FILE', path, true);
-        launcher.setenv('ECHOSCRIBE_TRUST_GNOME_FOCUS_HINT', '1', true);
+        if (trustHintFile)
+            launcher.setenv('ECHOSCRIBE_TRUST_GNOME_FOCUS_HINT', '1', true);
         if (directHint && hint)
             launcher.setenv('ECHOSCRIBE_ACTIVE_APP_HINT', hint, true);
     }
@@ -638,7 +665,7 @@ export default class EchoScribeExtension extends Extension {
             flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
         });
         launcher.set_environ(GLib.get_environ());
-        this._applyFocusHintEnv(launcher, false);
+        this._applyFocusHintEnv(launcher, false, action !== 'start');
         if (repoPath) {
             launcher.set_cwd(repoPath);
             launcher.setenv('PYTHONPATH', repoPath, true);

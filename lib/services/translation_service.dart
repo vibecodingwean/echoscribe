@@ -5,6 +5,8 @@ import 'package:echoscribe/config/prompts.dart';
 import 'package:echoscribe/services/anthropic_service.dart';
 import 'package:echoscribe/models/enums.dart';
 import 'package:echoscribe/models/app_exception.dart';
+import 'package:echoscribe/services/local_ai_response_parser.dart';
+import 'package:echoscribe/services/local_ai_health_service.dart';
 
 class TranslationService {
   // Master translate method that routes to the correct provider
@@ -38,6 +40,13 @@ class TranslationService {
           model: AiModelConfig.xaiTranslation(pro: pro),
           reasoningEffort: AiModelConfig.xaiReasoningEffort(pro: pro),
         );
+      case AiProviderType.localAi:
+        return await translateOllama(
+          endpoint: AiModelConfig.localAiLlmUrl,
+          text: text,
+          targetLanguageCode: targetLanguageCode,
+          model: AiModelConfig.localAiLlmModel,
+        );
       case AiProviderType.openai:
         return await translateOpenAI(
           apiKey: apiKey,
@@ -70,35 +79,42 @@ class TranslationService {
         {
           'role': 'system',
           'content':
-              'You are a precise translation engine. Output only the translated text without additional commentary.'
+              'You are a precise translation engine. Output only the translated text without additional commentary.',
         },
         {
           'role': 'user',
           'content':
-              'Translate the following text to ${_codeToHuman(targetLanguageCode)}. Keep tone and meaning. Text:\n\n$text'
-        }
+              'Translate the following text to ${_codeToHuman(targetLanguageCode)}. Keep tone and meaning. Text:\n\n$text',
+        },
       ],
     });
 
     final sw = Stopwatch()..start();
     DebugConsole.logApiStart(
-        method: 'POST',
-        url: uri,
-        requestBytes: utf8.encode(body).length,
-        note: 'OpenAI translate');
+      method: 'POST',
+      url: uri,
+      requestBytes: utf8.encode(body).length,
+      note: 'OpenAI translate',
+    );
     DebugConsole.logApiRequest(
-        method: 'POST', url: uri, headers: headers, body: body);
+      method: 'POST',
+      url: uri,
+      headers: headers,
+      body: body,
+    );
     final res = await http.post(uri, headers: headers, body: body);
     sw.stop();
     DebugConsole.logApiEnd(
-        status: res.statusCode,
-        elapsedMs: sw.elapsedMilliseconds,
-        responseBytes: res.bodyBytes.length);
+      status: res.statusCode,
+      elapsedMs: sw.elapsedMilliseconds,
+      responseBytes: res.bodyBytes.length,
+    );
     DebugConsole.logApiResponse(
-        status: res.statusCode,
-        headers: res.headers,
-        body: res.body,
-        title: 'API response (OpenAI translate)');
+      status: res.statusCode,
+      headers: res.headers,
+      body: res.body,
+      title: 'API response (OpenAI translate)',
+    );
     if (res.statusCode >= 200 && res.statusCode < 300) {
       final data = json.decode(res.body) as Map<String, dynamic>;
       final choices = data['choices'] as List<dynamic>?;
@@ -117,8 +133,11 @@ class TranslationService {
       final msg = err['error']?['message'];
       if (msg is String && msg.isNotEmpty) apiMessage = msg;
     } catch (_) {}
-    throw AppException.fromHttp(res.statusCode,
-        apiMessage: apiMessage, fallback: 'Translation failed');
+    throw AppException.fromHttp(
+      res.statusCode,
+      apiMessage: apiMessage,
+      fallback: 'Translation failed',
+    );
   }
 
   Future<String> translateGemini({
@@ -130,7 +149,8 @@ class TranslationService {
     if (text.trim().isEmpty) return text;
 
     final uri = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey');
+      'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey',
+    );
     final headers = {'Content-Type': 'application/json'};
     final body = json.encode({
       'contents': [
@@ -139,32 +159,39 @@ class TranslationService {
           'parts': [
             {
               'text':
-                  'Translate the following text to ${_codeToHuman(targetLanguageCode)}. Output only the translated text. Text:\n\n$text'
-            }
-          ]
-        }
-      ]
+                  'Translate the following text to ${_codeToHuman(targetLanguageCode)}. Output only the translated text. Text:\n\n$text',
+            },
+          ],
+        },
+      ],
     });
 
     final sw = Stopwatch()..start();
     DebugConsole.logApiStart(
-        method: 'POST',
-        url: uri,
-        requestBytes: utf8.encode(body).length,
-        note: 'Gemini translate');
+      method: 'POST',
+      url: uri,
+      requestBytes: utf8.encode(body).length,
+      note: 'Gemini translate',
+    );
     DebugConsole.logApiRequest(
-        method: 'POST', url: uri, headers: headers, body: body);
+      method: 'POST',
+      url: uri,
+      headers: headers,
+      body: body,
+    );
     final res = await http.post(uri, headers: headers, body: body);
     sw.stop();
     DebugConsole.logApiEnd(
-        status: res.statusCode,
-        elapsedMs: sw.elapsedMilliseconds,
-        responseBytes: res.bodyBytes.length);
+      status: res.statusCode,
+      elapsedMs: sw.elapsedMilliseconds,
+      responseBytes: res.bodyBytes.length,
+    );
     DebugConsole.logApiResponse(
-        status: res.statusCode,
-        headers: res.headers,
-        body: res.body,
-        title: 'API response (Gemini translate)');
+      status: res.statusCode,
+      headers: res.headers,
+      body: res.body,
+      title: 'API response (Gemini translate)',
+    );
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
       final data = json.decode(res.body) as Map<String, dynamic>;
@@ -180,8 +207,91 @@ class TranslationService {
       }
       return out.trim();
     }
-    throw AppException.fromHttp(res.statusCode,
-        fallback: 'Gemini translation failed');
+    throw AppException.fromHttp(
+      res.statusCode,
+      fallback: 'Gemini translation failed',
+    );
+  }
+
+  Future<String> translateOllama({
+    required String endpoint,
+    required String text,
+    required String targetLanguageCode,
+    String model = AiModelConfig.localAiLlmModel,
+  }) async {
+    if (text.trim().isEmpty) return text;
+    if (endpoint.trim().isEmpty) {
+      throw const AppException('Local AI LLM URL is not configured.');
+    }
+
+    final uri = Uri.parse(endpoint.trim());
+    final headers = {
+      'Content-Type': 'application/json',
+    };
+    final body = json.encode({
+      'model': model,
+      'stream': false,
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a precise translation engine. Output only the translated text without additional commentary.',
+        },
+        {
+          'role': 'user',
+          'content':
+              'Translate the following text to ${_codeToHuman(targetLanguageCode)}. Keep tone and meaning. Text:\n\n$text',
+        },
+      ],
+    });
+
+    await LocalAiHealthService.checkLlm(
+      endpoint: endpoint,
+      model: model,
+    );
+
+    final sw = Stopwatch()..start();
+    DebugConsole.logApiStart(
+      method: 'POST',
+      url: uri,
+      requestBytes: utf8.encode(body).length,
+      note: 'Local AI translate',
+    );
+    DebugConsole.logApiRequest(
+      method: 'POST',
+      url: uri,
+      headers: headers,
+      body: body,
+    );
+    final res = await http.post(uri, headers: headers, body: body);
+    sw.stop();
+    DebugConsole.logApiEnd(
+      status: res.statusCode,
+      elapsedMs: sw.elapsedMilliseconds,
+      responseBytes: res.bodyBytes.length,
+    );
+    DebugConsole.logApiResponse(
+      status: res.statusCode,
+      headers: res.headers,
+      body: res.body,
+      title: 'API response (Local AI translate)',
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return LocalAiResponseParser.ollamaMessageContent(res.body);
+    }
+
+    String? apiMessage;
+    try {
+      final err = json.decode(res.body) as Map<String, dynamic>;
+      final msg = err['error']?['message'] ?? err['message'];
+      if (msg is String && msg.isNotEmpty) apiMessage = msg;
+    } catch (_) {}
+    throw AppException.fromHttp(
+      res.statusCode,
+      apiMessage: apiMessage,
+      fallback: 'Local AI translation failed',
+    );
   }
 
   // xAI (Grok) translation via OpenAI-compatible Chat Completions
@@ -205,13 +315,13 @@ class TranslationService {
         {
           'role': 'system',
           'content':
-              'You are a precise translation engine. Output only the translated text without additional commentary.'
+              'You are a precise translation engine. Output only the translated text without additional commentary.',
         },
         {
           'role': 'user',
           'content':
-              'Translate the following text to ${_codeToHuman(targetLanguageCode)}. Keep tone and meaning. Text:\n\n$text'
-        }
+              'Translate the following text to ${_codeToHuman(targetLanguageCode)}. Keep tone and meaning. Text:\n\n$text',
+        },
       ],
     };
     if (reasoningEffort != null && reasoningEffort.trim().isNotEmpty) {
@@ -221,23 +331,30 @@ class TranslationService {
 
     final sw = Stopwatch()..start();
     DebugConsole.logApiStart(
-        method: 'POST',
-        url: uri,
-        requestBytes: utf8.encode(body).length,
-        note: 'xAI translate');
+      method: 'POST',
+      url: uri,
+      requestBytes: utf8.encode(body).length,
+      note: 'xAI translate',
+    );
     DebugConsole.logApiRequest(
-        method: 'POST', url: uri, headers: headers, body: body);
+      method: 'POST',
+      url: uri,
+      headers: headers,
+      body: body,
+    );
     final res = await http.post(uri, headers: headers, body: body);
     sw.stop();
     DebugConsole.logApiEnd(
-        status: res.statusCode,
-        elapsedMs: sw.elapsedMilliseconds,
-        responseBytes: res.bodyBytes.length);
+      status: res.statusCode,
+      elapsedMs: sw.elapsedMilliseconds,
+      responseBytes: res.bodyBytes.length,
+    );
     DebugConsole.logApiResponse(
-        status: res.statusCode,
-        headers: res.headers,
-        body: res.body,
-        title: 'API response (xAI translate)');
+      status: res.statusCode,
+      headers: res.headers,
+      body: res.body,
+      title: 'API response (xAI translate)',
+    );
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
       final data = json.decode(res.body) as Map<String, dynamic>;
@@ -257,8 +374,11 @@ class TranslationService {
       final msg = err['error']?['message'];
       if (msg is String && msg.isNotEmpty) apiMessage = msg;
     } catch (_) {}
-    throw AppException.fromHttp(res.statusCode,
-        apiMessage: apiMessage, fallback: 'xAI translation failed');
+    throw AppException.fromHttp(
+      res.statusCode,
+      apiMessage: apiMessage,
+      fallback: 'xAI translation failed',
+    );
   }
 
   Future<String> translateAnthropic({

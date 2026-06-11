@@ -22,12 +22,13 @@ header {
 
 main {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   gap: 10px;
   padding: 12px;
 }
 
-button {
+button,
+select {
   min-height: 34px;
   border: 1px solid #bcccdc;
   border-radius: 6px;
@@ -35,6 +36,9 @@ button {
   background: #fff;
   color: #102a43;
   font: inherit;
+}
+
+button {
   cursor: pointer;
 }
 
@@ -47,6 +51,11 @@ button:first-of-type {
 button:disabled {
   cursor: default;
   opacity: 0.65;
+}
+
+select {
+  max-width: 108px;
+  padding-right: 8px;
 }
 
 #status {

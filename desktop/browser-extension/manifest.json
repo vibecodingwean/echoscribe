@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "EchoScribe Web Summary",
   "description": "Summarizes the current page through the local EchoScribe app.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAw5feX+pKmvnJP7DUnuhR+Hr3C+NoZu8PK7XLBwGL7MOatsOMPJUB7GLLMA6x/m5PXbpHnQ78IjvXzsXW3AqYQevxWKFvSB5oBS1uaIWZkNH5AG+z/beIInFtZHWDfWkIsBYhpUu/RdGlrB5cuyWUCzxlMH+7EWu3yGHUo5qoNOwjNUx8ih8OS4iQuvq78RX8JuOjKh8xUiDxDd761CZYJJEn7cpq9onOWymYUfwFkrxE3L2SrWj7p0DZyP+L2iVFe0W9txChZgjto5mlMcdn9mrwaPDmZvbxRRCa0kIB5Qsjr4oVeYSVEOFMZoWLF8iDzBU+3JOAvCNaHeualJygiQIDAQAB",
   "permissions": [
     "activeTab",

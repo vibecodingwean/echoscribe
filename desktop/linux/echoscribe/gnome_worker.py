@@ -99,6 +99,8 @@ def provider_config(config: Config) -> tuple[str, dict[str, Any]]:
 
 def missing_provider_key(config: Config) -> str:
     provider_name, _ = provider_config(config)
+    if provider_name == "localai":
+        return ""
     if config.provider_api_key(provider_name):
         return ""
     return default_api_key_env(provider_name)
@@ -159,14 +161,18 @@ def stop_recording(config: Config, paste: bool = True) -> dict[str, Any]:
     with worker_lock():
         current = read_state()
         if current.get("state") != "recording":
-            return current
+            return write_state(idle_state())
         pid = int(current.get("pid", 0))
         pgid = int(current.get("pgid", pid))
         raw_path = str(current.get("path", ""))
         path = Path(raw_path) if raw_path else Path()
-        stop_process_group(pgid or pid)
+        was_running = process_is_alive(pid)
+        if was_running:
+            stop_process_group(pgid or pid)
         minimum_bytes = int(config.data["recorder"].get("minimum_bytes", 2048))
         if not raw_path or not path.exists() or path.stat().st_size < minimum_bytes:
+            if not was_running:
+                return write_state(idle_state())
             return write_state(
                 {
                     "state": "error",
@@ -229,11 +235,13 @@ def process_group_is_alive(pgid: int) -> bool:
 
 def transcribe(config: Config, path: Path) -> str:
     provider_name, transcription_cfg = provider_config(config)
-    client = create_provider(provider_name, config.provider_api_key(provider_name))
+    api_key = "" if provider_name == "localai" else config.provider_api_key(provider_name)
+    client = create_provider(provider_name, api_key)
     text = client.transcribe(
         path,
         model=str(transcription_cfg["transcription_model"]),
         language=str(transcription_cfg.get("target_language", "auto")),
+        endpoint=str(transcription_cfg.get("whisper_url", "")),
         stt_format=as_bool(transcription_cfg.get("stt_format", False)),
         tag_audio_events=as_bool(transcription_cfg.get("tag_audio_events", False)),
     )
@@ -325,4 +333,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))
-

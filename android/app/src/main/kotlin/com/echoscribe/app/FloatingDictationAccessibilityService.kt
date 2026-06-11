@@ -632,6 +632,35 @@ class FloatingDictationAccessibilityService : AccessibilityService() {
             return
         }
 
+        if (config.provider == "localAi") {
+            uiState = UiState.Processing
+            renderOverlay()
+            Thread {
+                try {
+                    NativeDictationApiClient(config).preflightLocalAi()
+                    mainHandler.post { startRecordingNow() }
+                } catch (e: Exception) {
+                    mainHandler.post {
+                        showMessage(e.message ?: "Local AI is not reachable")
+                    }
+                }
+            }.start()
+            return
+        }
+
+        startRecordingNow()
+    }
+
+    private fun startRecordingNow() {
+        if (!hasMicrophonePermission()) {
+            showMessage("Microphone permission required")
+            return
+        }
+        if (focusedNode == null || !isSafeEditableNode(focusedNode!!)) {
+            showMessage("Select a text field first")
+            return
+        }
+
         try {
             previewText = ""
             recordingFile = File(cacheDir, "floating_dictation_${System.currentTimeMillis()}.m4a")

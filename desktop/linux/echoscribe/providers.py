@@ -230,11 +230,48 @@ class ElevenLabsProvider:
         return text
 
 
+class LocalAIProvider:
+    def __init__(self, timeout: int = 180) -> None:
+        self.timeout = timeout
+
+    def transcribe(
+        self,
+        audio_path: Path,
+        model: str = "whisper-1",
+        language: str = "auto",
+        endpoint: str = "",
+        **_: Any,
+    ) -> str:
+        if not endpoint:
+            raise ApiError("Local AI Whisper URL is not configured")
+        data: dict[str, str] = {"model": model, "response_format": "json"}
+        if language and language != "auto":
+            data["language"] = language
+        response = post_multipart(
+            endpoint,
+            headers={},
+            fields=data,
+            files={
+                "file": (
+                    patched_audio_filename(audio_path),
+                    audio_path.read_bytes(),
+                    guess_mime_type(audio_path),
+                )
+            },
+            timeout=self.timeout,
+        )
+        payload = json_or_error(response)
+        text = str(payload.get("text", "")).strip()
+        if not text:
+            raise ApiError("Local AI transcription returned empty text")
+        return text
+
+
 def create_provider(
     provider: str,
     api_key: str,
     timeout: int = 180,
-) -> OpenAIProvider | GeminiProvider | XAIProvider | ElevenLabsProvider:
+) -> OpenAIProvider | GeminiProvider | XAIProvider | ElevenLabsProvider | LocalAIProvider:
     if provider == "openai":
         return OpenAIProvider(api_key=api_key, timeout=timeout)
     if provider == "gemini":
@@ -243,6 +280,8 @@ def create_provider(
         return XAIProvider(api_key=api_key, timeout=timeout)
     if provider == "elevenlabs":
         return ElevenLabsProvider(api_key=api_key, timeout=timeout)
+    if provider == "localai":
+        return LocalAIProvider(timeout=timeout)
     raise ValueError(f"Unsupported API provider: {provider}")
 
 
