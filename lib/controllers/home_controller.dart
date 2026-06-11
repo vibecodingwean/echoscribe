@@ -679,6 +679,7 @@ class HomeController extends ChangeNotifier {
         updateDisplayWithLogs("");
       } else {
         await _preflightLocalAiForRecording();
+        content.setTranscribing(false);
         await recorder.startRecording();
         final didStart = await recorder.isRecording();
         if (!didStart) {
@@ -703,12 +704,14 @@ class HomeController extends ChangeNotifier {
     } on AppException catch (e) {
       if (isRealtime) _cleanupRealtime();
       content.setRecording(false);
+      content.setTranscribing(false);
       content.stopTimer();
       content.appendLogLine('⚠️ ${e.userMessage}');
       showError(e.userMessage);
     } catch (e) {
       if (isRealtime) _cleanupRealtime();
       content.setRecording(false);
+      content.setTranscribing(false);
       content.stopTimer();
       content.appendLogLine('⚠️ Recording not started: $e');
       showError('Microphone permission required or connection failed');
@@ -718,13 +721,16 @@ class HomeController extends ChangeNotifier {
   Future<bool> _preflightLocalAiForRecording() async {
     if (settings.provider != AiProviderType.localAi) return false;
 
+    content.setTranscribing(true);
     content.appendLogLine('🔌 Checking Local AI before recording...');
+    content.appendLogLine('• Whisper reachability...');
     final whisper = await LocalAiHealthService.checkWhisper(
       endpoint: settings.localAiWhisperUrl,
       model: _getModelForTranscription(),
     );
     content.appendLogLine('✅ ${whisper.message}');
 
+    content.appendLogLine('• LLM reachability...');
     final llm = await LocalAiHealthService.checkLlm(
       endpoint: settings.localAiLlmUrl,
       model: _getModelForSummary(),
