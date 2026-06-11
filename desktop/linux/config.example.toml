@@ -8,13 +8,13 @@
 dictation_hold = ["fn+a"]
 
 [providers]
-# Supported values: "openai", "gemini", "xai", "elevenlabs".
+# Supported values: "openai", "gemini", "xai", "elevenlabs", "localai".
 transcription = "openai"
-# Supported values: "openai", "gemini", "anthropic", "xai".
+# Supported values: "openai", "gemini", "anthropic", "xai", "localai".
 summary = "openai"
 
 [summary]
-target_language = "de"
+target_language = "auto"
 app_fetch_url = true
 url_summary_prompt = ""
 xai_reasoning_effort = "none"
@@ -29,8 +29,8 @@ target_language = "auto"
 [gemini]
 api_key = ""
 api_key_env = "GEMINI_API_KEY"
-transcription_model = "gemini-3.1-flash-lite"
-summary_model = "gemini-3.1-flash-lite"
+transcription_model = "gemini-3.5-flash"
+summary_model = "gemini-3.5-flash"
 target_language = "auto"
 
 [xai]
@@ -55,6 +55,15 @@ target_language = "auto"
 # ElevenLabs tags laughter and other audio events by default; dictation keeps raw text.
 tag_audio_events = false
 
+[localai]
+# Ollama-compatible chat endpoint for summaries and translation.
+llm_url = "http://192.168.178.20:11434/api/chat"
+summary_model = "qwen2.5:3b"
+# OpenAI-compatible Whisper transcription endpoint.
+whisper_url = "http://192.168.178.20:8000/v1/audio/transcriptions"
+transcription_model = "whisper-1"
+target_language = "auto"
+
 [recorder]
 # Leave empty for auto: Linux uses ffmpeg pulse input, falling back to arecord.
 command = ""
@@ -74,4 +83,3 @@ margin_px = 24
 top_px = 72
 icon_size_px = 58
 toast_ms = 1800
-

@@ -14,14 +14,21 @@ except ModuleNotFoundError:  # pragma: no cover - used on Python 3.9/3.10.
     tomllib = None  # type: ignore[assignment]
 
 
-TRANSCRIPTION_PROVIDERS = {"openai", "gemini", "xai", "elevenlabs"}
-SUMMARY_PROVIDERS = {"openai", "gemini", "anthropic", "xai"}
+TRANSCRIPTION_PROVIDERS = {"openai", "gemini", "xai", "elevenlabs", "localai"}
+SUMMARY_PROVIDERS = {"openai", "gemini", "anthropic", "xai", "localai"}
 ALL_PROVIDERS = TRANSCRIPTION_PROVIDERS | SUMMARY_PROVIDERS
+DEFAULT_LOCAL_AI_LLM_URL = "http://192.168.178.20:11434/api/chat"
+DEFAULT_LOCAL_AI_WHISPER_URL = "http://192.168.178.20:8000/v1/audio/transcriptions"
 DEFAULT_SUMMARY_MODELS = {
     "openai": "gpt-5.4-mini",
-    "gemini": "gemini-3.1-flash-lite",
+    "gemini": "gemini-3.5-flash",
     "anthropic": "claude-sonnet-4-6",
     "xai": "grok-4.3",
+    "localai": "qwen2.5:3b",
+}
+
+DEPRECATED_MODEL_DEFAULTS = {
+    "gemini-3.1-flash-lite": "gemini-3.5-flash",  # model-migration-ok
 }
 
 
@@ -34,7 +41,7 @@ DEFAULTS: dict[str, Any] = {
         "summary": "openai",
     },
     "summary": {
-        "target_language": "de",
+        "target_language": "auto",
         "url_summary_prompt": "",
         "app_fetch_url": True,
         "xai_reasoning_effort": "none",
@@ -49,8 +56,8 @@ DEFAULTS: dict[str, Any] = {
     "gemini": {
         "api_key": "",
         "api_key_env": "GEMINI_API_KEY",
-        "transcription_model": "gemini-3.1-flash-lite",
-        "summary_model": "gemini-3.1-flash-lite",
+        "transcription_model": "gemini-3.5-flash",
+        "summary_model": "gemini-3.5-flash",
         "target_language": "auto",
     },
     "xai": {
@@ -73,6 +80,13 @@ DEFAULTS: dict[str, Any] = {
         "target_language": "auto",
         "tag_audio_events": False,
     },
+    "localai": {
+        "llm_url": DEFAULT_LOCAL_AI_LLM_URL,
+        "whisper_url": DEFAULT_LOCAL_AI_WHISPER_URL,
+        "transcription_model": "whisper-1",
+        "summary_model": "qwen2.5:3b",
+        "target_language": "auto",
+    },
     "recorder": {
         "command": "",
         "minimum_bytes": 2048,
@@ -92,6 +106,17 @@ DEFAULTS: dict[str, Any] = {
     },
 }
 
+WINDOWS_SECRETS_DIR = Path(r"D:\Dokumente\Projekte\.secrets")
+
+
+def default_secret_file(filename: str) -> Path:
+    configured = os.environ.get("LLM_SKILLS_SECRETS_DIR") or os.environ.get("PROJECTS_SECRETS_DIR")
+    if configured:
+        return Path(configured).expanduser() / filename
+    if os.name == "nt" or WINDOWS_SECRETS_DIR.exists():
+        return WINDOWS_SECRETS_DIR / filename
+    return Path.home() / ".secrets" / filename
+
 
 @dataclass(frozen=True)
 class Config:
@@ -106,6 +131,8 @@ class Config:
 
     def provider_api_key(self, provider: str) -> str:
         provider = normalize_provider(provider)
+        if provider == "localai":
+            return ""
         section = self.data[provider]
         configured = str(section.get("api_key", "")).strip()
         if configured:
@@ -172,8 +199,8 @@ def env_file_path() -> Path:
     configured = os.environ.get("ECHOSCRIBE_ENV_FILE")
     if configured:
         return Path(configured).expanduser()
-    preferred = Path("~/.secrets/echoscribe.env").expanduser()
-    legacy = Path(os.environ.get("WISPR_ENV_FILE", "~/.secrets/wispr.env")).expanduser()
+    preferred = default_secret_file("echoscribe.env")
+    legacy = Path(os.environ.get("WISPR_ENV_FILE", str(default_secret_file("wispr.env")))).expanduser()
     if preferred.exists() or not legacy.exists():
         return preferred
     return legacy
@@ -201,6 +228,10 @@ def normalize_provider(provider: str) -> str:
         "eleven": "elevenlabs",
         "elevenlabs": "elevenlabs",
         "11labs": "elevenlabs",
+        "local": "localai",
+        "local-ai": "localai",
+        "local_ai": "localai",
+        "localai": "localai",
     }
     normalized = aliases.get(normalized, normalized)
     if normalized not in ALL_PROVIDERS:
@@ -364,5 +395,12 @@ def load_config(project_dir: Path | None = None) -> Config:
 
 
 def migrate_loaded_config(data: dict[str, Any]) -> None:
-    pass
-
+    for section_name in ALL_PROVIDERS:
+        section = data.get(section_name)
+        if not isinstance(section, dict):
+            continue
+        for key in ("transcription_model", "summary_model"):
+            value = str(section.get(key, "")).strip()
+            replacement = DEPRECATED_MODEL_DEFAULTS.get(value)
+            if replacement:
+                section[key] = replacement

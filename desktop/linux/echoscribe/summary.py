@@ -10,6 +10,18 @@ from .openai_client import ApiError
 from .providers import gemini_text
 
 
+LOCAL_AI_MAX_SOURCE_CHARS = 1200
+LOCAL_AI_MAX_OUTPUT_TOKENS = 180
+LOCAL_AI_TIMEOUT_SECONDS = 75
+LOCAL_AI_SUMMARY_PROMPT = (
+    "Summarize the webpage content using only facts present in the text. "
+    "If the content has multiple distinct aspects, use 2-4 short sections. "
+    'Each section starts with a short "##" heading and one fitting emoji, '
+    "followed by one concise sentence. "
+    "If the content is simple, write 1-3 concise sentences. "
+    "Do not add prefaces, labels, or meta commentary."
+)
+
 DEFAULT_URL_SUMMARY_PROMPT = """Summarize the provided webpage content.
 
 Rules:
@@ -41,17 +53,24 @@ def resolve_summary_provider(config: Config, requested: str = "") -> str:
         provider = normalize_provider(candidate)
         if provider in SUMMARY_PROVIDERS:
             return provider
-    for provider in ("openai", "gemini", "anthropic", "xai"):
+    for provider in ("openai", "gemini", "anthropic", "xai", "localai"):
         if config.provider_api_key(provider):
             return provider
     return "openai"
 
 
-def build_prompt(config: Config, source_text: str, requested_language: str = "") -> tuple[str, str]:
+def build_prompt(
+    config: Config,
+    source_text: str,
+    requested_language: str = "",
+    provider: str = "",
+) -> tuple[str, str]:
     summary_cfg = config.data.get("summary", {})
     if not isinstance(summary_cfg, dict):
         summary_cfg = {}
-    base_prompt = str(summary_cfg.get("url_summary_prompt", "")).strip() or DEFAULT_URL_SUMMARY_PROMPT
+    base_prompt = str(summary_cfg.get("url_summary_prompt", "")).strip()
+    if not base_prompt:
+        base_prompt = LOCAL_AI_SUMMARY_PROMPT if provider == "localai" else DEFAULT_URL_SUMMARY_PROMPT
     language = requested_language.strip() or str(summary_cfg.get("target_language", "de")).strip()
     directive = language_directive(language)
     system_prompt = (
@@ -65,10 +84,12 @@ def build_prompt(config: Config, source_text: str, requested_language: str = "")
 def summarize(config: Config, source_text: str, provider: str = "", requested_language: str = "") -> dict[str, str]:
     resolved = resolve_summary_provider(config, provider)
     model = config.summary_model(resolved)
-    api_key = config.provider_api_key(resolved)
-    if not api_key:
+    api_key = "" if resolved == "localai" else config.provider_api_key(resolved)
+    if resolved != "localai" and not api_key:
         raise ApiError(f"API key for summary provider '{resolved}' is missing")
-    system_prompt, user_prompt = build_prompt(config, source_text, requested_language)
+    if resolved == "localai":
+        source_text = limit_local_ai_source(source_text)
+    system_prompt, user_prompt = build_prompt(config, source_text, requested_language, resolved)
     if resolved == "openai":
         text = summarize_openai(api_key, model, system_prompt, user_prompt)
     elif resolved == "gemini":
@@ -81,6 +102,10 @@ def summarize(config: Config, source_text: str, provider: str = "", requested_la
         if isinstance(summary_cfg, dict):
             effort = str(summary_cfg.get("xai_reasoning_effort", "none")).strip()
         text = summarize_xai(api_key, model, system_prompt, user_prompt, effort)
+    elif resolved == "localai":
+        section = config.data.get("localai", {})
+        endpoint = str(section.get("llm_url", "") if isinstance(section, dict) else "").strip()
+        text = summarize_local_ai(endpoint, model, system_prompt, user_prompt)
     else:  # pragma: no cover - guarded by resolve_summary_provider.
         raise ApiError(f"Unsupported summary provider '{resolved}'")
     return {"summary": text.strip(), "provider": resolved, "model": model}
@@ -160,6 +185,44 @@ def summarize_xai(api_key: str, model: str, system_prompt: str, prompt: str, rea
     )
     body = json_or_error(response)
     return str(body["choices"][0]["message"].get("content", ""))
+
+
+def summarize_local_ai(endpoint: str, model: str, system_prompt: str, prompt: str) -> str:
+    if not endpoint:
+        raise ApiError("Local AI LLM URL is not configured")
+    payload = {
+        "model": model,
+        "stream": False,
+        "options": {
+            "num_ctx": 2048,
+            "num_predict": LOCAL_AI_MAX_OUTPUT_TOKENS,
+            "temperature": 0.2,
+        },
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt},
+        ],
+    }
+    response = http_post_json(
+        endpoint,
+        headers={},
+        body=payload,
+        timeout=LOCAL_AI_TIMEOUT_SECONDS,
+    )
+    body = json_or_error(response)
+    message = body.get("message", {})
+    if not isinstance(message, dict):
+        return ""
+    return str(message.get("content", ""))
+
+
+def limit_local_ai_source(source_text: str) -> str:
+    if len(source_text) <= LOCAL_AI_MAX_SOURCE_CHARS:
+        return source_text
+    return (
+        source_text[:LOCAL_AI_MAX_SOURCE_CHARS]
+        + "\n\n[Content truncated for Local AI performance.]"
+    )
 
 
 def json_or_error(response: HttpResponse) -> dict[str, Any]:

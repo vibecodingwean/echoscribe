@@ -21,12 +21,17 @@ data class NativeDictationConfig(
     val formattingModel: String,
     val reasoningEffort: String,
     val supportsDictation: Boolean,
+    val localAiLlmUrl: String,
+    val localAiWhisperUrl: String,
 ) {
     fun isReadyForDictation(): Boolean {
-        return enabled && supportsDictation && provider != "anthropic" && apiKey.isNotBlank()
+        return enabled && hasUsableProvider()
     }
 
     fun hasUsableProvider(): Boolean {
+        if (provider == "localAi") {
+            return supportsDictation && localAiLlmUrl.isNotBlank() && localAiWhisperUrl.isNotBlank()
+        }
         return supportsDictation && provider != "anthropic" && apiKey.isNotBlank()
     }
 }
@@ -46,6 +51,8 @@ class NativeDictationConfigStore(private val context: Context) {
         write(editor, "formattingModel", args["formattingModel"]?.toString().orEmpty())
         write(editor, "reasoningEffort", args["reasoningEffort"]?.toString().orEmpty())
         write(editor, "supportsDictation", if (args["supportsDictation"] == true) "1" else "0")
+        write(editor, "localAiLlmUrl", args["localAiLlmUrl"]?.toString().orEmpty())
+        write(editor, "localAiWhisperUrl", args["localAiWhisperUrl"]?.toString().orEmpty())
         editor.apply()
     }
 
@@ -62,6 +69,8 @@ class NativeDictationConfigStore(private val context: Context) {
             formattingModel = read("formattingModel").orEmpty(),
             reasoningEffort = read("reasoningEffort").orEmpty(),
             supportsDictation = read("supportsDictation") == "1",
+            localAiLlmUrl = read("localAiLlmUrl").orEmpty(),
+            localAiWhisperUrl = read("localAiWhisperUrl").orEmpty(),
         )
     }
 

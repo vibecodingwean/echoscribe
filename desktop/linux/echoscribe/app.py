@@ -220,14 +220,16 @@ class EchoScribeApp:
         try:
             transcription_provider_name = self.config.active_provider("transcription")
             transcription_cfg = self.config.data[transcription_provider_name]
+            api_key = "" if transcription_provider_name == "localai" else self.config.provider_api_key(transcription_provider_name)
             transcription_client = create_provider(
                 transcription_provider_name,
-                self.config.provider_api_key(transcription_provider_name),
+                api_key,
             )
             raw = transcription_client.transcribe(
                 path,
                 model=str(transcription_cfg["transcription_model"]),
                 language=str(transcription_cfg.get("target_language", "auto")),
+                endpoint=str(transcription_cfg.get("whisper_url", "")),
                 stt_format=as_bool(transcription_cfg.get("stt_format", False)),
                 tag_audio_events=as_bool(transcription_cfg.get("tag_audio_events", False)),
             )
@@ -260,7 +262,7 @@ class EchoScribeApp:
         return [
             default_api_key_env(provider)
             for provider in sorted(providers)
-            if not self.config.provider_api_key(provider)
+            if provider != "localai" and not self.config.provider_api_key(provider)
         ]
 
 
@@ -281,6 +283,10 @@ def doctor(config: Config) -> list[str]:
         findings.append(f"summary config: {exc}")
     for provider in ("openai", "gemini", "anthropic", "xai", "elevenlabs"):
         findings.append(f"{provider} key: {'ok' if config.provider_api_key(provider) else 'missing'}")
+    localai = config.data.get("localai", {})
+    if isinstance(localai, dict):
+        findings.append(f"localai llm url: {'ok' if str(localai.get('llm_url', '')).strip() else 'missing'}")
+        findings.append(f"localai whisper url: {'ok' if str(localai.get('whisper_url', '')).strip() else 'missing'}")
     findings.extend(platform_doctor(config))
     return findings
 

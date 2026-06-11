@@ -57,8 +57,9 @@ class FloatingDictationStatus {
 }
 
 class FloatingDictationService {
-  static const MethodChannel _channel =
-      MethodChannel('com.echoscribe.app/floating_dictation');
+  static const MethodChannel _channel = MethodChannel(
+    'com.echoscribe.app/floating_dictation',
+  );
 
   static bool get isAndroid =>
       defaultTargetPlatform == TargetPlatform.android;
@@ -66,8 +67,9 @@ class FloatingDictationService {
   static Future<FloatingDictationStatus> getStatus() async {
     if (!isAndroid) return FloatingDictationStatus.unavailable();
     try {
-      final result =
-          await _channel.invokeMapMethod<String, dynamic>('getStatus');
+      final result = await _channel.invokeMapMethod<String, dynamic>(
+        'getStatus',
+      );
       return FloatingDictationStatus.fromMap(result ?? const {});
     } on MissingPluginException {
       return FloatingDictationStatus.unavailable();
@@ -94,9 +96,12 @@ class FloatingDictationService {
       'transcriptionModel': _transcriptionModel(settings),
       'formattingModel': _formattingModel(settings),
       'reasoningEffort': _reasoningEffort(settings),
+      'localAiLlmUrl': settings.localAiLlmUrl,
+      'localAiWhisperUrl': settings.localAiWhisperUrl,
       'supportsDictation': provider == AiProviderType.openai ||
           provider == AiProviderType.gemini ||
-          provider == AiProviderType.xai,
+          provider == AiProviderType.xai ||
+          provider == AiProviderType.localAi,
     };
     try {
       await _channel.invokeMethod<void>('syncConfig', payload);
@@ -120,6 +125,8 @@ class FloatingDictationService {
         return AiModelConfig.geminiTranscription(pro: settings.geminiPro);
       case AiProviderType.xai:
         return AiModelConfig.xaiTranscription(pro: settings.xaiPro);
+      case AiProviderType.localAi:
+        return settings.localAiWhisperModel;
       case AiProviderType.openai:
       case AiProviderType.anthropic:
         return AiModelConfig.openAiTranscription(pro: settings.openAiPro);
@@ -132,6 +139,8 @@ class FloatingDictationService {
         return AiModelConfig.geminiSummary(pro: settings.geminiPro);
       case AiProviderType.xai:
         return AiModelConfig.xaiSummary(pro: settings.xaiPro);
+      case AiProviderType.localAi:
+        return settings.localAiLlmModel;
       case AiProviderType.anthropic:
         return AiModelConfig.anthropicSummary(pro: settings.anthropicPro);
       case AiProviderType.openai:

@@ -15,13 +15,13 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 
 ### 🎙️ Audio & Transcription
 - **On-Device Recording:** Capture high-quality audio with live amplitude feedback.
-- **OpenAI, Gemini & xAI Support:** Choose OpenAI, Google Gemini, or xAI Grok for voice transcription.
+- **OpenAI, Gemini, xAI & Local AI Support:** Choose OpenAI, Google Gemini, xAI Grok, or a local Whisper-compatible endpoint for voice transcription.
 - **Voice Message Summary:** Share voice messages from WhatsApp or other apps directly to EchoScribe.
 - **Note:** Claude 🦀 is text-only for app-side speech input.
 
 ### 🖥️ Desktop Companions
 - **Linux:** GNOME Shell integration for push-to-talk dictation plus local browser summary extensions.
-- **Same BYOK model:** Desktop requests go directly from your computer to the selected AI provider using your own API keys.
+- **Same BYOK/local model:** Desktop requests go directly from your computer to the selected AI provider or your own Local AI endpoints.
 
 ### ✍️ Floating Dictation on Android
 - **System-Wide Voice Input:** Enable the Android accessibility service and overlay permission to use a movable EchoScribe dictation button in editable text fields.
@@ -31,11 +31,12 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 ### ✍️ Smart Summarization
 - **Audio • Text • URL:** Summarize everything in one tap.
 - **Local URL Extraction:** A privacy-first mechanism extracts web content directly on your device, bypassing paywalls and bot-detection while keeping your browsing private. Mandatory for Claude 🦀 and Grok 𝕏.
+- **Local AI Provider:** Use an Ollama-compatible `/api/chat` endpoint for summaries/translations and an OpenAI-compatible Whisper endpoint for STT. Defaults are `qwen2.5:3b` and `whisper-1`; local model names remain editable.
 - **Custom Prompts:** Fine-tune how your summaries look and feel in the settings.
 
 ### 🚀 Pro Mode & Models
 Access the world's most powerful AI models with a single toggle:
-- **Standard (Fast):** GPT-5.4-mini, Gemini 3.1 Flash-Lite, Claude 4.6 Sonnet, Grok 4.3.
+- **Standard (Fast):** GPT-5.4-mini, Gemini 3.5 Flash, Claude 4.6 Sonnet, Grok 4.3, or local `qwen2.5:3b`.
 - **Pro Mode (Premium):** GPT-5.5, Gemini 3.1 Pro, Claude 4.8 Opus, Grok 4.3.
 
 ### 🌍 Intelligent Re-Translation
@@ -55,8 +56,9 @@ To use EchoScribe, you'll need at least one API key:
 - **Google Gemini:** [Get API Key](https://aistudio.google.com/app/apikey)
 - **Anthropic Claude:** [Get API Key](https://console.anthropic.com/settings/keys)
 - **xAI Grok:** [Get API Key](https://console.x.ai/)
+- **Local AI:** Configure your own Ollama endpoint such as `http://host:11434/api/chat` and a Whisper-compatible endpoint such as `http://host:8000/v1/audio/transcriptions`. Example local LLMs include `qwen2.5:3b`, `gemma3`, and `deepseek-r1`.
 
-*Tip: Set a usage limit in your AI provider's dashboard to keep full control over your costs.*
+*Tip: Set a usage limit in your AI provider's dashboard to keep full control over your costs. For Local AI PoC use, keep endpoints on a trusted local network or VPN; EchoScribe does not add authentication to Local AI requests.*
 
 ---
 
@@ -84,7 +86,10 @@ cd EchoScribe-Linux-GNOME-<version>/linux
 ./install.sh
 ```
 
-The wizard is intended for Debian-based GNOME systems. It installs dependencies, creates the Python environment, writes local config, stores provider keys in `~/.secrets/echoscribe.env`, installs the GNOME Shell extension, and can register Native Messaging hosts for Chromium-based browsers and Firefox.
+The wizard is intended for Debian-based GNOME systems. It installs dependencies,
+creates the Python environment, writes local config, stores provider keys in the
+configured per-user secret env file, installs the GNOME Shell extension, and can
+register Native Messaging hosts for Chromium-based browsers and Firefox.
 
 Browser extensions are loaded manually:
 

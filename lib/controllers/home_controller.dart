@@ -13,6 +13,7 @@ import 'package:echoscribe/models/transcription_item.dart';
 import 'package:echoscribe/services/tts_service.dart';
 import 'package:echoscribe/models/enums.dart';
 import 'package:echoscribe/models/app_exception.dart';
+import 'package:echoscribe/services/local_ai_health_service.dart';
 
 import 'package:echoscribe/services/ai/openai_realtime_client.dart';
 
@@ -35,8 +36,9 @@ class HomeController extends ChangeNotifier {
 
   // Expose these for the UI to use
   final ValueNotifier<double> levelNotifier = ValueNotifier<double>(0.0);
-  final ValueNotifier<double> smoothedLevelNotifier =
-      ValueNotifier<double>(0.0);
+  final ValueNotifier<double> smoothedLevelNotifier = ValueNotifier<double>(
+    0.0,
+  );
   StreamSubscription<double>? _ampSub;
 
   HomeController({
@@ -86,6 +88,8 @@ class HomeController extends ChangeNotifier {
         return AiModelConfig.anthropicSummary(pro: settings.anthropicPro);
       case AiProviderType.xai:
         return AiModelConfig.xaiSummary(pro: settings.xaiPro);
+      case AiProviderType.localAi:
+        return settings.localAiLlmModel;
       case AiProviderType.openai:
         return AiModelConfig.openAiSummary(pro: settings.openAiPro);
     }
@@ -97,6 +101,8 @@ class HomeController extends ChangeNotifier {
         return AiModelConfig.geminiTranscription(pro: settings.geminiPro);
       case AiProviderType.xai:
         return AiModelConfig.xaiTranscription(pro: settings.xaiPro);
+      case AiProviderType.localAi:
+        return settings.localAiWhisperModel;
       case AiProviderType.openai:
       case AiProviderType.anthropic:
         return AiModelConfig.openAiTranscription(pro: settings.openAiPro);
@@ -111,6 +117,8 @@ class HomeController extends ChangeNotifier {
         return AiModelConfig.anthropicTranslation(pro: settings.anthropicPro);
       case AiProviderType.xai:
         return AiModelConfig.xaiTranslation(pro: settings.xaiPro);
+      case AiProviderType.localAi:
+        return settings.localAiLlmModel;
       case AiProviderType.openai:
         return AiModelConfig.openAiTranslation(pro: settings.openAiPro);
     }
@@ -129,6 +137,7 @@ class HomeController extends ChangeNotifier {
         return AiModelConfig.xaiImage(pro: true);
       case AiProviderType.openai:
         return AiModelConfig.openAiImage(pro: true);
+      case AiProviderType.localAi:
       case AiProviderType.anthropic:
         return ''; // Unsupported
     }
@@ -145,8 +154,13 @@ class HomeController extends ChangeNotifier {
     }
   }
 
-  Future<String> _transcribeAudio(String path, String filename, String mimeType,
-      {int? fileSizeBytes}) async {
+  Future<String> _transcribeAudio(
+    String path,
+    String filename,
+    String mimeType, {
+    int? fileSizeBytes,
+    bool localAiPreflightDone = false,
+  }) async {
     final brand = settings.provider.brandName;
     final model = _getModelForTranscription();
 
@@ -158,7 +172,16 @@ class HomeController extends ChangeNotifier {
     }
     content.appendLogLine('🤖 Transcription Model: $model');
 
-    final ai = aiFactory.create(settings.provider);
+    if (settings.provider == AiProviderType.localAi && !localAiPreflightDone) {
+      content.appendLogLine('🔌 Checking Local AI Whisper endpoint...');
+      final check = await LocalAiHealthService.checkWhisper(
+        endpoint: settings.localAiWhisperUrl,
+        model: model,
+      );
+      content.appendLogLine('✅ ${check.message}');
+    }
+
+    final ai = aiFactory.create(settings.provider, settings: settings);
     final text = await ai.transcribe(
       apiKey: settings.activeApiKey,
       filePath: path,
@@ -173,7 +196,10 @@ class HomeController extends ChangeNotifier {
   }
 
   Future<String> _translateIfNeeded(
-      AiProvider ai, String text, String targetLanguage) async {
+    AiProvider ai,
+    String text,
+    String targetLanguage,
+  ) async {
     if (targetLanguage == 'auto') return text;
 
     final transModel = _getModelForTranslation();
@@ -183,6 +209,15 @@ class HomeController extends ChangeNotifier {
     content.appendLogLine('🤖 Translation Model: $transModel');
     if (reasoningEffort != null) {
       content.appendLogLine('🧠 Reasoning Effort: $reasoningEffort');
+    }
+
+    if (settings.provider == AiProviderType.localAi) {
+      content.appendLogLine('🔌 Checking Local AI LLM endpoint...');
+      final check = await LocalAiHealthService.checkLlm(
+        endpoint: settings.localAiLlmUrl,
+        model: transModel,
+      );
+      content.appendLogLine('✅ ${check.message}');
     }
     content.appendLogLine('🌍 Target: $targetLanguage');
 
@@ -207,6 +242,15 @@ class HomeController extends ChangeNotifier {
       content.appendLogLine('🧠 Reasoning Effort: $reasoningEffort');
     }
 
+    if (settings.provider == AiProviderType.localAi) {
+      content.appendLogLine('🔌 Checking Local AI LLM before summary...');
+      final check = await LocalAiHealthService.checkLlm(
+        endpoint: settings.localAiLlmUrl,
+        model: sumModel,
+      );
+      content.appendLogLine('✅ ${check.message}');
+    }
+
     final summary = await ai.summarize(
       apiKey: settings.activeApiKey,
       text: text.trim(),
@@ -223,14 +267,17 @@ class HomeController extends ChangeNotifier {
   }
 
   void _saveToHistory(String text, String language) {
-    content.addHistory(TranscriptionItem(
+    content.addHistory(
+      TranscriptionItem(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         text: text,
         createdAt: DateTime.now(),
         transcript: text,
         summary: '',
         language: language,
-        mode: OutputMode.transcription.name));
+        mode: OutputMode.transcription.name,
+      ),
+    );
   }
 
   void _logFinalResponse(String text) {
@@ -252,11 +299,12 @@ class HomeController extends ChangeNotifier {
 
     if (!settings.provider.supportsImage) {
       showError(
-          '${settings.provider.brandName} does not support image generation.');
+        '${settings.provider.brandName} does not support image generation.',
+      );
       return;
     }
     if (!settings.hasActiveApiKey) {
-      showError('Add your API key first');
+      showError(settings.missingProviderConfigMessage);
       return;
     }
 
@@ -285,6 +333,7 @@ class HomeController extends ChangeNotifier {
       AiProviderType.gemini => 25,
       AiProviderType.xai => 15,
       AiProviderType.anthropic => 0,
+      AiProviderType.localAi => 0,
     };
 
     _imageCycleDone = false;
@@ -299,9 +348,11 @@ class HomeController extends ChangeNotifier {
 
         final int cyclePos = timer.tick % 9;
         if (cyclePos < 3) {
-          replaceProgressToast(remaining > 0
-              ? 'Estimate: ~$remaining seconds...'
-              : 'Waiting for reply...');
+          replaceProgressToast(
+            remaining > 0
+                ? 'Estimate: ~$remaining seconds...'
+                : 'Waiting for reply...',
+          );
         } else if (cyclePos < 6) {
           replaceProgressToast('Model: $model');
         } else {
@@ -314,7 +365,7 @@ class HomeController extends ChangeNotifier {
       content.appendLogLine('🎨 Generating image with $brand...');
       content.appendLogLine('🤖 Model: $model');
 
-      final ai = aiFactory.create(settings.provider);
+      final ai = aiFactory.create(settings.provider, settings: settings);
 
       _imageOp = CancelableOperation.fromFuture(
         ai.generateImage(
@@ -364,7 +415,7 @@ class HomeController extends ChangeNotifier {
     content.setTranscribing(true);
     try {
       content.appendLogLine('📄 Summarizing current text...');
-      final ai = aiFactory.create(settings.provider);
+      final ai = aiFactory.create(settings.provider, settings: settings);
       final summary = await _summarize(ai, source);
       try {
         await content.addToClipboard(summary);
@@ -388,13 +439,12 @@ class HomeController extends ChangeNotifier {
     required String mode,
   }) async {
     if (!settings.provider.supportsAudio) {
-      showError(
-          '${settings.provider.brandName} does not support audio files - Please select GPT, Gemini, or Grok.');
+      showError('${settings.provider.brandName} does not support audio files.');
       return false;
     }
 
     if (!settings.hasActiveApiKey) {
-      showError('Add your API key first');
+      showError(settings.missingProviderConfigMessage);
       return false;
     }
 
@@ -403,13 +453,20 @@ class HomeController extends ChangeNotifier {
 
     try {
       final sizeInBytes = File(path).lengthSync();
-      final text = await _transcribeAudio(path, filename, mimeType,
-          fileSizeBytes: sizeInBytes);
+      final text = await _transcribeAudio(
+        path,
+        filename,
+        mimeType,
+        fileSizeBytes: sizeInBytes,
+      );
       content.setCurrentTranscript(text, isSource: true);
 
-      final ai = aiFactory.create(settings.provider);
-      final translated =
-          await _translateIfNeeded(ai, text, settings.targetLanguageCode);
+      final ai = aiFactory.create(settings.provider, settings: settings);
+      final translated = await _translateIfNeeded(
+        ai,
+        text,
+        settings.targetLanguageCode,
+      );
       if (settings.targetLanguageCode != 'auto') {
         content.setCurrentTranscript(translated);
       }
@@ -454,7 +511,7 @@ class HomeController extends ChangeNotifier {
     if (text.isEmpty) return false;
 
     if (!settings.hasActiveApiKey) {
-      showError('Add your API key first');
+      showError(settings.missingProviderConfigMessage);
       return false;
     }
 
@@ -465,9 +522,12 @@ class HomeController extends ChangeNotifier {
     try {
       content.setCurrentTranscript(text, isSource: true);
 
-      final ai = aiFactory.create(settings.provider);
-      final translated =
-          await _translateIfNeeded(ai, text, settings.targetLanguageCode);
+      final ai = aiFactory.create(settings.provider, settings: settings);
+      final translated = await _translateIfNeeded(
+        ai,
+        text,
+        settings.targetLanguageCode,
+      );
       if (settings.targetLanguageCode != 'auto') {
         content.setCurrentTranscript(translated);
       }
@@ -508,8 +568,7 @@ class HomeController extends ChangeNotifier {
 
   Future<void> startRecording() async {
     if (!settings.provider.supportsAudio) {
-      showError(
-          '${settings.provider.brandName} does not support audio files - Please select GPT, Gemini, or Grok.');
+      showError('${settings.provider.brandName} does not support audio files.');
       return;
     }
 
@@ -538,8 +597,10 @@ class HomeController extends ChangeNotifier {
           final String fullText = logsStr.isNotEmpty
               ? '```\n$logsStr────────────────────────────────────────\n```\n$transcriptText'
               : transcriptText;
-          content.setCurrentTranscript(fullText,
-              isSource: settings.targetLanguageCode == 'auto');
+          content.setCurrentTranscript(
+            fullText,
+            isSource: settings.targetLanguageCode == 'auto',
+          );
         }
 
         content.appendLogLine('🔌 Connecting to OpenAI Realtime WebSocket...');
@@ -593,7 +654,8 @@ class HomeController extends ChangeNotifier {
         final stream = await recorder.startAudioStream();
         if (stream == null) {
           throw const AppException(
-              'Recording could not be started (no permission or audio stream).');
+            'Recording could not be started (no permission or audio stream).',
+          );
         }
 
         content.setRecording(true);
@@ -616,6 +678,7 @@ class HomeController extends ChangeNotifier {
         logsBuffer.writeln('🎙️ Realtime recording & streaming started...');
         updateDisplayWithLogs("");
       } else {
+        await _preflightLocalAiForRecording();
         await recorder.startRecording();
         final didStart = await recorder.isRecording();
         if (!didStart) {
@@ -641,13 +704,33 @@ class HomeController extends ChangeNotifier {
       if (isRealtime) _cleanupRealtime();
       content.setRecording(false);
       content.stopTimer();
+      content.appendLogLine('⚠️ ${e.userMessage}');
       showError(e.userMessage);
     } catch (e) {
       if (isRealtime) _cleanupRealtime();
       content.setRecording(false);
       content.stopTimer();
+      content.appendLogLine('⚠️ Recording not started: $e');
       showError('Microphone permission required or connection failed');
     }
+  }
+
+  Future<bool> _preflightLocalAiForRecording() async {
+    if (settings.provider != AiProviderType.localAi) return false;
+
+    content.appendLogLine('🔌 Checking Local AI before recording...');
+    final whisper = await LocalAiHealthService.checkWhisper(
+      endpoint: settings.localAiWhisperUrl,
+      model: _getModelForTranscription(),
+    );
+    content.appendLogLine('✅ ${whisper.message}');
+
+    final llm = await LocalAiHealthService.checkLlm(
+      endpoint: settings.localAiLlmUrl,
+      model: _getModelForSummary(),
+    );
+    content.appendLogLine('✅ ${llm.message}');
+    return true;
   }
 
   static String cleanTranscriptText(String rawText) {
@@ -695,12 +778,14 @@ class HomeController extends ChangeNotifier {
         content.setTranscribing(true);
 
         final cleanedText = cleanTranscriptText(text);
-        content.setCurrentTranscript(cleanedText,
-            isSource: settings.targetLanguageCode == 'auto');
+        content.setCurrentTranscript(
+          cleanedText,
+          isSource: settings.targetLanguageCode == 'auto',
+        );
 
         _saveToHistory(cleanedText, settings.targetLanguageCode);
 
-        final ai = aiFactory.create(settings.provider);
+        final ai = aiFactory.create(settings.provider, settings: settings);
         if (content.isSummaryMode) {
           final summary = await _summarize(ai, cleanedText);
           try {
@@ -731,12 +816,20 @@ class HomeController extends ChangeNotifier {
 
         content.setTranscribing(true);
 
-        final text = await _transcribeAudio(path, 'audio.m4a', 'audio/m4a');
+        final text = await _transcribeAudio(
+          path,
+          'audio.m4a',
+          'audio/m4a',
+          localAiPreflightDone: settings.provider == AiProviderType.localAi,
+        );
         content.setCurrentTranscript(text, isSource: true);
 
-        final ai = aiFactory.create(settings.provider);
-        final translated =
-            await _translateIfNeeded(ai, text, settings.targetLanguageCode);
+        final ai = aiFactory.create(settings.provider, settings: settings);
+        final translated = await _translateIfNeeded(
+          ai,
+          text,
+          settings.targetLanguageCode,
+        );
         if (settings.targetLanguageCode != 'auto') {
           content.setCurrentTranscript(translated);
         }
@@ -774,7 +867,7 @@ class HomeController extends ChangeNotifier {
     if (src.isEmpty) return;
 
     if (!settings.hasActiveApiKey) {
-      showError('Add your API key first');
+      showError(settings.missingProviderConfigMessage);
       return;
     }
 
@@ -805,9 +898,12 @@ class HomeController extends ChangeNotifier {
       logsBuffer.writeln('🌍 Translating to language: $targetLanguage...');
       updateDisplayWithLogs(src);
 
-      final ai = aiFactory.create(settings.provider);
-      final translated =
-          await _translateIfNeeded(ai, src, settings.targetLanguageCode);
+      final ai = aiFactory.create(settings.provider, settings: settings);
+      final translated = await _translateIfNeeded(
+        ai,
+        src,
+        settings.targetLanguageCode,
+      );
 
       logsBuffer.writeln('✅ Translation completed successfully!');
       updateDisplayWithLogs(translated);
@@ -817,9 +913,10 @@ class HomeController extends ChangeNotifier {
 
       content.setCurrentTranscript(translated, isSource: false);
       content.updateActiveHistory(
-          transcript: translated,
-          text: translated,
-          language: settings.targetLanguageCode);
+        transcript: translated,
+        text: translated,
+        language: settings.targetLanguageCode,
+      );
 
       if (content.isSummaryMode && content.currentSummaryValue.isNotEmpty) {
         final summary = await _summarize(ai, translated);
@@ -862,13 +959,19 @@ class HomeController extends ChangeNotifier {
     }
 
     if (playback.canResumeCurrentAudio(
-        content.currentSummaryValue, settings.provider,
-        openAiVoice: "alloy", geminiVoice: "Zephyr", xaiVoice: "eve")) {
+      content.currentSummaryValue,
+      settings.provider,
+      openAiVoice: "alloy",
+      geminiVoice: "Zephyr",
+      xaiVoice: "eve",
+    )) {
       await playback.resumeAudio();
     } else {
       final cached = playback.hasCachedSummaryAudio(
-          content.currentSummaryValue, settings.provider,
-          voice: _ttsVoice);
+        content.currentSummaryValue,
+        settings.provider,
+        voice: _ttsVoice,
+      );
       if (cached) {
         hideProgressToast();
       } else {
@@ -897,8 +1000,12 @@ class HomeController extends ChangeNotifier {
       hideProgressToast();
     }
     final size = playback.cachedSummaryAudioSize(
-        content.currentSummaryValue, settings.provider,
-        openAiVoice: "alloy", geminiVoice: "Zephyr", xaiVoice: "eve");
+      content.currentSummaryValue,
+      settings.provider,
+      openAiVoice: "alloy",
+      geminiVoice: "Zephyr",
+      xaiVoice: "eve",
+    );
     if (size != null && size > 0) {
       final mb = size / (1024 * 1024);
       showSuccess("Playing ${mb.toStringAsFixed(2)} MB Audio ...");

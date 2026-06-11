@@ -11,6 +11,7 @@ const TRANSCRIPTION_PROVIDERS = [
     {id: 'gemini', label: 'Gemini'},
     {id: 'xai', label: 'xAI'},
     {id: 'elevenlabs', label: 'ElevenLabs'},
+    {id: 'localai', label: 'Local AI Whisper'},
 ];
 
 const SUMMARY_PROVIDERS = [
@@ -18,6 +19,7 @@ const SUMMARY_PROVIDERS = [
     {id: 'gemini', label: 'Gemini'},
     {id: 'anthropic', label: 'Anthropic'},
     {id: 'xai', label: 'xAI'},
+    {id: 'localai', label: 'Local AI', summaryModelTitle: 'Local AI LLM model'},
 ];
 
 const API_PROVIDERS = [
@@ -26,12 +28,6 @@ const API_PROVIDERS = [
     {id: 'gemini', label: 'Gemini'},
     {id: 'anthropic', label: 'Anthropic'},
     {id: 'xai', label: 'xAI'},
-];
-
-const FEEDBACK_MODES = [
-    {id: 'shell', label: 'GNOME Shell status', subtitle: 'Brief startup hint and compact in-shell recording states'},
-    {id: 'legacy', label: 'Legacy overlay', subtitle: 'Use the sliding GTK overlay'},
-    {id: 'notifications', label: 'Notifications', subtitle: 'Use desktop notifications for recording states'},
 ];
 
 const MODIFIER_KEY_NAMES = new Set([
@@ -68,11 +64,6 @@ export default class EchoScribePreferences extends ExtensionPreferences {
 
         controls.add(shortcutRow(settings));
 
-        const feedback = new Adw.PreferencesGroup({title: 'Feedback'});
-        page.add(feedback);
-        for (const row of feedbackModeRows(settings))
-            feedback.add(row);
-
         const audio = new Adw.PreferencesGroup({title: 'Audio'});
         page.add(audio);
         const transcriptionProvider = providerRow(
@@ -82,6 +73,8 @@ export default class EchoScribePreferences extends ExtensionPreferences {
             'STT Provider'
         );
         audio.add(transcriptionProvider.row);
+        audio.add(transcriptionModelRow(settings, {id: 'localai', label: 'Local AI Whisper'}));
+        audio.add(localAiUrlRow(settings, 'local-ai-whisper-url', 'Local AI Whisper URL'));
 
         const webSummary = new Adw.PreferencesGroup({title: 'Web Summary'});
         page.add(webSummary);
@@ -94,15 +87,15 @@ export default class EchoScribePreferences extends ExtensionPreferences {
         webSummary.add(summaryProvider.row);
         for (const provider of SUMMARY_PROVIDERS)
             webSummary.add(summaryModelRow(settings, provider));
+        webSummary.add(localAiUrlRow(settings, 'local-ai-llm-url', 'Local AI LLM URL'));
 
-        const apiKeys = new Adw.PreferencesGroup({title: 'API-Keys'});
+        const apiKeys = new Adw.PreferencesGroup({title: 'API Keys'});
         page.add(apiKeys);
         for (const provider of API_PROVIDERS)
             apiKeys.add(apiKeyRow(settings, provider, () => {
                 transcriptionProvider.refresh();
                 summaryProvider.refresh();
             }));
-
         const runtime = new Adw.PreferencesGroup({title: 'Runtime'});
         page.add(runtime);
 
@@ -208,56 +201,8 @@ function apiKeyRow(settings, provider, onSaved) {
 }
 
 
-function feedbackModeRows(settings) {
-    const rows = [];
-    const buttons = new Map();
-    let group = null;
-    const current = feedbackMode(settings);
-
-    for (const mode of FEEDBACK_MODES) {
-        const row = new Adw.ActionRow({
-            title: mode.label,
-            subtitle: mode.subtitle,
-        });
-        const button = new Gtk.CheckButton({
-            active: mode.id === current,
-            valign: Gtk.Align.CENTER,
-        });
-        if (group)
-            button.set_group(group);
-        else
-            group = button;
-        button.connect('toggled', () => {
-            if (button.active)
-                settings.set_string('feedback-mode', mode.id);
-        });
-        row.connect('activated', () => {
-            button.active = true;
-        });
-        row.add_prefix(button);
-        row.activatable_widget = button;
-        rows.push(row);
-        buttons.set(mode.id, button);
-    }
-
-    settings.connect('changed::feedback-mode', () => {
-        const selected = feedbackMode(settings);
-        for (const [id, button] of buttons.entries())
-            button.active = id === selected;
-    });
-
-    return rows;
-}
-
-
-function feedbackMode(settings) {
-    const mode = settings.get_string('feedback-mode') || 'shell';
-    return FEEDBACK_MODES.some(item => item.id === mode) ? mode : 'shell';
-}
-
-
 function apiKeyStatusText(secret) {
-    return secret ? 'Stored in ~/.secrets/echoscribe.env' : 'Missing API key';
+    return secret ? 'Stored in configured secret env file' : 'Missing API key';
 }
 
 
@@ -272,9 +217,11 @@ function apiKeyValue(settings, provider) {
 
 
 function apiKeyStatus(settings, provider) {
+    if (provider.id === 'localai')
+        return 'Optional';
     try {
         const status = runEchoScribe(settings, ['config-get', 'api-key-status', provider.id]).trim();
-        return status === 'set' ? 'Stored in ~/.secrets/echoscribe.env' : 'Missing';
+        return status === 'set' ? 'Stored in configured secret env file' : 'Missing';
     } catch (error) {
         logError(error);
         return 'Unknown';
@@ -284,7 +231,7 @@ function apiKeyStatus(settings, provider) {
 
 function summaryModelRow(settings, provider) {
     const row = new Adw.ActionRow({
-        title: `${provider.label} summary model`,
+        title: provider.summaryModelTitle || `${provider.label} summary model`,
     });
     const entry = new Gtk.Entry({
         text: summaryModelValue(settings, provider),
@@ -324,6 +271,88 @@ function summaryModelValue(settings, provider) {
 }
 
 
+function transcriptionModelRow(settings, provider) {
+    const row = new Adw.ActionRow({
+        title: `${provider.label} STT model`,
+    });
+    const entry = new Gtk.Entry({
+        text: transcriptionModelValue(settings, provider),
+        hexpand: true,
+        valign: Gtk.Align.CENTER,
+    });
+    const button = new Gtk.Button({
+        label: 'Save',
+        valign: Gtk.Align.CENTER,
+    });
+    button.connect('clicked', () => {
+        const value = entry.text.trim();
+        if (!value)
+            return;
+        try {
+            runEchoScribe(settings, ['config-set', 'transcription-model', provider.id, value]);
+            row.subtitle = 'Saved';
+        } catch (error) {
+            logError(error);
+            row.subtitle = 'Could not save model';
+        }
+    });
+    row.add_suffix(entry);
+    row.add_suffix(button);
+    row.activatable_widget = entry;
+    return row;
+}
+
+
+function transcriptionModelValue(settings, provider) {
+    try {
+        return runEchoScribe(settings, ['config-get', 'transcription-model', provider.id]).trim();
+    } catch (error) {
+        logError(error);
+        return '';
+    }
+}
+
+
+function localAiUrlRow(settings, configKey, title) {
+    const row = new Adw.ActionRow({title});
+    const entry = new Gtk.Entry({
+        text: localAiUrlValue(settings, configKey),
+        hexpand: true,
+        valign: Gtk.Align.CENTER,
+    });
+    const button = new Gtk.Button({
+        label: 'Save',
+        valign: Gtk.Align.CENTER,
+    });
+    button.connect('clicked', () => {
+        const value = entry.text.trim();
+        if (!value)
+            return;
+        try {
+            runEchoScribe(settings, ['config-set', configKey, value]);
+            row.subtitle = 'Saved';
+        } catch (error) {
+            logError(error);
+            row.subtitle = 'Could not save URL';
+        }
+    });
+    row.add_suffix(entry);
+    row.add_suffix(button);
+    row.activatable_widget = entry;
+    return row;
+}
+
+
+function localAiUrlValue(settings, configKey) {
+    try {
+        return runEchoScribe(settings, ['config-get', configKey]).trim();
+    } catch (error) {
+        logError(error);
+        return '';
+    }
+}
+
+
 function providerRow(settings, configKey, providers, title) {
     const model = new Gtk.StringList();
     for (const provider of providers)
@@ -356,12 +385,24 @@ function providerRow(settings, configKey, providers, title) {
     function refresh() {
         const provider = providers.find(item => item.id === current) || providers[row.selected] || providers[0];
         const status = apiKeyStatus(settings, provider);
-        row.subtitle = status === 'Stored in ~/.secrets/echoscribe.env'
-            ? `${provider.label} API key stored`
-            : `${provider.label} API key missing`;
+        row.subtitle = providerSubtitle(configKey, provider, status);
     }
 
     return {row, refresh};
+}
+
+
+function providerSubtitle(configKey, provider, status) {
+    if (status === 'Optional') {
+        if (provider.id === 'localai' && configKey === 'transcription-provider')
+            return 'Local AI Whisper endpoint configured';
+        if (provider.id === 'localai' && configKey === 'summary-provider')
+            return 'Local AI LLM endpoint configured';
+        return `${provider.label} token optional`;
+    }
+    return status === 'Stored in configured secret env file'
+            ? `${provider.label} API key stored`
+            : `${provider.label} API key missing`;
 }
 
 
@@ -461,4 +502,3 @@ function entryRow(title, initial, onChanged) {
     row.activatable_widget = entry;
     return row;
 }
-

@@ -1,5 +1,6 @@
 import 'package:echoscribe/services/ai/ai_provider.dart';
 import 'package:echoscribe/services/ai/openai_provider.dart';
+import 'package:echoscribe/services/ai/local_ai_provider.dart';
 import 'package:echoscribe/services/ai/gemini_provider.dart';
 import 'package:echoscribe/services/ai/anthropic_provider.dart';
 import 'package:echoscribe/services/ai/xai_provider.dart';
@@ -10,6 +11,8 @@ import 'package:echoscribe/services/translation_service.dart';
 import 'package:echoscribe/services/image_service.dart';
 import 'package:echoscribe/services/xai_speech_service.dart';
 import 'package:echoscribe/models/enums.dart';
+import 'package:echoscribe/state/settings_state.dart';
+import 'package:echoscribe/config/prompts.dart';
 
 class AiProviderFactory {
   final WhisperService whisper;
@@ -28,7 +31,7 @@ class AiProviderFactory {
     required this.xaiSpeech,
   });
 
-  AiProvider create(AiProviderType provider) {
+  AiProvider create(AiProviderType provider, {SettingsState? settings}) {
     switch (provider) {
       case AiProviderType.gemini:
         return GeminiProvider(
@@ -38,16 +41,22 @@ class AiProviderFactory {
           image: image,
         );
       case AiProviderType.anthropic:
-        return AnthropicProvider(
-          summary: summary,
-          translation: translation,
-        );
+        return AnthropicProvider(summary: summary, translation: translation);
       case AiProviderType.xai:
         return XaiProvider(
           summary: summary,
           translation: translation,
           image: image,
           speech: xaiSpeech,
+        );
+      case AiProviderType.localAi:
+        return LocalAiProvider(
+          whisper: whisper,
+          summary: summary,
+          translation: translation,
+          llmUrl: settings?.localAiLlmUrl ?? AiModelConfig.localAiLlmUrl,
+          whisperUrl:
+              settings?.localAiWhisperUrl ?? AiModelConfig.localAiWhisperUrl,
         );
       case AiProviderType.openai:
         return OpenAiProvider(

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:echoscribe/models/enums.dart';
+import 'package:echoscribe/config/prompts.dart';
 
 class SecureStorageService {
   // 1. Implement Singleton Pattern
@@ -32,6 +33,10 @@ class SecureStorageService {
   static const _keyXai = 'xai_api_key';
   static const _keyXaiPro = 'xai_pro_enabled';
   static const _keyLastSharedIntentId = 'last_shared_intent_id';
+  static const _keyLocalAiLlmUrl = 'local_ai_llm_url';
+  static const _keyLocalAiLlmModel = 'local_ai_llm_model';
+  static const _keyLocalAiWhisperUrl = 'local_ai_whisper_url';
+  static const _keyLocalAiWhisperModel = 'local_ai_whisper_model';
 
   // 2. IMPORTANT: resetOnError: true prevents permanent crashes/empty data on key problems
   static const AndroidOptions _androidOptions = AndroidOptions(
@@ -108,7 +113,8 @@ class SecureStorageService {
   Future<void> saveProvider(AiProviderType provider) =>
       _safeWrite(_keyProvider, provider.name);
   Future<AiProviderType> readProvider() async => AiProviderType.fromString(
-      await _safeRead(_keyProvider, fallback: 'openai'));
+        await _safeRead(_keyProvider, fallback: 'openai'),
+      );
 
   // OpenAI Key
   Future<void> saveOpenAiKey(String key) => _safeWrite(_keyOpenAi, key);
@@ -204,4 +210,29 @@ class SecureStorageService {
       _safeWrite(_keyLastSharedIntentId, id);
   Future<String> readLastSharedIntentId() async =>
       _safeRead(_keyLastSharedIntentId);
+
+  // Local AI
+  Future<void> saveLocalAiLlmUrl(String value) =>
+      _safeWrite(_keyLocalAiLlmUrl, value);
+  Future<String> readLocalAiLlmUrl() async =>
+      _safeRead(_keyLocalAiLlmUrl, fallback: AiModelConfig.localAiLlmUrl);
+
+  Future<void> saveLocalAiLlmModel(String value) =>
+      _safeWrite(_keyLocalAiLlmModel, value);
+  Future<String> readLocalAiLlmModel() async =>
+      _safeRead(_keyLocalAiLlmModel, fallback: AiModelConfig.localAiLlmModel);
+
+  Future<void> saveLocalAiWhisperUrl(String value) =>
+      _safeWrite(_keyLocalAiWhisperUrl, value);
+  Future<String> readLocalAiWhisperUrl() async => _safeRead(
+        _keyLocalAiWhisperUrl,
+        fallback: AiModelConfig.localAiWhisperUrl,
+      );
+
+  Future<void> saveLocalAiWhisperModel(String value) =>
+      _safeWrite(_keyLocalAiWhisperModel, value);
+  Future<String> readLocalAiWhisperModel() async => _safeRead(
+        _keyLocalAiWhisperModel,
+        fallback: AiModelConfig.localAiWhisperModel,
+      );
 }

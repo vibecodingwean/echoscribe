@@ -66,9 +66,9 @@ class AiModelConfig {
   static const String geminiImagePro = 'gemini-3-pro-image';
 
   // Fast models
-  static const String geminiSummaryFast = 'gemini-3.1-flash-lite';
-  static const String geminiTranscriptionFast = 'gemini-3.1-flash-lite';
-  static const String geminiTranslationFast = 'gemini-3.1-flash-lite';
+  static const String geminiSummaryFast = 'gemini-3.5-flash';
+  static const String geminiTranscriptionFast = 'gemini-3.5-flash';
+  static const String geminiTranslationFast = 'gemini-3.5-flash';
   static const String geminiImageFast = 'gemini-3.1-flash-image';
   static const String geminiTts = 'gemini-3.1-flash-tts-preview';
 
@@ -122,6 +122,13 @@ class AiModelConfig {
       pro ? xaiImagePro : xaiImageFast;
   static String xaiReasoningEffort({required bool pro}) =>
       pro ? xaiReasoningEffortPro : xaiReasoningEffortFast;
+
+  // ---------- Local AI ----------
+  static const String localAiLlmUrl = 'http://192.168.178.20:11434/api/chat';
+  static const String localAiLlmModel = 'qwen2.5:3b';
+  static const String localAiWhisperUrl =
+      'http://192.168.178.20:8000/v1/audio/transcriptions';
+  static const String localAiWhisperModel = 'whisper-1';
 
   static String openAiImage({required bool pro}) =>
       pro ? openAiImagePro : openAiImageFast;

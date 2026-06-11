@@ -202,9 +202,10 @@ normalize_provider() {
     grok) provider="xai" ;;
     claude) provider="anthropic" ;;
     eleven|11labs) provider="elevenlabs" ;;
+    local|local-ai|local_ai) provider="localai" ;;
   esac
   case "$provider" in
-    openai|gemini|anthropic|xai|elevenlabs) printf '%s' "$provider" ;;
+    openai|gemini|anthropic|xai|elevenlabs|localai) printf '%s' "$provider" ;;
     *) return 1 ;;
   esac
 }
@@ -220,7 +221,7 @@ prompt_provider() {
       printf '%s' "$normalized"
       return
     fi
-    echo "Supported providers: openai, gemini, anthropic, xai, elevenlabs" >&2
+    echo "Supported providers: openai, gemini, anthropic, xai, elevenlabs, localai" >&2
   done
 }
 
@@ -231,6 +232,7 @@ choose_providers() {
   echo "  gemini = Gemini audio understanding"
   echo "  xai    = xAI/Grok STT"
   echo "  elevenlabs = ElevenLabs Scribe STT"
+  echo "  localai = Local AI Whisper-compatible STT"
   transcription_provider="$(prompt_provider "Transcription provider" "openai")"
   echo
   echo "Choose web summary provider:"
@@ -238,11 +240,12 @@ choose_providers() {
   echo "  gemini    = Gemini text summaries"
   echo "  anthropic = Claude/Anthropic text summaries"
   echo "  xai       = xAI/Grok text summaries"
+  echo "  localai   = Local AI Ollama-compatible summaries"
   while true; do
     summary_provider="$(prompt_provider "Summary provider" "openai")"
     case "$summary_provider" in
-      openai|gemini|anthropic|xai) break ;;
-      *) echo "Summary providers: openai, gemini, anthropic, xai" >&2 ;;
+      openai|gemini|anthropic|xai|localai) break ;;
+      *) echo "Summary providers: openai, gemini, anthropic, xai, localai" >&2 ;;
     esac
   done
 }
@@ -255,6 +258,7 @@ show_api_key_links() {
   echo "  Anthropic:  https://console.anthropic.com/settings/keys"
   echo "  xAI:        https://console.x.ai"
   echo "  ElevenLabs: https://elevenlabs.io/app/developers/api-keys"
+  echo "  Local AI:   configure your own Ollama and Whisper-compatible endpoints"
 }
 
 provider_required_flag() {

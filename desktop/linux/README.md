@@ -19,7 +19,10 @@ cd EchoScribe-Linux-GNOME-<version>/linux
 ./install.sh
 ```
 
-The wizard installs Linux dependencies, creates `.venv`, writes `~/.config/echoscribe/config.toml`, stores provider keys in `~/.secrets/echoscribe.env`, installs the GNOME Shell extension, and can register browser native hosts for Chromium-based browsers and Firefox.
+The wizard installs Linux dependencies, creates `.venv`, writes the per-user
+EchoScribe config, stores provider keys in the configured per-user secret env
+file, installs the GNOME Shell extension, and can register browser native hosts
+for Chromium-based browsers and Firefox.
 
 On GNOME, EchoScribe starts through the installed GNOME Shell extension when you log into the desktop. The helper service installed by `install_user_service.sh` is only for `ydotool`; it is not an EchoScribe background app service.
 
@@ -45,7 +48,8 @@ Then load the browser extension manually:
 
 ## Configuration
 
-Config lives in `~/.config/echoscribe/config.toml`. Secrets can be exported in the shell or stored in `~/.secrets/echoscribe.env`:
+Config lives in the per-user EchoScribe config file. Secrets can be exported in
+the shell or stored in the configured secret env file:
 
 ```bash
 OPENAI_API_KEY=sk-...
@@ -59,15 +63,19 @@ Speech-to-text providers:
 
 - `openai`: default model `gpt-4o-mini-transcribe`
 - `elevenlabs`: default model `scribe_v2`
-- `gemini`: default model `gemini-3.1-flash-lite`
+- `gemini`: default model `gemini-3.5-flash`
 - `xai`: default model `xai-stt`
+- `localai`: Local AI Whisper-compatible endpoint, default URL `http://192.168.178.20:8000/v1/audio/transcriptions`, default model `whisper-1`
 
 Summary providers:
 
 - `openai`: default model `gpt-5.4-mini`
-- `gemini`: default model `gemini-3.1-flash-lite`
+- `gemini`: default model `gemini-3.5-flash`
 - `anthropic`: default model `claude-sonnet-4-6`
 - `xai`: default model `grok-4.3`
+- `localai`: Ollama-compatible `/api/chat`, default URL `http://192.168.178.20:11434/api/chat`, default model `qwen2.5:3b`
+
+Local AI sends Ollama chat requests with `model`, `stream: false`, and `messages`, then reads `message.content`. Local Whisper STT sends multipart `file`, `model`, `response_format=json`, and optional `language`, then reads `text`. Example Ollama models: `qwen2.5:3b`, `gemma3`, `deepseek-r1`. For PoC use, keep endpoints on a trusted local network or VPN; EchoScribe does not add authentication to Local AI requests.
 
 ## Verification
 

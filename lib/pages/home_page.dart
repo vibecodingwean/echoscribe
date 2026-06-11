@@ -109,6 +109,10 @@ class _HomePageState extends State<HomePage> {
       final anthropicPro = await secure.readAnthropicPro();
       final xai = await secure.readXaiKey();
       final xaiPro = await secure.readXaiPro();
+      final localAiLlmUrl = await secure.readLocalAiLlmUrl();
+      final localAiLlmModel = await secure.readLocalAiLlmModel();
+      final localAiWhisperUrl = await secure.readLocalAiWhisperUrl();
+      final localAiWhisperModel = await secure.readLocalAiWhisperModel();
       final appFetchUrl = await secure.readAppFetchUrl();
       final floatingDictationEnabled =
           await secure.readFloatingDictationEnabled();
@@ -119,6 +123,10 @@ class _HomePageState extends State<HomePage> {
       if (gem.isNotEmpty) _settings.setGeminiKey(gem);
       if (ant.isNotEmpty) _settings.setAnthropicKey(ant);
       if (xai.isNotEmpty) _settings.setXaiKey(xai);
+      _settings.setLocalAiLlmUrl(localAiLlmUrl);
+      _settings.setLocalAiLlmModel(localAiLlmModel);
+      _settings.setLocalAiWhisperUrl(localAiWhisperUrl);
+      _settings.setLocalAiWhisperModel(localAiWhisperModel);
       if (prompt.isNotEmpty) _settings.setSummaryPrompt(prompt);
       if (urlPrompt.isNotEmpty) _settings.setUrlSummaryPrompt(urlPrompt);
       if (dictationPrompt.isNotEmpty &&
@@ -161,6 +169,7 @@ class _HomePageState extends State<HomePage> {
       },
       onTextReceived: (content) async =>
           await _controller.processSharedText(content),
+      onBeforeHandle: _returnToHomeForShareIntent,
       showError: _showError,
       showSuccess: _showSuccess,
     );
@@ -176,6 +185,14 @@ class _HomePageState extends State<HomePage> {
       });
     } catch (e) {
       debugPrint("Share handling init failed: $e");
+    }
+  }
+
+  void _returnToHomeForShareIntent() {
+    if (!mounted) return;
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.popUntil((route) => route.isFirst);
     }
   }
 
@@ -387,7 +404,8 @@ class _HomePageState extends State<HomePage> {
                     supportsImage: _settings.provider.supportsImage,
                     isLoading: _content.isTranscribing,
                     isRecording: _content.isRecording,
-                    isRealtime: _settings.provider == AiProviderType.openai && _settings.openAiRealtime,
+                    isRealtime: _settings.provider == AiProviderType.openai &&
+                        _settings.openAiRealtime,
                     recordDurationNotifier: _content.recordDuration,
                     maxRecordDuration:
                         _settings.provider == AiProviderType.openai
@@ -405,7 +423,8 @@ class _HomePageState extends State<HomePage> {
                               ? _content.logText.value
                               : (_content.isSummaryMode
                                   ? _content.currentSummaryValue
-                                  : HomeController.cleanTranscriptText(_content.currentTranscriptValue)))
+                                  : HomeController.cleanTranscriptText(
+                                      _content.currentTranscriptValue)))
                           .trim();
                       if (t.isEmpty) return;
                       await _content.addToClipboard(t);
@@ -419,7 +438,8 @@ class _HomePageState extends State<HomePage> {
                               ? _content.logText.value
                               : (_content.isSummaryMode
                                   ? _content.currentSummaryValue
-                                  : HomeController.cleanTranscriptText(_content.currentTranscriptValue)))
+                                  : HomeController.cleanTranscriptText(
+                                      _content.currentTranscriptValue)))
                           .trim();
                       if (text.isEmpty) return;
                       await SharePlus.instance.share(ShareParams(text: text));
@@ -715,8 +735,8 @@ class _HomePageState extends State<HomePage> {
                                                 }
                                                 if (!_settings
                                                     .hasActiveApiKey) {
-                                                  _showError(
-                                                      "Add your API key first");
+                                                  _showError(_settings
+                                                      .missingProviderConfigMessage);
                                                   await Navigator.of(context)
                                                       .push(
                                                     MaterialPageRoute(
@@ -730,7 +750,7 @@ class _HomePageState extends State<HomePage> {
                                                 if (!_settings
                                                     .provider.supportsAudio) {
                                                   _showError(
-                                                      '${_settings.provider.brandName} does not support audio - Please select GPT, Gemini, or Grok.');
+                                                      '${_settings.provider.brandName} does not support audio.');
                                                   return;
                                                 }
                                                 if (!_content.isRecording) {

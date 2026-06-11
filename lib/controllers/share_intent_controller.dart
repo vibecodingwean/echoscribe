@@ -17,6 +17,7 @@ class ShareIntentController {
   final SecureStorageService secureStorage;
   final Future<bool> Function(String, String, String) onAudioReceived;
   final Future<bool> Function(String) onTextReceived;
+  final VoidCallback? onBeforeHandle;
   final void Function(String) showError;
   final void Function(String) showSuccess;
 
@@ -27,12 +28,17 @@ class ShareIntentController {
     required this.secureStorage,
     required this.onAudioReceived,
     required this.onTextReceived,
+    this.onBeforeHandle,
     required this.showError,
     required this.showSuccess,
   });
 
   Future<void> handleSharedMedia(
       SharedMedia media, BuildContext context) async {
+    onBeforeHandle?.call();
+    await Future<void>.delayed(Duration.zero);
+    if (!context.mounted) return;
+
     final String currentId = _getMediaIdentifier(media);
     if (currentId.isNotEmpty && currentId == settings.lastSharedIntentId) {
       debugPrint("Ignoring duplicate share intent: $currentId");

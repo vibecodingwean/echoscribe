@@ -1,5 +1,6 @@
 const summarizeButton = document.getElementById("summarize");
 const copyButton = document.getElementById("copy");
+const languageSelect = document.getElementById("summary-language");
 const statusEl = document.getElementById("status");
 const summaryEl = document.getElementById("summary");
 const providerEl = document.getElementById("provider");
@@ -8,6 +9,7 @@ const usesPromiseApi = typeof browser !== "undefined";
 
 summarizeButton.addEventListener("click", summarize);
 copyButton.addEventListener("click", copySummary);
+languageSelect.addEventListener("change", saveLanguagePreference);
 
 loadLatest();
 
@@ -16,8 +18,10 @@ async function loadLatest() {
     "latestSummary",
     "latestProvider",
     "latestModel",
-    "latestError"
+    "latestError",
+    "summaryTargetLanguageCode"
   ]);
+  languageSelect.value = normalizeLanguageCode(state.summaryTargetLanguageCode);
   if (state.latestSummary) {
     summaryEl.textContent = state.latestSummary;
     providerEl.textContent = [state.latestProvider, state.latestModel].filter(Boolean).join(" / ");
@@ -26,9 +30,14 @@ async function loadLatest() {
 }
 
 async function summarize() {
-  setBusy(true, "Summarizing...");
+  const targetLanguageCode = normalizeLanguageCode(languageSelect.value);
+  setBusy(true, targetLanguageCode === "auto" ? "Summarizing..." : `Summarizing (${targetLanguageCode.toUpperCase()})...`);
   try {
-    const response = await sendRuntimeMessage({ type: "summarizeActiveTab" });
+    await setLocalStorage({ summaryTargetLanguageCode: targetLanguageCode });
+    const response = await sendRuntimeMessage({
+      type: "summarizeActiveTab",
+      targetLanguageCode
+    });
     if (!response || response.ok === false) throw new Error(response?.error || "Summary failed.");
     summaryEl.textContent = response.summary || "";
     providerEl.textContent = [response.provider, response.model].filter(Boolean).join(" / ");
@@ -38,6 +47,15 @@ async function summarize() {
   } finally {
     setBusy(false);
   }
+}
+
+async function saveLanguagePreference() {
+  await setLocalStorage({ summaryTargetLanguageCode: normalizeLanguageCode(languageSelect.value) });
+}
+
+function normalizeLanguageCode(value) {
+  const code = String(value || "").trim().toLowerCase();
+  return code || "auto";
 }
 
 async function copySummary() {
@@ -50,6 +68,7 @@ async function copySummary() {
 function setBusy(busy, message = "") {
   summarizeButton.disabled = busy;
   copyButton.disabled = busy;
+  languageSelect.disabled = busy;
   if (message) statusEl.textContent = message;
 }
 
@@ -62,6 +81,19 @@ function getLocalStorage(keys) {
       const lastError = chrome.runtime.lastError;
       if (lastError) reject(new Error(lastError.message));
       else resolve(value);
+    });
+  });
+}
+
+function setLocalStorage(value) {
+  if (usesPromiseApi) {
+    return extensionApi.storage.local.set(value);
+  }
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.set(value, () => {
+      const lastError = chrome.runtime.lastError;
+      if (lastError) reject(new Error(lastError.message));
+      else resolve();
     });
   });
 }

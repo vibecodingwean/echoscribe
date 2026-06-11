@@ -9,6 +9,10 @@ class SettingsState extends ChangeNotifier {
   String _geminiKey = "";
   String _anthropicKey = "";
   String _xaiKey = "";
+  String _localAiLlmUrl = AiModelConfig.localAiLlmUrl;
+  String _localAiLlmModel = AiModelConfig.localAiLlmModel;
+  String _localAiWhisperUrl = AiModelConfig.localAiWhisperUrl;
+  String _localAiWhisperModel = AiModelConfig.localAiWhisperModel;
   bool _openAiPro = false;
   bool _openAiRealtime = false;
   bool _geminiPro = false;
@@ -38,6 +42,10 @@ class SettingsState extends ChangeNotifier {
   String get geminiKey => _geminiKey;
   String get anthropicKey => _anthropicKey;
   String get xaiKey => _xaiKey;
+  String get localAiLlmUrl => _localAiLlmUrl;
+  String get localAiLlmModel => _localAiLlmModel;
+  String get localAiWhisperUrl => _localAiWhisperUrl;
+  String get localAiWhisperModel => _localAiWhisperModel;
 
   void setOpenAiKey(String key) {
     _openAiKey = key.trim();
@@ -59,14 +67,53 @@ class SettingsState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setLocalAiLlmUrl(String value) {
+    _localAiLlmUrl = value.trim();
+    notifyListeners();
+  }
+
+  void setLocalAiLlmModel(String value) {
+    final trimmed = value.trim();
+    _localAiLlmModel = trimmed.isEmpty || trimmed == 'qwen3'
+        ? AiModelConfig.localAiLlmModel
+        : trimmed;
+    notifyListeners();
+  }
+
+  void setLocalAiWhisperUrl(String value) {
+    _localAiWhisperUrl = value.trim();
+    notifyListeners();
+  }
+
+  void setLocalAiWhisperModel(String value) {
+    _localAiWhisperModel =
+        value.trim().isEmpty ? AiModelConfig.localAiWhisperModel : value.trim();
+    notifyListeners();
+  }
+
   String get activeApiKey {
+    if (_provider == AiProviderType.localAi) return "";
     if (_provider == AiProviderType.gemini) return _geminiKey;
     if (_provider == AiProviderType.anthropic) return _anthropicKey;
     if (_provider == AiProviderType.xai) return _xaiKey;
     return _openAiKey;
   }
 
-  bool get hasActiveApiKey => activeApiKey.isNotEmpty;
+  bool get hasActiveApiKey {
+    if (_provider == AiProviderType.localAi) {
+      return _localAiLlmUrl.trim().isNotEmpty &&
+          _localAiWhisperUrl.trim().isNotEmpty;
+    }
+    return activeApiKey.isNotEmpty;
+  }
+
+  String get missingProviderConfigMessage {
+    if (_provider == AiProviderType.localAi) {
+      return 'Configure Local AI endpoints first';
+    }
+    return 'Add your API key first';
+  }
+
   bool get hasOpenAiKey => _openAiKey.isNotEmpty;
   bool get hasGeminiKey => _geminiKey.isNotEmpty;
   bool get hasAnthropicKey => _anthropicKey.isNotEmpty;

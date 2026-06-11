@@ -11,6 +11,7 @@ import 'package:echoscribe/services/url_content_service.dart';
 import 'package:echoscribe/models/transcription_item.dart';
 import 'package:echoscribe/pages/settings_page.dart';
 import 'package:echoscribe/models/app_exception.dart';
+import 'package:echoscribe/services/local_ai_health_service.dart';
 
 class UrlHandler {
   const UrlHandler._();
@@ -99,25 +100,30 @@ class UrlHandler {
     // Provide local helpers for snackbars when callbacks are not provided
     void showError0(String m) {
       if (showError != null) return showError(m);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(m),
-        duration: const Duration(milliseconds: 1000),
-        backgroundColor: Theme.of(context).colorScheme.error,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(m),
+          duration: const Duration(milliseconds: 1000),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
     }
 
     void showInfo(String m) {
       if (showSuccess != null) return showSuccess(m);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(m),
-        duration: const Duration(milliseconds: 1200),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(m),
+          duration: const Duration(milliseconds: 1200),
+        ),
+      );
     }
 
     if (!settings.hasActiveApiKey) {
-      showError0('Add your API key first');
+      showError0(settings.missingProviderConfigMessage);
       await Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => SettingsPage(settings: settings)));
+        MaterialPageRoute(builder: (_) => SettingsPage(settings: settings)),
+      );
       if (!context.mounted) return;
       return;
     }
@@ -132,6 +138,32 @@ class UrlHandler {
     content.appendLogLine('Processing shared URL');
 
     try {
+      String getModelForSummary() {
+        switch (settings.provider) {
+          case AiProviderType.gemini:
+            return AiModelConfig.geminiSummary(pro: settings.geminiPro);
+          case AiProviderType.anthropic:
+            return AiModelConfig.anthropicSummary(pro: settings.anthropicPro);
+          case AiProviderType.xai:
+            return AiModelConfig.xaiSummary(pro: settings.xaiPro);
+          case AiProviderType.localAi:
+            return settings.localAiLlmModel;
+          case AiProviderType.openai:
+            return AiModelConfig.openAiSummary(pro: settings.openAiPro);
+        }
+      }
+
+      final model = getModelForSummary();
+
+      if (settings.provider == AiProviderType.localAi) {
+        content.appendLogLine('🔌 Checking Local AI LLM before URL summary...');
+        final check = await LocalAiHealthService.checkLlm(
+          endpoint: settings.localAiLlmUrl,
+          model: model,
+        );
+        content.appendLogLine('✅ ${check.message}');
+      }
+
       // 1) Resolve short/redirect URLs (whitelisted domains only)
       content.appendLogLine('Checking for short-link redirection');
       final resolution = await UrlResolverService.resolveIfShort(url);
@@ -139,12 +171,15 @@ class UrlHandler {
       if (resolution.wasShortDomain) {
         if (resolution.resolved) {
           content.appendLogLine(
-              'Short link resolved in ${resolution.hops} hop(s)');
+            'Short link resolved in ${resolution.hops} hop(s)',
+          );
         } else if (resolution.error != null) {
-          content
-              .appendLogLine('Redirect resolution failed: ${resolution.error}');
+          content.appendLogLine(
+            'Redirect resolution failed: ${resolution.error}',
+          );
           showInfo(
-              'Die Weiterleitung konnte nicht aufgelöst werden, die Zusammenfassung kann unvollständig sein.');
+            'Die Weiterleitung konnte nicht aufgelöst werden, die Zusammenfassung kann unvollständig sein.',
+          );
         } else {
           content.appendLogLine('No redirect detected on whitelisted domain');
         }
@@ -164,7 +199,8 @@ class UrlHandler {
 
         if (settings.provider.mustExtractUrl) {
           content.appendLogLine(
-              '💡 ${settings.provider.brandName} requires local content extraction');
+            '💡 ${settings.provider.brandName} requires local content extraction',
+          );
         }
 
         // Use the cache check directly to provide a specific log entry
@@ -187,11 +223,13 @@ class UrlHandler {
           // Update transcription panel: Show URL + Extracted Text
           final displayBuffer = StringBuffer();
           displayBuffer.writeln('#### URL:');
-          displayBuffer
-              .writeln('[$effectiveUrl]($effectiveUrl)'); // Markdown link
+          displayBuffer.writeln(
+            '[$effectiveUrl]($effectiveUrl)',
+          ); // Markdown link
           displayBuffer.writeln('');
           displayBuffer.writeln(
-              '........................................'); // Subtle "thread"
+            '........................................',
+          ); // Subtle "thread"
           displayBuffer.writeln('');
           displayBuffer.writeln('#### EXTRACTED TEXT:');
           displayBuffer.writeln('');
@@ -217,22 +255,8 @@ class UrlHandler {
       content.setSourceTranscript(contentToSummarize);
 
       // 3) Summarize via selected provider
-      final ai = aiFactory.create(settings.provider);
+      final ai = aiFactory.create(settings.provider, settings: settings);
 
-      String getModelForSummary() {
-        switch (settings.provider) {
-          case AiProviderType.gemini:
-            return AiModelConfig.geminiSummary(pro: settings.geminiPro);
-          case AiProviderType.anthropic:
-            return AiModelConfig.anthropicSummary(pro: settings.anthropicPro);
-          case AiProviderType.xai:
-            return AiModelConfig.xaiSummary(pro: settings.xaiPro);
-          case AiProviderType.openai:
-            return AiModelConfig.openAiSummary(pro: settings.openAiPro);
-        }
-      }
-
-      final model = getModelForSummary();
       final reasoningEffort = settings.provider == AiProviderType.xai
           ? AiModelConfig.xaiReasoningEffort(pro: settings.xaiPro)
           : null;

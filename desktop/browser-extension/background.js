@@ -1,5 +1,6 @@
 const HOST_NAME = "de.echoscribe.nativehost";
 const PDF_BYTE_LIMIT = 16 * 1024 * 1024;
+const DEFAULT_TARGET_LANGUAGE_CODE = "auto";
 const extensionApi = typeof browser !== "undefined" ? browser : chrome;
 const usesPromiseApi = typeof browser !== "undefined";
 
@@ -25,7 +26,7 @@ extensionApi.contextMenus.onClicked.addListener((info, tab) => {
 extensionApi.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type !== "summarizeActiveTab") return false;
 
-  const response = summarizeActiveTab()
+  const response = summarizeActiveTab(message.targetLanguageCode || "")
     .catch((error) => ({ ok: false, error: error.message || String(error) }));
 
   if (usesPromiseApi) {
@@ -37,19 +38,21 @@ extensionApi.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
-async function summarizeActiveTab() {
+async function summarizeActiveTab(targetLanguageCode = "") {
   const [tab] = await queryTabs({ active: true, currentWindow: true });
   if (!tab) throw new Error("No active tab found.");
-  return summarizeTab(tab, "");
+  return summarizeTab(tab, "", targetLanguageCode);
 }
 
-async function summarizeTab(tab, selectionText) {
+async function summarizeTab(tab, selectionText, targetLanguageCode = "") {
   if (!tab.id) throw new Error("The active tab cannot be accessed.");
 
   const result = await buildPagePayload(tab, selectionText);
+  const resolvedLanguage = await resolveTargetLanguageCode(targetLanguageCode);
 
   const response = await sendNativeMessage({
     type: "summarize",
+    targetLanguageCode: resolvedLanguage,
     ...result
   });
 
@@ -58,11 +61,25 @@ async function summarizeTab(tab, selectionText) {
     latestProvider: response.provider || "",
     latestModel: response.model || "",
     latestUrl: result.url || "",
+    latestTargetLanguageCode: resolvedLanguage,
     latestError: "",
     latestUpdatedAt: Date.now()
   });
 
   return response;
+}
+
+async function resolveTargetLanguageCode(requested) {
+  const normalized = normalizeTargetLanguageCode(requested);
+  if (normalized) return normalized;
+  const state = await getLocalStorage(["summaryTargetLanguageCode"]);
+  return normalizeTargetLanguageCode(state.summaryTargetLanguageCode) || DEFAULT_TARGET_LANGUAGE_CODE;
+}
+
+function normalizeTargetLanguageCode(value) {
+  const code = String(value || "").trim().toLowerCase();
+  if (!code) return "";
+  return /^[a-z]{2,3}(-[a-z0-9]+)?$/i.test(code) ? code : DEFAULT_TARGET_LANGUAGE_CODE;
 }
 
 async function buildPagePayload(tab, selectionText) {
@@ -206,6 +223,19 @@ function setLocalStorage(value) {
       const lastError = chrome.runtime.lastError;
       if (lastError) reject(new Error(lastError.message));
       else resolve();
+    });
+  });
+}
+
+function getLocalStorage(keys) {
+  if (usesPromiseApi) {
+    return extensionApi.storage.local.get(keys);
+  }
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(keys, (value) => {
+      const lastError = chrome.runtime.lastError;
+      if (lastError) reject(new Error(lastError.message));
+      else resolve(value);
     });
   });
 }

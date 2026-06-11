@@ -24,15 +24,15 @@
   },
   "gemini": {
     "summary": {
-      "fast": "gemini-3.1-flash-lite",
+      "fast": "gemini-3.5-flash",
       "pro": "gemini-3.1-pro-preview"
     },
     "translation": {
-      "fast": "gemini-3.1-flash-lite",
+      "fast": "gemini-3.5-flash",
       "pro": "gemini-3.1-pro-preview"
     },
     "transcription": {
-      "fast": "gemini-3.1-flash-lite",
+      "fast": "gemini-3.5-flash",
       "pro": "gemini-3.1-pro-preview"
     },
     "image": {
@@ -76,6 +76,21 @@
   "elevenlabs": {
     "transcription": {
       "default": "scribe_v2"
+    }
+  },
+  "localai": {
+    "summary": {
+      "default": "qwen2.5:3b"
+    },
+    "translation": {
+      "default": "qwen2.5:3b"
+    },
+    "transcription": {
+      "default": "whisper-1"
+    },
+    "endpoints": {
+      "llm": "http://192.168.178.20:11434/api/chat",
+      "whisper": "http://192.168.178.20:8000/v1/audio/transcriptions"
     }
   }
 }

@@ -2,7 +2,8 @@ enum AiProviderType {
   openai,
   gemini,
   anthropic,
-  xai;
+  xai,
+  localAi;
 
   /// Human-readable brand name for logs and UI
   String get brandName {
@@ -15,6 +16,8 @@ enum AiProviderType {
         return 'Claude';
       case AiProviderType.xai:
         return 'Grok';
+      case AiProviderType.localAi:
+        return 'Local AI';
     }
   }
 
@@ -24,6 +27,7 @@ enum AiProviderType {
       case AiProviderType.openai:
       case AiProviderType.gemini:
       case AiProviderType.xai:
+      case AiProviderType.localAi:
         return true;
       case AiProviderType.anthropic:
         return false;
@@ -37,6 +41,7 @@ enum AiProviderType {
       case AiProviderType.gemini:
       case AiProviderType.xai:
         return true;
+      case AiProviderType.localAi:
       case AiProviderType.anthropic:
         return false;
     }
@@ -47,6 +52,7 @@ enum AiProviderType {
     switch (this) {
       case AiProviderType.anthropic:
       case AiProviderType.xai:
+      case AiProviderType.localAi:
         return true;
       case AiProviderType.openai:
       case AiProviderType.gemini:
@@ -61,6 +67,7 @@ enum AiProviderType {
       case AiProviderType.gemini:
       case AiProviderType.xai:
         return true;
+      case AiProviderType.localAi:
       case AiProviderType.anthropic:
         return false;
     }
@@ -75,6 +82,10 @@ enum AiProviderType {
         return AiProviderType.anthropic;
       case 'xai':
         return AiProviderType.xai;
+      case 'localAi':
+      case 'local_ai':
+      case 'local-ai':
+        return AiProviderType.localAi;
       default:
         return AiProviderType.openai;
     }
