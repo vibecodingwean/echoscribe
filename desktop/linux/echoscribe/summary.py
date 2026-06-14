@@ -21,6 +21,10 @@ LOCAL_AI_SUMMARY_PROMPT = (
     "If the content is simple, write 1-3 concise sentences. "
     "Do not add prefaces, labels, or meta commentary."
 )
+LANGUAGE_RETRY_NOTE = (
+    "The previous output did not follow the requested language. "
+    "Regenerate the summary now and obey the language rule exactly."
+)
 
 DEFAULT_URL_SUMMARY_PROMPT = """Summarize the provided webpage content.
 
@@ -71,13 +75,13 @@ def build_prompt(
     base_prompt = str(summary_cfg.get("url_summary_prompt", "")).strip()
     if not base_prompt:
         base_prompt = LOCAL_AI_SUMMARY_PROMPT if provider == "localai" else DEFAULT_URL_SUMMARY_PROMPT
-    language = requested_language.strip() or str(summary_cfg.get("target_language", "de")).strip()
+    language = requested_language.strip() or str(summary_cfg.get("target_language", "auto")).strip()
     directive = language_directive(language)
     system_prompt = (
-        "You are a precise summarizer. "
+        "You are a precise summarizer. Follow the language rule exactly. "
         f"{directive} Output only the summary, with no preface or labels."
     )
-    user_prompt = f"{base_prompt}\n\n{directive}\n\nText:\n{source_text}"
+    user_prompt = f"{directive}\n\n{base_prompt}\n\nText:\n{source_text}"
     return system_prompt, user_prompt
 
 
@@ -90,24 +94,34 @@ def summarize(config: Config, source_text: str, provider: str = "", requested_la
     if resolved == "localai":
         source_text = limit_local_ai_source(source_text)
     system_prompt, user_prompt = build_prompt(config, source_text, requested_language, resolved)
-    if resolved == "openai":
-        text = summarize_openai(api_key, model, system_prompt, user_prompt)
-    elif resolved == "gemini":
-        text = summarize_gemini(api_key, model, user_prompt)
-    elif resolved == "anthropic":
-        text = summarize_anthropic(api_key, model, system_prompt, user_prompt)
-    elif resolved == "xai":
-        summary_cfg = config.data.get("summary", {})
-        effort = ""
-        if isinstance(summary_cfg, dict):
-            effort = str(summary_cfg.get("xai_reasoning_effort", "none")).strip()
-        text = summarize_xai(api_key, model, system_prompt, user_prompt, effort)
-    elif resolved == "localai":
-        section = config.data.get("localai", {})
-        endpoint = str(section.get("llm_url", "") if isinstance(section, dict) else "").strip()
-        text = summarize_local_ai(endpoint, model, system_prompt, user_prompt)
-    else:  # pragma: no cover - guarded by resolve_summary_provider.
+
+    def generate(prompt: str, system: str) -> str:
+        if resolved == "openai":
+            return summarize_openai(api_key, model, system, prompt)
+        if resolved == "gemini":
+            return summarize_gemini(api_key, model, prompt)
+        if resolved == "anthropic":
+            return summarize_anthropic(api_key, model, system, prompt)
+        if resolved == "xai":
+            summary_cfg = config.data.get("summary", {})
+            effort = ""
+            if isinstance(summary_cfg, dict):
+                effort = str(summary_cfg.get("xai_reasoning_effort", "none")).strip()
+            return summarize_xai(api_key, model, system, prompt, effort)
+        if resolved == "localai":
+            section = config.data.get("localai", {})
+            endpoint = str(section.get("llm_url", "") if isinstance(section, dict) else "").strip()
+            return summarize_local_ai(endpoint, model, system, prompt)
         raise ApiError(f"Unsupported summary provider '{resolved}'")
+
+    text = generate(user_prompt, system_prompt)
+    if needs_language_retry(text, requested_language):
+        retry_system = (
+            system_prompt
+            + " This is mandatory: the complete response must be in the requested target language."
+        )
+        retry_prompt = f"{LANGUAGE_RETRY_NOTE}\n\n{language_directive(requested_language)}\n\n{user_prompt}"
+        text = generate(retry_prompt, retry_system)
     return {"summary": text.strip(), "provider": resolved, "model": model}
 
 
@@ -242,12 +256,17 @@ def json_or_error(response: HttpResponse) -> dict[str, Any]:
 
 
 def language_directive(code: str) -> str:
-    code = (code or "auto").strip()
+    code = (code or "auto").strip().lower()
     if code and code != "auto":
-        return f'Language rule: Output MUST be in {language_name(code)} ("{code}"). Do not use any other language.'
+        return (
+            f'Critical language rule: Output MUST be entirely in {language_name(code)} ("{code}"). '
+            "Translate the summary into that target language even when the source text uses a different language. "
+            "Do not use another language except for proper nouns, product names, or short quoted source terms."
+        )
     return (
-        "Language rule: Detect the input language and write the summary strictly in that same language. "
-        "If the input is German, output German; if Spanish, output Spanish. Never switch languages."
+        "Critical language rule: Auto means detect the dominant source language and write the summary entirely "
+        "in that same language. Do not use the browser, operating-system, or configured locale as the output "
+        "language. If the input is English, output English; if German, output German; if Spanish, output Spanish."
     )
 
 
@@ -265,3 +284,60 @@ def language_name(code: str) -> str:
         "ko": "Korean",
         "zh": "Chinese (Simplified)",
     }.get(code, code)
+
+
+def needs_language_retry(text: str, requested_code: str) -> bool:
+    code = (requested_code or "").strip().lower()
+    if not text.strip() or code in {"", "auto"}:
+        return False
+    if code == "en":
+        return language_marker_score(text, "de") >= 4 and language_marker_score(text, "en") <= 2
+    if code == "de":
+        return language_marker_score(text, "en") >= 4 and language_marker_score(text, "de") <= 2
+    return False
+
+
+def language_marker_score(text: str, code: str) -> int:
+    lowered = f" {text.lower()} "
+    markers = {
+        "de": (
+            " der ",
+            " die ",
+            " das ",
+            " und ",
+            " ist ",
+            " sind ",
+            " wurde ",
+            " werden ",
+            " mit ",
+            " für ",
+            " ueber ",
+            " über ",
+            " nicht ",
+            " eine ",
+            " einen ",
+            " im ",
+            " auf ",
+            " dass ",
+            " berichtet ",
+        ),
+        "en": (
+            " the ",
+            " and ",
+            " is ",
+            " are ",
+            " was ",
+            " were ",
+            " with ",
+            " for ",
+            " about ",
+            " not ",
+            " a ",
+            " an ",
+            " in ",
+            " on ",
+            " that ",
+            " reports ",
+        ),
+    }.get(code, ())
+    return sum(lowered.count(marker) for marker in markers)
