@@ -106,13 +106,10 @@ DEFAULTS: dict[str, Any] = {
     },
 }
 
-WINDOWS_SECRETS_DIR = Path(r"D:\Dokumente\Projekte\.secrets")
 def default_secret_file(filename: str) -> Path:
-    configured = os.environ.get("LLM_SKILLS_SECRETS_DIR") or os.environ.get("PROJECTS_SECRETS_DIR")
+    configured = os.environ.get("ECHOSCRIBE_SECRETS_DIR")
     if configured:
         return Path(configured).expanduser() / filename
-    if os.name == "nt" or WINDOWS_SECRETS_DIR.exists():
-        return WINDOWS_SECRETS_DIR / filename
     return Path.home() / ".secrets" / filename
 
 

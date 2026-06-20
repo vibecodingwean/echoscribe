@@ -44,7 +44,12 @@ else
 fi
 
 step_current=0
-step_total=9
+step_total=10
+local_ai_host="127.0.0.1"
+local_whisper_model="whisper-large-v3"
+local_ollama_model="qwen2.5:7b"
+install_local_whisper="no"
+pull_local_ollama="no"
 
 banner() {
   echo
@@ -119,6 +124,128 @@ prompt_default() {
   local answer
   read -r -p "$prompt [$default] " answer
   printf '%s' "${answer:-$default}"
+}
+
+detect_vram_gb() {
+  if command -v nvidia-smi >/dev/null 2>&1; then
+    local mib
+    mib="$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -n 1 | tr -dc '0-9' || true)"
+    if [ -n "$mib" ]; then
+      awk -v mib="$mib" 'BEGIN { printf "%.0f", mib / 1024 }'
+      return
+    fi
+  fi
+  printf '0'
+}
+
+detect_ram_gb() {
+  if command -v free >/dev/null 2>&1; then
+    free -g | awk '/^Mem:/ { print $2; exit }'
+    return
+  fi
+  awk '/MemTotal:/ { printf "%.0f", $2 / 1024 / 1024; exit }' /proc/meminfo 2>/dev/null || printf '0'
+}
+
+model_color() {
+  local need_vram="$1"
+  local need_ram="$2"
+  local have_vram="$3"
+  local have_ram="$4"
+  if [ "$have_vram" -gt 0 ]; then
+    if [ "$need_vram" -le "$have_vram" ] && [ "$need_ram" -le "$have_ram" ]; then
+      printf 'green'
+    elif [ "$need_vram" -le $((have_vram + 2)) ] && [ "$need_ram" -le $((have_ram + 4)) ]; then
+      printf 'yellow'
+    else
+      printf 'red'
+    fi
+  elif [ "$need_ram" -le "$have_ram" ]; then
+    printf 'yellow'
+  else
+    printf 'red'
+  fi
+}
+
+choose_local_ai_summary_model() {
+  local have_vram have_ram
+  have_vram="$(detect_vram_gb)"
+  have_ram="$(detect_ram_gb)"
+  echo >&2
+  echo "Local AI summary model:" >&2
+  if [ "$have_vram" -gt 0 ]; then
+    local gpu_name
+    gpu_name="$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -n 1 || true)"
+    echo " Hardware: NVIDIA ${gpu_name:-GPU}, ${have_vram} GB VRAM, ${have_ram} GB RAM" >&2
+  else
+    echo " Hardware: no NVIDIA GPU detected, ${have_ram} GB RAM" >&2
+  fi
+  echo " Green = comfortable, yellow = tight, red = likely too large/slow." >&2
+  echo " With NVIDIA VRAM, VRAM and RAM are considered. Without it, RAM-only CPU use is estimated." >&2
+  echo " The list goes from smaller/faster models to stronger/larger models." >&2
+  echo >&2
+
+  local models=(
+    "llama3.1:8b|Llama 3.1 8B|6|10|Solid entry point for CPU-only systems or smaller GPUs"
+    "qwen2.5:7b|Qwen2.5 7B|6|10|Recommended: very fast with strong summary quality"
+    "gemma4:e4b|Gemma 4 E4B|4|8|Very small and fast Gemma option for lightweight summaries"
+    "gemma4:12b|Gemma 4 12B|9|14|Good reasoning and summary quality"
+    "qwen2.5:14b|Qwen2.5 14B|10|16|Stronger quality with good speed"
+    "deepseek-r1:14b|DeepSeek R1 14B|10|16|Strong reasoning, may answer more verbosely"
+    "gemma4:26b|Gemma 4 26B|18|24|High quality, noticeably heavier"
+    "qwen2.5:32b|Qwen2.5 32B|22|32|Very strong, tight on 24 GB VRAM"
+    "deepseek-r1:32b|DeepSeek R1 32B|22|32|Very strong reasoning, tight/slower"
+    "gemma4:31b|Gemma 4 31B|24|32|Strongest Gemma 4 in this list, very tight"
+    "mixtral:8x7b|Mixtral 8x7B|28|48|MoE model, good quality, high RAM demand"
+    "llama3.3:70b|Llama 3.3 70B|48|64|Very strong, for systems with lots of RAM/VRAM"
+    "qwen2.5:72b|Qwen2.5 72B|48|64|Strongest Qwen in this list, very high memory demand"
+    "deepseek-r1:70b|DeepSeek R1 70B|48|64|Strongest reasoning in this list, very high memory demand"
+  )
+
+  local i=1
+  for entry in "${models[@]}"; do
+    IFS='|' read -r model label need_vram need_ram note <<<"$entry"
+    local color marker
+    color="$(model_color "$need_vram" "$need_ram" "$have_vram" "$have_ram")"
+    marker=" "
+    [ "$model" = "qwen2.5:7b" ] && marker="*"
+    printf '%s %2d. %s [%s] needs about %s GB VRAM / %s GB RAM - %s\n' "$marker" "$i" "$model" "$color" "$need_vram" "$need_ram" "$note" >&2
+    i=$((i + 1))
+  done
+  echo >&2
+
+  local answer selected
+  read -r -p "Choose summary model number or name [2] " answer
+  answer="${answer:-2}"
+  if [[ "$answer" =~ ^[0-9]+$ ]] && [ "$answer" -ge 1 ] && [ "$answer" -le "${#models[@]}" ]; then
+    selected="${models[$((answer - 1))]}"
+    printf '%s' "${selected%%|*}"
+    return
+  fi
+  printf '%s' "$answer"
+}
+
+configure_local_ai() {
+  local default_whisper="n"
+  local default_ollama="n"
+  [ "$transcription_provider" = "localai" ] && default_whisper="y"
+  [ "$summary_provider" = "localai" ] && default_ollama="y"
+
+  echo
+  step "Local AI"
+  if ask_yes_no "Install/start local Whisper Large (CUDA) and use it for dictation?" "$default_whisper"; then
+    install_local_whisper="yes"
+    transcription_provider="localai"
+  fi
+
+  if ask_yes_no "Configure Local AI summaries with Ollama?" "$default_ollama"; then
+    summary_provider="localai"
+    local_ollama_model="$(choose_local_ai_summary_model)"
+    pull_local_ollama="yes"
+  fi
+
+  if [ "$install_local_whisper" = "yes" ] || [ "$summary_provider" = "localai" ] || [ "$transcription_provider" = "localai" ]; then
+    local_ai_host="$(prompt_default "Local AI host/IP for EchoScribe config" "$local_ai_host")"
+  fi
 }
 
 run_root_script() {
@@ -300,9 +427,10 @@ write_config() {
   if [ -f "$config_file" ]; then
     cp "$config_file" "$config_file.bak.$(date +%Y%m%d-%H%M%S)"
   fi
-  python3 - "$repo_dir/config.example.toml" "$config_file" "$dictation" "$paste_shortcut" "$transcription_provider" "$summary_provider" <<'PY'
+  python3 - "$repo_dir/config.example.toml" "$config_file" "$dictation" "$paste_shortcut" "$transcription_provider" "$summary_provider" "$local_ai_host" "$local_whisper_model" "$local_ollama_model" <<'PY'
 from pathlib import Path
 import sys
+import re
 
 from echoscribe.setup_config import render_config_template
 
@@ -312,6 +440,9 @@ dictation = sys.argv[3]
 paste_shortcut = sys.argv[4]
 transcription_provider = sys.argv[5]
 summary_provider = sys.argv[6]
+local_ai_host = sys.argv[7].strip() or "127.0.0.1"
+local_whisper_model = sys.argv[8].strip() or "whisper-large-v3"
+local_ollama_model = sys.argv[9].strip() or "qwen2.5:7b"
 
 text = render_config_template(
     template,
@@ -320,6 +451,10 @@ text = render_config_template(
     paste_shortcut=paste_shortcut,
 )
 text = text.replace('summary = "openai"', f'summary = "{summary_provider}"')
+text = re.sub(r'(?m)^llm_url = "[^"]+"', f'llm_url = "http://{local_ai_host}:11434/api/chat"', text)
+text = re.sub(r'(?m)^summary_model = "qwen2\.5:7b"', f'summary_model = "{local_ollama_model}"', text)
+text = re.sub(r'(?m)^whisper_url = "[^"]+"', f'whisper_url = "http://{local_ai_host}:8000/v1/audio/transcriptions"', text)
+text = re.sub(r'(?m)^transcription_model = "whisper-1"', f'transcription_model = "{local_whisper_model}"', text)
 out.write_text(text, encoding="utf-8")
 PY
 }
@@ -357,11 +492,21 @@ configure_env_key "XAI_API_KEY" "xAI/Grok API key" "$(provider_required_flag xai
 configure_env_key "ELEVENLABS_API_KEY" "ElevenLabs API key" "$(provider_required_flag elevenlabs)"
 chmod 600 "$env_file" 2>/dev/null || true
 
+configure_local_ai
+
 step "Hotkeys"
 choose_hotkeys
 echo
 paste_shortcut="$(prompt_default "Paste shortcut (auto, ctrl+v, ctrl+shift+v)" "auto")"
 write_config
+
+if [ "$install_local_whisper" = "yes" ] || [ "$pull_local_ollama" = "yes" ]; then
+  ./scripts/install-local-ai.sh \
+    $( [ "$install_local_whisper" = "yes" ] && printf '%s' "--whisper" || printf '%s' "--no-whisper" ) \
+    $( [ "$pull_local_ollama" = "yes" ] && printf '%s' "--pull-ollama" || printf '%s' "--no-pull-ollama" ) \
+    --whisper-model "$local_whisper_model" \
+    --ollama-model "$local_ollama_model"
+fi
 
 echo
 step "Desktop integration"

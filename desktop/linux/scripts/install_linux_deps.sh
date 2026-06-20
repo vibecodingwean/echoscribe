@@ -6,6 +6,7 @@ target_user="${1:-${SUDO_USER:-$USER}}"
 apt-get update
 apt-get install -y \
   ffmpeg \
+  curl \
   alsa-utils \
   poppler-utils \
   python3-venv \
@@ -28,4 +29,3 @@ udevadm control --reload-rules
 udevadm trigger || true
 
 echo "Installed dependencies. Log out and back in so group membership applies."
-
