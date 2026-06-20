@@ -21,8 +21,8 @@ cd EchoScribe-Linux-GNOME-<version>/linux
 
 The wizard installs Linux dependencies, creates `.venv`, writes the per-user
 EchoScribe config, stores provider keys in the configured per-user secret env
-file, installs the GNOME Shell extension, and can register browser native hosts
-for Chromium-based browsers and Firefox.
+file, optionally configures Local AI, installs the GNOME Shell extension, and
+can register browser native hosts for Chromium-based browsers and Firefox.
 
 On GNOME, EchoScribe starts through the installed GNOME Shell extension when you log into the desktop. The helper service installed by `install_user_service.sh` is only for `ydotool`; it is not an EchoScribe background app service.
 
@@ -75,7 +75,20 @@ Summary providers:
 - `xai`: default model `grok-4.3`
 - `localai`: Ollama-compatible `/api/chat`, default URL `http://127.0.0.1:11434/api/chat`, default model `qwen2.5:7b`
 
-Local AI sends Ollama chat requests with `model`, `stream: false`, `think: false`, and `messages`, then reads `message.content`. Local Whisper STT sends multipart `file`, `model`, `response_format=json`, and optional `language`, then reads `text`. Example Ollama models: `qwen2.5:7b`, `gemma4:e4b`, `gemma3`, `deepseek-r1`. For PoC use, keep endpoints on a trusted local network or VPN; EchoScribe does not add authentication to Local AI requests.
+During `install.sh`, the Linux installer can optionally configure Local AI:
+
+- Local Whisper Large (CUDA): installs a Faster-Whisper server under `${XDG_DATA_HOME:-$HOME/.local/share}/echoscribe/local-ai`, configures STT provider `localai`, model `whisper-large-v3`, and `whisper_url` on port `8000`. If user systemd is available, it creates and starts `echoscribe-local-whisper.service`; otherwise it starts the server as a per-user background process.
+- Local Ollama summaries: detects NVIDIA GPU/VRAM and system RAM, shows a color-coded model list, configures summary provider `localai`, sets `llm_url` on port `11434`, and can download/check the selected model. Green means comfortable, yellow means tight, and red means likely too large or slow for the detected hardware. The default recommendation is `qwen2.5:7b`; `gemma4:e4b` is included as a very small fast option.
+
+Local AI sends Ollama chat requests with `model`, `stream: false`, `think: false`, and `messages`, then reads `message.content`. Local Whisper STT sends multipart `file`, `model`, `response_format=json`, and optional `language`, then reads `text`. Example Ollama models: `qwen2.5:7b`, `gemma4:e4b`, `gemma3`, and `deepseek-r1`. For PoC use, keep endpoints on a trusted local network or VPN; EchoScribe does not add authentication to Local AI requests.
+
+Useful Local AI commands:
+
+```bash
+systemctl --user status echoscribe-local-whisper.service
+journalctl --user -u echoscribe-local-whisper.service -n 80
+curl http://127.0.0.1:8000/health
+```
 
 ## Verification
 
