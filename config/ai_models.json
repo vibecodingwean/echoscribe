@@ -80,7 +80,24 @@
   },
   "localai": {
     "summary": {
-      "default": "qwen2.5:7b"
+      "default": "qwen2.5:7b",
+      "recommendations": [
+        "llama3.1:8b",
+        "qwen2.5:7b",
+        "gemma3",
+        "gemma4:e4b",
+        "gemma4:12b",
+        "qwen2.5:14b",
+        "deepseek-r1:14b",
+        "gemma4:26b",
+        "qwen2.5:32b",
+        "deepseek-r1:32b",
+        "gemma4:31b",
+        "mixtral:8x7b",
+        "llama3.3:70b",
+        "qwen2.5:72b",
+        "deepseek-r1:70b"
+      ]
     },
     "translation": {
       "default": "qwen2.5:7b"
