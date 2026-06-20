@@ -24,8 +24,9 @@ const String kDefaultUrlSummaryPrompt =
     '- Remove filler and marketing language.\n'
     '- Adapt to the content type automatically.\n\n'
     'Structure:\n'
-    '- If the content contains multiple distinct aspects (e.g. results, ingredients, steps, features, findings), you MAY organize the summary into 2–4 short sections.\n'
-    '- Each section may have a short "##" heading and one fitting emoji.\n'
+    '- If the content contains multiple distinct aspects (e.g. results, ingredients, steps, features, findings), organize the summary into 2–4 short sections.\n'
+    '- Each section heading MUST be formatted as "## <emoji> <1–3 word title>".\n'
+    '- Do not write a section heading without an emoji.\n'
     '- Keep section titles very short (1–3 words).\n'
     '- Each section should contain one concise sentence.\n'
     '- If the content is simple, write a short paragraph instead (1–3 sentences).\n\n'
@@ -124,10 +125,10 @@ class AiModelConfig {
       pro ? xaiReasoningEffortPro : xaiReasoningEffortFast;
 
   // ---------- Local AI ----------
-  static const String localAiLlmUrl = 'http://192.168.178.20:11434/api/chat';
-  static const String localAiLlmModel = 'qwen2.5:3b';
+  static const String localAiLlmUrl = 'http://127.0.0.1:11434/api/chat';
+  static const String localAiLlmModel = 'qwen2.5:7b';
   static const String localAiWhisperUrl =
-      'http://192.168.178.20:8000/v1/audio/transcriptions';
+      'http://127.0.0.1:8000/v1/audio/transcriptions';
   static const String localAiWhisperModel = 'whisper-1';
 
   static String openAiImage({required bool pro}) =>

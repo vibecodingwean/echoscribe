@@ -17,14 +17,14 @@ except ModuleNotFoundError:  # pragma: no cover - used on Python 3.9/3.10.
 TRANSCRIPTION_PROVIDERS = {"openai", "gemini", "xai", "elevenlabs", "localai"}
 SUMMARY_PROVIDERS = {"openai", "gemini", "anthropic", "xai", "localai"}
 ALL_PROVIDERS = TRANSCRIPTION_PROVIDERS | SUMMARY_PROVIDERS
-DEFAULT_LOCAL_AI_LLM_URL = "http://192.168.178.20:11434/api/chat"
-DEFAULT_LOCAL_AI_WHISPER_URL = "http://192.168.178.20:8000/v1/audio/transcriptions"
+DEFAULT_LOCAL_AI_LLM_URL = "http://127.0.0.1:11434/api/chat"
+DEFAULT_LOCAL_AI_WHISPER_URL = "http://127.0.0.1:8000/v1/audio/transcriptions"
 DEFAULT_SUMMARY_MODELS = {
     "openai": "gpt-5.4-mini",
     "gemini": "gemini-3.5-flash",
     "anthropic": "claude-sonnet-4-6",
     "xai": "grok-4.3",
-    "localai": "qwen2.5:3b",
+    "localai": "qwen2.5:7b",
 }
 
 DEPRECATED_MODEL_DEFAULTS = {
@@ -84,7 +84,7 @@ DEFAULTS: dict[str, Any] = {
         "llm_url": DEFAULT_LOCAL_AI_LLM_URL,
         "whisper_url": DEFAULT_LOCAL_AI_WHISPER_URL,
         "transcription_model": "whisper-1",
-        "summary_model": "qwen2.5:3b",
+        "summary_model": "qwen2.5:7b",
         "target_language": "auto",
     },
     "recorder": {
@@ -107,8 +107,6 @@ DEFAULTS: dict[str, Any] = {
 }
 
 WINDOWS_SECRETS_DIR = Path(r"D:\Dokumente\Projekte\.secrets")
-
-
 def default_secret_file(filename: str) -> Path:
     configured = os.environ.get("LLM_SKILLS_SECRETS_DIR") or os.environ.get("PROJECTS_SECRETS_DIR")
     if configured:
@@ -242,8 +240,12 @@ def normalize_provider(provider: str) -> str:
 def read_env_file(path: Path) -> dict[str, str]:
     if not path.exists():
         return {}
+    return parse_env_text(path.read_text(encoding="utf-8"))
+
+
+def parse_env_text(text: str) -> dict[str, str]:
     values: dict[str, str] = {}
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
+    for raw_line in text.splitlines():
         line = raw_line.strip()
         if not line or line.startswith("#"):
             continue

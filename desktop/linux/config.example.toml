@@ -57,10 +57,10 @@ tag_audio_events = false
 
 [localai]
 # Ollama-compatible chat endpoint for summaries and translation.
-llm_url = "http://192.168.178.20:11434/api/chat"
-summary_model = "qwen2.5:3b"
+llm_url = "http://127.0.0.1:11434/api/chat"
+summary_model = "qwen2.5:7b"
 # OpenAI-compatible Whisper transcription endpoint.
-whisper_url = "http://192.168.178.20:8000/v1/audio/transcriptions"
+whisper_url = "http://127.0.0.1:8000/v1/audio/transcriptions"
 transcription_model = "whisper-1"
 target_language = "auto"
 

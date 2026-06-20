@@ -1001,14 +1001,14 @@ class _LocalAiConfigCard extends StatelessWidget {
               _localAiTextField(
                 controller: llmUrlController,
                 label: 'LLM URL',
-                hint: 'http://192.168.178.20:11434/api/chat',
+                hint: 'http://127.0.0.1:11434/api/chat',
                 icon: Icons.hub_outlined,
                 onChanged: onChanged,
               ),
               _localAiTextField(
                 controller: llmModelController,
                 label: 'LLM model',
-                hint: 'qwen2.5:3b',
+                hint: 'qwen2.5:7b',
                 icon: Icons.memory,
                 onChanged: onChanged,
               ),
@@ -1031,7 +1031,7 @@ class _LocalAiConfigCard extends StatelessWidget {
               _localAiTextField(
                 controller: whisperUrlController,
                 label: 'Whisper URL',
-                hint: 'http://192.168.178.20:8000/v1/audio/transcriptions',
+                hint: 'http://127.0.0.1:8000/v1/audio/transcriptions',
                 icon: Icons.graphic_eq,
                 onChanged: onChanged,
               ),

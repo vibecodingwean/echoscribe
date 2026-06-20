@@ -65,7 +65,7 @@ Speech-to-text providers:
 - `elevenlabs`: default model `scribe_v2`
 - `gemini`: default model `gemini-3.5-flash`
 - `xai`: default model `xai-stt`
-- `localai`: Local AI Whisper-compatible endpoint, default URL `http://192.168.178.20:8000/v1/audio/transcriptions`, default model `whisper-1`
+- `localai`: Local AI Whisper-compatible endpoint, default URL `http://127.0.0.1:8000/v1/audio/transcriptions`, default model `whisper-1`
 
 Summary providers:
 
@@ -73,9 +73,9 @@ Summary providers:
 - `gemini`: default model `gemini-3.5-flash`
 - `anthropic`: default model `claude-sonnet-4-6`
 - `xai`: default model `grok-4.3`
-- `localai`: Ollama-compatible `/api/chat`, default URL `http://192.168.178.20:11434/api/chat`, default model `qwen2.5:3b`
+- `localai`: Ollama-compatible `/api/chat`, default URL `http://127.0.0.1:11434/api/chat`, default model `qwen2.5:7b`
 
-Local AI sends Ollama chat requests with `model`, `stream: false`, and `messages`, then reads `message.content`. Local Whisper STT sends multipart `file`, `model`, `response_format=json`, and optional `language`, then reads `text`. Example Ollama models: `qwen2.5:3b`, `gemma3`, `deepseek-r1`. For PoC use, keep endpoints on a trusted local network or VPN; EchoScribe does not add authentication to Local AI requests.
+Local AI sends Ollama chat requests with `model`, `stream: false`, `think: false`, and `messages`, then reads `message.content`. Local Whisper STT sends multipart `file`, `model`, `response_format=json`, and optional `language`, then reads `text`. Example Ollama models: `qwen2.5:7b`, `gemma4:e4b`, `gemma3`, `deepseek-r1`. For PoC use, keep endpoints on a trusted local network or VPN; EchoScribe does not add authentication to Local AI requests.
 
 ## Verification
 

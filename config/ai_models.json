@@ -80,17 +80,17 @@
   },
   "localai": {
     "summary": {
-      "default": "qwen2.5:3b"
+      "default": "qwen2.5:7b"
     },
     "translation": {
-      "default": "qwen2.5:3b"
+      "default": "qwen2.5:7b"
     },
     "transcription": {
       "default": "whisper-1"
     },
     "endpoints": {
-      "llm": "http://192.168.178.20:11434/api/chat",
-      "whisper": "http://192.168.178.20:8000/v1/audio/transcriptions"
+      "llm": "http://127.0.0.1:11434/api/chat",
+      "whisper": "http://127.0.0.1:8000/v1/audio/transcriptions"
     }
   }
 }
