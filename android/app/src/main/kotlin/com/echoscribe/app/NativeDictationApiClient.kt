@@ -8,6 +8,10 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 class NativeDictationApiClient(private val config: NativeDictationConfig) {
+    private companion object {
+        const val DEFAULT_LOCAL_AI_FORMATTING_MODEL = "qwen2.5:7b"
+    }
+
     fun preflightLocalAi() {
         if (config.provider != "localAi") return
         preflightLocalAiWhisper()
@@ -115,7 +119,7 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
         val endpoint = config.localAiLlmUrl.ifBlank {
             throw IllegalStateException("Local AI LLM URL is not configured")
         }
-        val model = config.formattingModel.ifBlank { "qwen2.5:3b" }
+        val model = config.formattingModel.ifBlank { DEFAULT_LOCAL_AI_FORMATTING_MODEL }
         val body = requestText(
             endpoint = originEndpoint(endpoint, "/api/tags"),
             method = "GET",
@@ -225,8 +229,9 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
                     .put("content", "${config.dictationPrompt}\n\nRaw text:\n$rawText"),
             )
         val body = JSONObject()
-            .put("model", config.formattingModel.ifBlank { "qwen2.5:3b" })
+            .put("model", config.formattingModel.ifBlank { DEFAULT_LOCAL_AI_FORMATTING_MODEL })
             .put("stream", false)
+            .put("think", false)
             .put("messages", messages)
         val json = postJson(
             endpoint = config.localAiLlmUrl.ifBlank {
