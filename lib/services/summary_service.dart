@@ -15,6 +15,9 @@ class SummaryService {
       'Summarize the following content in 2-4 concise sentences. '
       'Use only facts present in the text. '
       'Do not add headings, labels, or meta commentary.';
+  static const String _localAiFormattingRule =
+      'For sectioned summaries, every heading MUST be formatted exactly as '
+      '"## <emoji> <1-3 word title>". Never write a section heading without an emoji.';
 
   String _summarySystemPrompt(String langHint) {
     return 'You are a precise summarizer. Follow the language rule strictly.\n'
@@ -168,11 +171,12 @@ class SummaryService {
     final basePrompt = summaryPrompt?.trim().isNotEmpty == true
         ? summaryPrompt!.trim()
         : kDefaultSummaryPrompt;
-    final prompt = _buildPrompt(
+    var prompt = _buildPrompt(
       basePrompt: basePrompt,
       langHint: langHint,
       text: trimmed,
     );
+    prompt = '$_localAiFormattingRule\n\n$prompt';
 
     final uri = Uri.parse(endpoint.trim());
     final headers = {
@@ -181,13 +185,17 @@ class SummaryService {
     final body = json.encode({
       'model': model,
       'stream': false,
+      'think': false,
       'options': {
         'num_ctx': 2048,
         'num_predict': _localAiMaxOutputTokens,
         'temperature': 0.2,
       },
       'messages': [
-        {'role': 'system', 'content': _summarySystemPrompt(langHint)},
+        {
+          'role': 'system',
+          'content': '${_summarySystemPrompt(langHint)} $_localAiFormattingRule',
+        },
         {'role': 'user', 'content': prompt},
       ],
     });

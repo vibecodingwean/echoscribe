@@ -231,6 +231,7 @@ class TranslationService {
     final body = json.encode({
       'model': model,
       'stream': false,
+      'think': false,
       'messages': [
         {
           'role': 'system',

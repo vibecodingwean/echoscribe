@@ -16,8 +16,9 @@ LOCAL_AI_TIMEOUT_SECONDS = 75
 LOCAL_AI_SUMMARY_PROMPT = (
     "Summarize the webpage content using only facts present in the text. "
     "If the content has multiple distinct aspects, use 2-4 short sections. "
-    'Each section starts with a short "##" heading and one fitting emoji, '
+    'Each section heading MUST be formatted as "## <emoji> <1-3 word title>", '
     "followed by one concise sentence. "
+    "Do not write a section heading without an emoji. "
     "If the content is simple, write 1-3 concise sentences. "
     "Do not add prefaces, labels, or meta commentary."
 )
@@ -37,8 +38,9 @@ Rules:
 - Adapt to the content type automatically.
 
 Structure:
-- If the content contains multiple distinct aspects (e.g. results, ingredients, steps, features, findings), you MAY organize the summary into 2-4 short sections.
-- Each section may have a short "##" heading and one fitting emoji.
+- If the content contains multiple distinct aspects (e.g. results, ingredients, steps, features, findings), organize the summary into 2-4 short sections.
+- Each section heading MUST be formatted as "## <emoji> <1-3 word title>".
+- Do not write a section heading without an emoji.
 - Keep section titles very short (1-3 words).
 - Each section should contain one concise sentence.
 - If the content is simple, write a short paragraph instead (1-3 sentences).
@@ -207,6 +209,7 @@ def summarize_local_ai(endpoint: str, model: str, system_prompt: str, prompt: st
     payload = {
         "model": model,
         "stream": False,
+        "think": False,
         "options": {
             "num_ctx": 2048,
             "num_predict": LOCAL_AI_MAX_OUTPUT_TOKENS,
