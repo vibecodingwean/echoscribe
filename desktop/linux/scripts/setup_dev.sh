@@ -11,9 +11,8 @@ if [ ! -f "$HOME/.config/echoscribe/config.toml" ]; then
     cp config.example.toml "$HOME/.config/echoscribe/config.toml"
   fi
 fi
-mkdir -p "$HOME/.config/echoscribe"
-if [ ! -f "$HOME/.config/echoscribe/echoscribe.env" ] && [ -f "$HOME/.config/echoscribe/legacy-transcriber.env" ]; then
-  cp "$HOME/.config/echoscribe/legacy-transcriber.env" "$HOME/.config/echoscribe/echoscribe.env"
-  chmod 600 "$HOME/.config/echoscribe/echoscribe.env" 2>/dev/null || true
+if [ ! -f "$HOME/.config/echoscribe/secrets.env" ] && [ -f "$HOME/.config/wispr/secrets.env" ]; then
+  cp "$HOME/.config/wispr/secrets.env" "$HOME/.config/echoscribe/secrets.env"
+  chmod 600 "$HOME/.config/echoscribe/secrets.env" 2>/dev/null || true
 fi
 echo "EchoScribe dev environment ready."
