@@ -31,7 +31,7 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 ### ✍️ Smart Summarization
 - **Audio • Text • URL:** Summarize everything in one tap.
 - **Local URL Extraction:** A privacy-first mechanism extracts web content directly on your device, bypassing paywalls and bot-detection while keeping your browsing private. Mandatory for Claude 🦀 and Grok 𝕏.
-- **Local AI Provider:** Use an Ollama-compatible `/api/chat` endpoint for summaries/translations and an OpenAI-compatible Whisper endpoint for STT. Defaults are `qwen2.5:7b` and `whisper-1`; local model names remain editable.
+- **Local AI Provider:** Use an Ollama-compatible `/api/chat` endpoint for summaries/translations and an OpenAI-compatible Whisper endpoint. Defaults are `qwen2.5:7b` and `whisper-1`; local model names remain editable.
 - **Custom Prompts:** Fine-tune how your summaries look and feel in the settings.
 
 ### 🚀 Pro Mode & Models
@@ -89,7 +89,9 @@ cd EchoScribe-Linux-GNOME-<version>/linux
 The wizard is intended for Debian-based GNOME systems. It installs dependencies,
 creates the Python environment, writes local config, stores provider keys in the
 configured per-user secret env file, installs the GNOME Shell extension, and can
-register Native Messaging hosts for Chromium-based browsers and Firefox.
+register Native Messaging hosts for Chromium-based browsers and Firefox. It can
+also configure Local Whisper on compatible NVIDIA/CUDA systems and an existing
+Ollama service when available.
 
 Browser extensions are loaded manually:
 
@@ -97,6 +99,8 @@ Browser extensions are loaded manually:
 2. Firefox: open `about:debugging#/runtime/this-firefox` and load `firefox-extension/manifest.json`.
 
 More details: [`desktop/linux/README.md`](desktop/linux/README.md).
+
+To uninstall the Linux/GNOME integration, run `./uninstall.sh` from the extracted package.
 
 ---
 

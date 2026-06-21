@@ -110,7 +110,9 @@ def default_secret_file(filename: str) -> Path:
     configured = os.environ.get("ECHOSCRIBE_SECRETS_DIR")
     if configured:
         return Path(configured).expanduser() / filename
-    return Path.home() / ".secrets" / filename
+    if filename == "echoscribe.env":
+        return Path("~/.config/echoscribe/secrets.env").expanduser()
+    return Path("~/.config/wispr/secrets.env").expanduser()
 
 
 @dataclass(frozen=True)

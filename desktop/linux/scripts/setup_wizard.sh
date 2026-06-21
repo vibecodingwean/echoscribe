@@ -6,8 +6,7 @@ cd "$(dirname "$0")/.."
 repo_dir="$(pwd)"
 config_dir="$HOME/.config/echoscribe"
 config_file="$config_dir/config.toml"
-secrets_dir="$HOME/.secrets"
-env_file="${ECHOSCRIBE_ENV_FILE:-$secrets_dir/echoscribe.env}"
+env_file="${ECHOSCRIBE_ENV_FILE:-$config_dir/secrets.env}"
 dry_run="no"
 
 while [ "$#" -gt 0 ]; do
@@ -232,12 +231,19 @@ configure_local_ai() {
 
   echo
   step "Local AI"
-  if ask_yes_no "Install/start local Whisper Large (CUDA) and use it for dictation?" "$default_whisper"; then
-    install_local_whisper="yes"
-    transcription_provider="localai"
+  local have_vram
+  have_vram="$(detect_vram_gb)"
+  if [ "$have_vram" -gt 0 ]; then
+    if ask_yes_no "Optional: install/start local Whisper Large (CUDA) and use it for dictation?" "$default_whisper"; then
+      install_local_whisper="yes"
+      transcription_provider="localai"
+    fi
+  else
+    echo "Optional Local Whisper setup skipped: no NVIDIA GPU/VRAM was detected on this GNOME installation."
+    echo "You can still configure an existing Local AI Whisper endpoint manually."
   fi
 
-  if ask_yes_no "Configure Local AI summaries with Ollama?" "$default_ollama"; then
+  if ask_yes_no "Optional: configure Local AI summaries with an existing Ollama service?" "$default_ollama"; then
     summary_provider="localai"
     local_ollama_model="$(choose_local_ai_summary_model)"
     pull_local_ollama="yes"
@@ -260,7 +266,6 @@ run_root_script() {
     return 1
   fi
 }
-
 write_env_value() {
   local key="$1"
   local value="$2"

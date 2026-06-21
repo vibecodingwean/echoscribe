@@ -77,8 +77,10 @@ Summary providers:
 
 During `install.sh`, the Linux installer can optionally configure Local AI:
 
-- Local Whisper Large (CUDA): installs a Faster-Whisper server under `${XDG_DATA_HOME:-$HOME/.local/share}/echoscribe/local-ai`, configures STT provider `localai`, model `whisper-large-v3`, and `whisper_url` on port `8000`. If user systemd is available, it creates and starts `echoscribe-local-whisper.service`; otherwise it starts the server as a per-user background process.
-- Local Ollama summaries: detects NVIDIA GPU/VRAM and system RAM, shows a color-coded model list, configures summary provider `localai`, sets `llm_url` on port `11434`, and can download/check the selected model. Green means comfortable, yellow means tight, and red means likely too large or slow for the detected hardware. The default recommendation is `qwen2.5:7b`; `gemma4:e4b` is included as a very small fast option.
+- Local Whisper Large (CUDA): only offered when NVIDIA GPU/VRAM is detected. If selected, setup installs a Faster-Whisper server under `${XDG_DATA_HOME:-$HOME/.local/share}/echoscribe/local-ai`, configures STT provider `localai`, model `whisper-large-v3`, and `whisper_url` on port `8000`. If user systemd is available, it creates and starts `echoscribe-local-whisper.service`; otherwise it starts the server as a per-user background process.
+- Local Ollama summaries: detects NVIDIA GPU/VRAM and system RAM, shows a color-coded model list, configures summary provider `localai`, sets `llm_url` on port `11434`, and can download/check the selected model when Ollama is already installed and reachable. Green means comfortable, yellow means tight, and red means likely too large or slow for the detected hardware. The default recommendation is `qwen2.5:7b`; `gemma4:e4b` is included as a very small fast option.
+
+The standard GNOME install does not require CUDA or Ollama. The installer does not install Ollama itself. Install and start Ollama separately before choosing the model download/check option.
 
 Local AI sends Ollama chat requests with `model`, `stream: false`, `think: false`, and `messages`, then reads `message.content`. Local Whisper STT sends multipart `file`, `model`, `response_format=json`, and optional `language`, then reads `text`. Example Ollama models: `qwen2.5:7b`, `gemma4:e4b`, `gemma3`, and `deepseek-r1`. For PoC use, keep endpoints on a trusted local network or VPN; EchoScribe does not add authentication to Local AI requests.
 
@@ -89,6 +91,20 @@ systemctl --user status echoscribe-local-whisper.service
 journalctl --user -u echoscribe-local-whisper.service -n 80
 curl http://127.0.0.1:8000/health
 ```
+
+## Uninstall
+
+Run:
+
+```bash
+./uninstall.sh
+```
+
+The uninstaller lets you choose whether to remove the GNOME Shell extension,
+browser Native Messaging host manifests, EchoScribe config and secret env file,
+the Local Whisper service/files, all local Ollama models, Ollama itself, and the
+extracted release package directory. It refuses to remove a Git checkout as a
+package directory.
 
 ## Verification
 
