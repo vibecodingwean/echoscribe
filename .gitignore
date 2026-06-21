@@ -62,10 +62,6 @@ release/
 *.pdb
 *.dsp
 
-# Project specific
-_dev_tools/
-/tooling/
-
 # Desktop companion local state
 desktop/**/.venv/
 desktop/**/__pycache__/
