@@ -34,7 +34,7 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
         return when (config.provider) {
             "openai" -> formatChat(
                 endpoint = "https://api.openai.com/v1/chat/completions",
-                includeReasoning = false,
+                includeReasoning = true,
                 rawText = raw,
             )
             "gemini" -> formatGemini(raw)
@@ -170,7 +170,7 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
                 ),
             )
         val json = postJson(
-            endpoint = "https://generativelanguage.googleapis.com/v1beta/models/${config.transcriptionModel.ifBlank { "gemini-3.5-flash" }}:generateContent?key=${config.apiKey}",
+            endpoint = "https://generativelanguage.googleapis.com/v1beta/models/${config.transcriptionModel.ifBlank { "gemini-3.6-flash" }}:generateContent?key=${config.apiKey}",
             headers = mapOf("Content-Type" to "application/json"),
             body = body,
         )

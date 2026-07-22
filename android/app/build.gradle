@@ -4,7 +4,7 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
-// Keystore einlesen (optional, aber üblich)
+// Load the optional release keystore configuration.
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
@@ -14,14 +14,15 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace "com.echoscribe.app"
 
-    // compile/target: für Edge-to-Edge-Verhalten ab 35 relevant
+    // Android 16 / API 36 for current Google Play submissions.
     compileSdk 36
 
     defaultConfig {
         applicationId "com.echoscribe.app"
-        // Flutter gibt diese Werte vor – so bleibt's konsistent mit pubspec.yaml
+        manifestPlaceholders["appLabel"] = "Echo Scribe"
+        // Flutter supplies these values so they stay aligned with pubspec.yaml.
         minSdkVersion flutter.minSdkVersion
-        targetSdkVersion 35
+        targetSdkVersion 36
         versionCode flutter.versionCode
         versionName flutter.versionName
         multiDexEnabled true
@@ -40,18 +41,23 @@ android {
 
     buildTypes {
         release {
-            // Wenn kein Keystore konfiguriert ist, crasht der Build nicht
-            signingConfig signingConfigs.release
-            // Bis R8/ProGuard gewollt ist:
+            // Build unsigned when no release keystore is configured locally.
+            if (keystoreProperties["storeFile"]) {
+                signingConfig signingConfigs.release
+            }
+            // Keep shrinking disabled until R8/ProGuard is intentionally enabled.
             minifyEnabled false
             shrinkResources false
         }
         debug {
-            // Debug bleibt unberührt
+            // Install local test builds alongside the Play-signed production app.
+            applicationIdSuffix ".test"
+            versionNameSuffix "-test"
+            manifestPlaceholders["appLabel"] = "Echo Scribe Test"
         }
     }
 
-    // Java/Kotlin auf 17 – das ist Flutter-Standard seit längerem
+    // Java/Kotlin 17 is the current Flutter project baseline.
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -60,7 +66,7 @@ android {
         jvmTarget = "17"
     }
 
-    // (Optional) wenn du ViewBinding/Compose brauchst:
+    // Enable ViewBinding here if the project adopts it later.
     // buildFeatures { viewBinding true }
 }
 

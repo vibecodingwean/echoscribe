@@ -53,6 +53,7 @@ class TranslationService {
           text: text,
           targetLanguageCode: targetLanguageCode,
           model: AiModelConfig.openAiTranslation(pro: pro),
+          reasoningEffort: AiModelConfig.openAiReasoningEffort(pro: pro),
         );
     }
   }
@@ -63,6 +64,7 @@ class TranslationService {
     required String text,
     required String targetLanguageCode,
     String model = AiModelConfig.openAiTranslationFast,
+    String? reasoningEffort = AiModelConfig.openAiReasoningEffortFast,
   }) async {
     if (text.trim().isEmpty) return text;
 
@@ -73,7 +75,7 @@ class TranslationService {
     };
 
     // Simple, direct translation prompt. We ask for only the translated text.
-    final body = json.encode({
+    final payload = <String, dynamic>{
       'model': model,
       'messages': [
         {
@@ -87,7 +89,11 @@ class TranslationService {
               'Translate the following text to ${_codeToHuman(targetLanguageCode)}. Keep tone and meaning. Text:\n\n$text',
         },
       ],
-    });
+    };
+    if (reasoningEffort != null && reasoningEffort.trim().isNotEmpty) {
+      payload['reasoning_effort'] = reasoningEffort.trim();
+    }
+    final body = json.encode(payload);
 
     final sw = Stopwatch()..start();
     DebugConsole.logApiStart(

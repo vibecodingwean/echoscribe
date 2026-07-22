@@ -7,11 +7,21 @@
     </key>
     <key name="toggle-shortcut" type="as">
       <default>['&lt;Super&gt;&lt;Alt&gt;a']</default>
-      <summary>Hold-to-talk shortcut</summary>
+      <summary>Start/stop dictation shortcut</summary>
     </key>
-    <key name="repo-path" type="s">
+    <key name="echoscribe-toggle-shortcut" type="as">
+      <default>['&lt;Super&gt;&lt;Alt&gt;a']</default>
+      <summary>Internal namespaced start/stop keybinding</summary>
+      <description>Mirrors toggle-shortcut while providing Mutter with a globally unique binding name.</description>
+    </key>
+    <key name="echoscribe-ptt-shortcut" type="as">
+      <default>['&lt;Super&gt;&lt;Alt&gt;a']</default>
+      <summary>Deprecated internal keybinding migration alias</summary>
+      <description>Retained temporarily so a cached pre-toggle extension remains loadable until logout.</description>
+    </key>
+    <key name="install-path" type="s">
       <default>''</default>
-      <summary>EchoScribe repository path</summary>
+      <summary>EchoScribe Linux application path</summary>
     </key>
     <key name="python-path" type="s">
       <default>''</default>
@@ -20,28 +30,7 @@
     <key name="feedback-mode" type="s">
       <default>'shell'</default>
       <summary>Feedback mode</summary>
-      <description>One of 'shell', 'legacy', or 'notifications'. PTT input is always active.</description>
-    </key>
-    <key name="trigger-mode" type="s">
-      <default>'ptt'</default>
-      <summary>Deprecated compatibility key</summary>
-    </key>
-    <key name="worker-command" type="s">
-      <default>''</default>
-      <summary>Deprecated compatibility key</summary>
-    </key>
-    <key name="show-notifications" type="b">
-      <default>true</default>
-      <summary>Deprecated compatibility key</summary>
-    </key>
-    <key name="shell-widget-feedback" type="b">
-      <default>true</default>
-      <summary>Deprecated compatibility key</summary>
-    </key>
-    <key name="floating-sideband" type="b">
-      <default>false</default>
-      <summary>Deprecated compatibility key</summary>
+      <description>One of 'shell' or 'notifications'. The dictation shortcut toggles recording.</description>
     </key>
   </schema>
 </schemalist>
-

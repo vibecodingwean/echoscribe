@@ -10,10 +10,24 @@
   color: #ef4444;
 }
 
-.echoscribe-sideband {
+.echoscribe-shell-status {
   background-color: rgba(248, 250, 252, 0.96);
   border: 1px solid rgba(148, 163, 184, 0.65);
   border-radius: 999px;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.28);
 }
 
+.echoscribe-shell-status StLabel {
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.echoscribe-shell-status StIcon {
+  color: #2563eb;
+}
+
+.echoscribe-shell-status.echoscribe-recording StIcon,
+.echoscribe-shell-status.echoscribe-error StIcon {
+  color: #dc2626;
+}

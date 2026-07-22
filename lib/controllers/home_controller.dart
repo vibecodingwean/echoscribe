@@ -125,8 +125,16 @@ class HomeController extends ChangeNotifier {
   }
 
   String? _getReasoningEffort() {
-    if (settings.provider != AiProviderType.xai) return null;
-    return AiModelConfig.xaiReasoningEffort(pro: settings.xaiPro);
+    switch (settings.provider) {
+      case AiProviderType.openai:
+        return AiModelConfig.openAiReasoningEffort(pro: settings.openAiPro);
+      case AiProviderType.xai:
+        return AiModelConfig.xaiReasoningEffort(pro: settings.xaiPro);
+      case AiProviderType.gemini:
+      case AiProviderType.anthropic:
+      case AiProviderType.localAi:
+        return null;
+    }
   }
 
   String _getModelForImage() {
@@ -914,7 +922,7 @@ class HomeController extends ChangeNotifier {
       logsBuffer.writeln('✅ Translation completed successfully!');
       updateDisplayWithLogs(translated);
 
-      // Kurzer Delay, damit der Benutzer das fertige Log sieht, bevor wir es löschen
+      // Briefly keep the completed log visible before clearing it.
       await Future.delayed(const Duration(milliseconds: 800));
 
       content.setCurrentTranscript(translated, isSource: false);

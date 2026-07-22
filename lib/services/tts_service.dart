@@ -110,28 +110,32 @@ class TtsService {
         responseBytes: res.bodyBytes.length);
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
-      // The response may be a stream of JSON objects; attempt robust extraction of the first inlineData.data
+      // streamGenerateContent returns multiple JSON chunks. Concatenate every
+      // inline audio block in response order before adding the WAV header.
       final bodyStr = utf8.decode(res.bodyBytes);
-      String? b64;
+      List<int>? pcmBytes;
       // Try strict JSON first
       try {
-        final data = json.decode(bodyStr) as Map<String, dynamic>;
-        b64 = _extractInlineDataBase64(data);
+        pcmBytes = _extractInlineAudioBytes(json.decode(bodyStr));
       } catch (_) {
-        // Fallback: search for inlineData.data via regex across a streaming body
+        // Fallback for newline-delimited/otherwise non-standard streaming JSON.
         final reg = RegExp(r'"inlineData"\s*:\s*\{[^}]*"data"\s*:\s*"([^"]+)"',
             multiLine: true);
-        final m = reg.firstMatch(bodyStr);
-        if (m != null && m.groupCount >= 1) {
-          b64 = m.group(1);
+        final matches = reg.allMatches(bodyStr);
+        final chunks = <int>[];
+        for (final match in matches) {
+          final encoded = match.group(1);
+          if (encoded != null && encoded.isNotEmpty) {
+            chunks.addAll(base64.decode(encoded));
+          }
         }
+        if (chunks.isNotEmpty) pcmBytes = chunks;
       }
-      if (b64 == null || b64.isEmpty) {
+      if (pcmBytes == null || pcmBytes.isEmpty) {
         debugPrint(
             'Gemini TTS: inlineData not found; response length=${bodyStr.length}');
         throw Exception('No audio data in Gemini response');
       }
-      final pcmBytes = base64.decode(b64);
       final wav = _addWavHeader(pcmBytes,
           sampleRate: 24000, numChannels: 1, bitsPerSample: 16);
       return Uint8List.fromList(wav);
@@ -234,26 +238,29 @@ class TtsService {
   List<int> _le32(int v) =>
       [v & 0xFF, (v >> 8) & 0xFF, (v >> 16) & 0xFF, (v >> 24) & 0xFF];
 
-  // Helper to traverse Gemini JSON structure for inlineData.data
-  String? _extractInlineDataBase64(Map<String, dynamic> root) {
-    try {
-      final candidates = root['candidates'] as List<dynamic>?;
-      if (candidates == null || candidates.isEmpty) return null;
-      final content = candidates.first['content'] as Map<String, dynamic>?;
-      if (content == null) return null;
-      final parts = content['parts'] as List<dynamic>?;
-      if (parts == null || parts.isEmpty) return null;
-      final inline = parts.firstWhere(
-        (p) => p is Map<String, dynamic> && p['inlineData'] != null,
-        orElse: () => null,
-      );
-      if (inline is Map<String, dynamic>) {
-        final data = (inline['inlineData'] as Map<String, dynamic>)['data'];
-        if (data is String) return data;
+  List<int>? _extractInlineAudioBytes(dynamic root) {
+    final chunks = <int>[];
+
+    void visit(dynamic node) {
+      if (node is Map<String, dynamic>) {
+        final inline = node['inlineData'] ?? node['inline_data'];
+        if (inline is Map<String, dynamic>) {
+          final data = inline['data'];
+          if (data is String && data.isNotEmpty) {
+            chunks.addAll(base64.decode(data));
+          }
+        }
+        for (final value in node.values) {
+          visit(value);
+        }
+      } else if (node is List<dynamic>) {
+        for (final value in node) {
+          visit(value);
+        }
       }
-      return null;
-    } catch (_) {
-      return null;
     }
+
+    visit(root);
+    return chunks.isEmpty ? null : chunks;
   }
 }

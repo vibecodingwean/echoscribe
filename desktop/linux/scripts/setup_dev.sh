@@ -2,17 +2,6 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-python3 -m venv --system-site-packages .venv
-mkdir -p "$HOME/.config/echoscribe"
-if [ ! -f "$HOME/.config/echoscribe/config.toml" ]; then
-  if [ -f "$HOME/.config/wispr/config.toml" ]; then
-    cp "$HOME/.config/wispr/config.toml" "$HOME/.config/echoscribe/config.toml"
-  else
-    cp config.example.toml "$HOME/.config/echoscribe/config.toml"
-  fi
-fi
-if [ ! -f "$HOME/.config/echoscribe/secrets.env" ] && [ -f "$HOME/.config/wispr/secrets.env" ]; then
-  cp "$HOME/.config/wispr/secrets.env" "$HOME/.config/echoscribe/secrets.env"
-  chmod 600 "$HOME/.config/echoscribe/secrets.env" 2>/dev/null || true
-fi
-echo "EchoScribe dev environment ready."
+python3 -m compileall -q echoscribe
+glib-compile-schemas --strict gnome-extension/echoscribe@wean.de/schemas
+echo "EchoScribe uses the system Python: $(command -v python3)"
