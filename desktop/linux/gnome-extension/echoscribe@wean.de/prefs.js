@@ -64,6 +64,19 @@ export default class EchoScribePreferences extends ExtensionPreferences {
 
         controls.add(shortcutRow(settings));
 
+        const feedbackModel = new Gtk.StringList();
+        feedbackModel.append('Shell status');
+        feedbackModel.append('Notifications');
+        const feedback = new Adw.ComboRow({
+            title: 'Feedback',
+            model: feedbackModel,
+            selected: settings.get_string('feedback-mode') === 'notifications' ? 1 : 0,
+        });
+        feedback.connect('notify::selected', () => {
+            settings.set_string('feedback-mode', feedback.selected === 1 ? 'notifications' : 'shell');
+        });
+        controls.add(feedback);
+
         const audio = new Adw.PreferencesGroup({title: 'Audio'});
         page.add(audio);
         const transcriptionProvider = providerRow(
@@ -99,14 +112,17 @@ export default class EchoScribePreferences extends ExtensionPreferences {
         const runtime = new Adw.PreferencesGroup({title: 'Runtime'});
         page.add(runtime);
 
-        runtime.add(boundEntryRow('Repository', settings, 'repo-path'));
+        runtime.add(boundEntryRow('Installation path', settings, 'install-path'));
         runtime.add(boundEntryRow('Python executable', settings, 'python-path'));
     }
 }
 
 
 function shortcutRow(settings) {
-    const row = new Adw.ActionRow({title: 'PTT shortcut'});
+    const row = new Adw.ActionRow({
+        title: 'Start/stop shortcut',
+        subtitle: 'Press once to record and again to transcribe',
+    });
     const label = new Gtk.ShortcutLabel({
         accelerator: primaryShortcut(settings),
         disabled_text: 'Set shortcut',
@@ -124,7 +140,7 @@ function shortcutRow(settings) {
         const shortcut = primaryShortcut(settings);
         label.accelerator = shortcut;
         label.disabled_text = 'Set shortcut';
-        row.subtitle = legacyShortcut(shortcut);
+        row.subtitle = `${readableShortcut(shortcut)} — press once to record and again to transcribe`;
     }
 
     button.connect('clicked', () => {
@@ -165,13 +181,13 @@ function shortcutRow(settings) {
 
 
 function apiKeyRow(settings, provider, onSaved) {
-    const secret = apiKeyValue(settings, provider);
+    const isSet = apiKeyIsSet(settings, provider);
     const row = new Adw.ActionRow({
         title: `${provider.label} API key`,
-        subtitle: apiKeyStatusText(secret),
+        subtitle: apiKeyStatusText(isSet),
     });
     const entry = new Gtk.PasswordEntry({
-        text: secret,
+        text: '',
         placeholder_text: 'Paste API key',
         show_peek_icon: true,
         hexpand: true,
@@ -187,7 +203,8 @@ function apiKeyRow(settings, provider, onSaved) {
             return;
         try {
             runEchoScribe(settings, ['config-set', 'api-key', provider.id], `${value}\n`);
-            row.subtitle = apiKeyStatusText(value);
+            entry.text = '';
+            row.subtitle = apiKeyStatusText(true);
             onSaved?.();
         } catch (error) {
             logError(error);
@@ -201,17 +218,17 @@ function apiKeyRow(settings, provider, onSaved) {
 }
 
 
-function apiKeyStatusText(secret) {
-    return secret ? 'Stored in configured secret env file' : 'Missing API key';
+function apiKeyStatusText(isSet) {
+    return isSet ? 'Stored in configured secret env file' : 'Missing API key';
 }
 
 
-function apiKeyValue(settings, provider) {
+function apiKeyIsSet(settings, provider) {
     try {
-        return runEchoScribe(settings, ['config-get', 'api-key', provider.id]).trim();
+        return runEchoScribe(settings, ['config-get', 'api-key-status', provider.id]).trim() === 'set';
     } catch (error) {
         logError(error);
-        return '';
+        return false;
     }
 }
 
@@ -449,7 +466,7 @@ function hasModifier(state, mask) {
 }
 
 
-function legacyShortcut(shortcut) {
+function readableShortcut(shortcut) {
     return shortcut
         .replace(/<Super>/gi, 'super+')
         .replace(/<Primary>/gi, 'ctrl+')
@@ -466,7 +483,7 @@ function legacyShortcut(shortcut) {
 
 
 function runEchoScribe(settings, args, stdin = null) {
-    const repoPath = settings.get_string('repo-path').trim();
+    const repoPath = settings.get_string('install-path').trim();
     const pythonPath = settings.get_string('python-path').trim() || 'python3';
     const launcher = new Gio.SubprocessLauncher({
         flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE | Gio.SubprocessFlags.STDIN_PIPE,

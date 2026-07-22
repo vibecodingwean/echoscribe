@@ -40,10 +40,6 @@ if [ ! -x "$native_wrapper" ]; then
   chmod +x "$native_wrapper"
 fi
 
-if [ ! -x .venv/bin/python ]; then
-  ./scripts/setup_dev.sh
-fi
-
 extension_id="$(python3 - "$extension_manifest" <<'PY'
 import base64
 import hashlib

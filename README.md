@@ -20,7 +20,7 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 - **Note:** Claude 🦀 is text-only for app-side speech input.
 
 ### 🖥️ Desktop Companions
-- **Linux:** GNOME Shell integration for push-to-talk dictation plus local browser summary extensions.
+- **Linux:** GNOME Shell integration for start/stop toggle dictation plus local browser summary extensions.
 - **Same BYOK/local model:** Desktop requests go directly from your computer to the selected AI provider or your own Local AI endpoints.
 
 ### ✍️ Floating Dictation on Android
@@ -86,21 +86,25 @@ cd EchoScribe-Linux-GNOME-<version>/linux
 ./install.sh
 ```
 
-The wizard is intended for Debian-based GNOME systems. It installs dependencies,
-creates the Python environment, writes local config, stores provider keys in the
-configured per-user secret env file, installs the GNOME Shell extension, and can
-register Native Messaging hosts for Chromium-based browsers and Firefox. It can
-also configure Local Whisper on compatible NVIDIA/CUDA systems and an existing
-Ollama service when available.
+The installer targets GNOME 45–50 on Wayland and Xorg. Press the GNOME shortcut
+once to start recording and again to stop and transcribe. GNOME Shell owns the
+global toggle shortcut, persistent recording status, clipboard, and paste;
+short-lived system-Python workers record and transcribe. A notification after
+90 seconds is only a reminder: recording continues until the next shortcut
+press, subject to the selected provider's upload/API limits. Updates preserve
+config, secrets, and GSettings.
+Browser Native Messaging, Local Whisper, and Ollama remain separate optional
+setup steps. The core does not need a general venv, `/dev/input`, `uinput`,
+`ydotool`, or a background user service.
 
 Browser extensions are loaded manually:
 
-1. Chrome, Edge, Brave, or Chromium: enable developer mode and load the `browser-extension` folder from the extracted package.
-2. Firefox: open `about:debugging#/runtime/this-firefox` and load `firefox-extension/manifest.json`.
+1. Chrome, Edge, Brave, or Chromium: enable developer mode and load `~/.local/share/echoscribe/app/browser-extension`.
+2. Firefox: open `about:debugging#/runtime/this-firefox` and load `~/.local/share/echoscribe/app/firefox-extension/manifest.json`.
 
 More details: [`desktop/linux/README.md`](desktop/linux/README.md).
 
-To uninstall the Linux/GNOME integration, run `./uninstall.sh` from the extracted package.
+To uninstall the Linux/GNOME integration, run `~/.local/share/echoscribe/app/linux/uninstall.sh`.
 
 ---
 

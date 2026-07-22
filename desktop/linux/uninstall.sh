@@ -8,6 +8,7 @@ package_root="$(cd .. && pwd)"
 host_name="de.echoscribe.nativehost"
 extension_uuid="echoscribe@wean.de"
 config_dir="$HOME/.config/echoscribe"
+config_file="$config_dir/config.toml"
 secrets_file="${ECHOSCRIBE_ENV_FILE:-$config_dir/secrets.env}"
 remove_gnome="no"
 remove_browser_hosts="no"
@@ -27,7 +28,7 @@ Usage: ./uninstall.sh [options]
 Interactive by default. In non-interactive mode, pass explicit removal flags.
 
 Options:
-  --all                    Remove EchoScribe-owned desktop integration, config, and Local Whisper.
+  --all                    Remove core integration, browser hosts, runtime state, and installed code.
   --gnome                  Remove the EchoScribe GNOME Shell extension.
   --browser-hosts          Remove browser Native Messaging host manifests.
   --config                 Remove ~/.config/echoscribe.
@@ -36,7 +37,7 @@ Options:
   --ollama-model <model>   Remove one Ollama model. Can be repeated; kept for automation.
   --all-ollama-models      Remove all local Ollama models.
   --uninstall-ollama       Try to uninstall the Ollama package itself.
-  --remove-package         Remove the extracted release package directory. Refuses Git checkouts.
+  --remove-package         Remove the installed app directory. Refuses Git checkouts.
   --non-interactive        Do not prompt; use only selected flags.
   -h, --help               Show this help.
 USAGE
@@ -47,8 +48,7 @@ while [ "$#" -gt 0 ]; do
     --all)
       remove_gnome="yes"
       remove_browser_hosts="yes"
-      remove_config="yes"
-      remove_local_whisper="yes"
+      remove_package="yes"
       shift
       ;;
     --gnome)
@@ -164,6 +164,32 @@ remove_local_whisper_files() {
   echo "Removed Local Whisper files: $root"
 }
 
+remove_obsolete_runtime_state() {
+  local state_root="${XDG_STATE_HOME:-$HOME/.local/state}/echoscribe"
+  if [ -f "$repo_dir/echoscribe/gnome_worker.py" ] && command -v python3 >/dev/null 2>&1; then
+    PYTHONPATH="$repo_dir" python3 -m echoscribe gnome-worker cancel --json >/dev/null 2>&1 || true
+  fi
+  pkill -f 'python .* -m echoscribe run' 2>/dev/null || true
+  pkill -f 'python .* -m echoscribe sideband' 2>/dev/null || true
+  rm -f \
+    "$state_root/sideband.pid" \
+    "$state_root/sideband.log" \
+    "$state_root/sideband.mode" \
+    "$state_root/sideband.shortcut" \
+    "$state_root/focus-app-hint" \
+    "$state_root/gnome-state.json" \
+    "$state_root/gnome-worker.lock" \
+    "$state_root/gnome-recorder.log" \
+    "$state_root/install-state"
+  echo "Removed obsolete EchoScribe runtime state."
+}
+
+remove_config_files() {
+  rm -f "$config_file" "$config_file".bak.*
+  rmdir "$config_dir" 2>/dev/null || true
+  echo "Removed config files; secrets were retained unless --secrets was selected."
+}
+
 remove_ollama_model_list() {
   if [ "${#ollama_models[@]}" -eq 0 ]; then
     echo "No Ollama models selected; skipping model removal."
@@ -252,12 +278,12 @@ if [ "$non_interactive" != "yes" ]; then
   echo
   ask_yes_no "Remove EchoScribe GNOME Shell extension?" "y" && remove_gnome="yes"
   ask_yes_no "Remove browser Native Messaging host manifests?" "y" && remove_browser_hosts="yes"
-  ask_yes_no "Remove EchoScribe config in ~/.config/echoscribe?" "y" && remove_config="yes"
+  ask_yes_no "Remove EchoScribe config in ~/.config/echoscribe?" "n" && remove_config="yes"
   ask_yes_no "Remove EchoScribe secret env file at $secrets_file?" "n" && remove_secrets="yes"
-  ask_yes_no "Remove EchoScribe Local Whisper service and files?" "y" && remove_local_whisper="yes"
+  ask_yes_no "Remove EchoScribe Local Whisper service, venv, and models?" "n" && remove_local_whisper="yes"
   ask_yes_no "Remove all local Ollama models? Only choose this if no other app needs them." "n" && remove_all_ollama_models="yes"
   ask_yes_no "Uninstall Ollama itself? Only choose this if no other app uses Ollama." "n" && uninstall_ollama="yes"
-  ask_yes_no "Remove this extracted package directory? Refuses Git checkouts." "n" && remove_package="yes"
+  ask_yes_no "Remove this installed app directory? Refuses Git checkouts." "y" && remove_package="yes"
   echo
   read -r -p "Press Enter to uninstall or type q to cancel " answer
   if [ "${answer,,}" = "q" ]; then
@@ -268,7 +294,10 @@ fi
 
 [ "$remove_gnome" = "yes" ] && remove_gnome_extension
 [ "$remove_browser_hosts" = "yes" ] && remove_browser_native_hosts
-[ "$remove_config" = "yes" ] && rm -rf "$config_dir" && echo "Removed config: $config_dir"
+if [ "$remove_gnome" = "yes" ] || [ "$remove_package" = "yes" ]; then
+  remove_obsolete_runtime_state
+fi
+[ "$remove_config" = "yes" ] && remove_config_files
 [ "$remove_secrets" = "yes" ] && rm -f "$secrets_file" && echo "Removed secret env file: $secrets_file"
 [ "$remove_local_whisper" = "yes" ] && remove_local_whisper_files
 [ "${#ollama_models[@]}" -gt 0 ] && remove_ollama_model_list

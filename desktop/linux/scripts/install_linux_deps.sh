@@ -1,31 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-target_user="${1:-${SUDO_USER:-$USER}}"
+if [ "$(id -u)" -ne 0 ]; then
+  echo "install_linux_deps.sh must run as root" >&2
+  exit 1
+fi
 
 apt-get update
 apt-get install -y \
+  python3 \
   ffmpeg \
-  curl \
   alsa-utils \
   poppler-utils \
-  python3-venv \
-  python3-cairo \
-  python3-gi \
-  gir1.2-gtk-3.0 \
-  wl-clipboard \
-  wtype \
-  ydotool \
-  xdotool \
-  xclip \
-  udev
+  libglib2.0-bin \
+  gnome-shell-extension-prefs
 
-groupadd -f input
-usermod -aG input "$target_user"
-printf 'KERNEL=="uinput", MODE="0660", GROUP="input", OPTIONS+="static_node=uinput"\n' \
-  >/etc/udev/rules.d/90-echoscribe-uinput.rules
-modprobe uinput || true
-udevadm control --reload-rules
-udevadm trigger || true
-
-echo "Installed dependencies. Log out and back in so group membership applies."
+rm -f /etc/udev/rules.d/90-echoscribe-uinput.rules
+echo "Installed EchoScribe GNOME runtime dependencies."

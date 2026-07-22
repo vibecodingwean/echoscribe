@@ -20,22 +20,19 @@ ALL_PROVIDERS = TRANSCRIPTION_PROVIDERS | SUMMARY_PROVIDERS
 DEFAULT_LOCAL_AI_LLM_URL = "http://127.0.0.1:11434/api/chat"
 DEFAULT_LOCAL_AI_WHISPER_URL = "http://127.0.0.1:8000/v1/audio/transcriptions"
 DEFAULT_SUMMARY_MODELS = {
-    "openai": "gpt-5.4-mini",
-    "gemini": "gemini-3.5-flash",
-    "anthropic": "claude-sonnet-4-6",
+    "openai": "gpt-5.6-terra",
+    "gemini": "gemini-3.6-flash",
+    "anthropic": "claude-sonnet-5",
     "xai": "grok-4.3",
     "localai": "qwen2.5:7b",
 }
 
 DEPRECATED_MODEL_DEFAULTS = {
-    "gemini-3.1-flash-lite": "gemini-3.5-flash",  # model-migration-ok
+    "gemini-3.1-flash-lite": "gemini-3.6-flash",  # model-migration-ok
 }
 
 
 DEFAULTS: dict[str, Any] = {
-    "hotkeys": {
-        "dictation_hold": ["fn+a"],
-    },
     "providers": {
         "transcription": "openai",
         "summary": "openai",
@@ -50,14 +47,14 @@ DEFAULTS: dict[str, Any] = {
         "api_key": "",
         "api_key_env": "OPENAI_API_KEY",
         "transcription_model": "gpt-4o-mini-transcribe",
-        "summary_model": "gpt-5.4-mini",
+        "summary_model": "gpt-5.6-terra",
         "target_language": "auto",
     },
     "gemini": {
         "api_key": "",
         "api_key_env": "GEMINI_API_KEY",
-        "transcription_model": "gemini-3.5-flash",
-        "summary_model": "gemini-3.5-flash",
+        "transcription_model": "gemini-3.6-flash",
+        "summary_model": "gemini-3.6-flash",
         "target_language": "auto",
     },
     "xai": {
@@ -71,7 +68,7 @@ DEFAULTS: dict[str, Any] = {
     "anthropic": {
         "api_key": "",
         "api_key_env": "ANTHROPIC_API_KEY",
-        "summary_model": "claude-sonnet-4-6",
+        "summary_model": "claude-sonnet-5",
     },
     "elevenlabs": {
         "api_key": "",
@@ -90,19 +87,11 @@ DEFAULTS: dict[str, Any] = {
     "recorder": {
         "command": "",
         "minimum_bytes": 2048,
-        "max_seconds": 90,
+        "reminder_seconds": 90,
     },
     "paste": {
-        "method": "auto",
         "shortcut": "auto",
         "paste_delay_ms": 120,
-    },
-    "overlay": {
-        "icon_path": "assets/floating_dictation.png",
-        "margin_px": 24,
-        "top_px": 72,
-        "icon_size_px": 58,
-        "toast_ms": 1800,
     },
 }
 
@@ -110,9 +99,7 @@ def default_secret_file(filename: str) -> Path:
     configured = os.environ.get("ECHOSCRIBE_SECRETS_DIR")
     if configured:
         return Path(configured).expanduser() / filename
-    if filename == "echoscribe.env":
-        return Path("~/.config/echoscribe/secrets.env").expanduser()
-    return Path("~/.config/wispr/secrets.env").expanduser()
+    return Path("~/.config/echoscribe/secrets.env").expanduser()
 
 
 @dataclass(frozen=True)
@@ -171,22 +158,12 @@ class Config:
             return ""
         return os.environ.get(env_name, "").strip() or read_env_file(self.env_file).get(env_name, "")
 
-    @property
-    def icon_path(self) -> Path:
-        raw = Path(str(self.data["overlay"].get("icon_path", "")))
-        return raw if raw.is_absolute() else self.project_dir / raw
-
-
 def config_search_paths(project_dir: Path | None = None) -> list[Path]:
     paths: list[Path] = []
     env_path = os.environ.get("ECHOSCRIBE_CONFIG")
     if env_path:
         paths.append(Path(env_path).expanduser())
     paths.append(Path("~/.config/echoscribe/config.toml").expanduser())
-    legacy_env_path = os.environ.get("WISPR_CONFIG")
-    if legacy_env_path:
-        paths.append(Path(legacy_env_path).expanduser())
-    paths.append(Path("~/.config/wispr/config.toml").expanduser())
     if project_dir is not None:
         paths.append(project_dir / "config.toml")
     return paths
@@ -196,11 +173,7 @@ def env_file_path() -> Path:
     configured = os.environ.get("ECHOSCRIBE_ENV_FILE")
     if configured:
         return Path(configured).expanduser()
-    preferred = default_secret_file("echoscribe.env")
-    legacy = Path(os.environ.get("WISPR_ENV_FILE", str(default_secret_file("wispr.env")))).expanduser()
-    if preferred.exists() or not legacy.exists():
-        return preferred
-    return legacy
+    return default_secret_file("echoscribe.env")
 
 
 def default_api_key_env(provider: str) -> str:

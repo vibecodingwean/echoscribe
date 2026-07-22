@@ -76,6 +76,7 @@ class SummaryService {
     String model = AiModelConfig.openAiSummaryFast,
     String targetLanguageCode = 'auto',
     String? summaryPrompt,
+    String? reasoningEffort = AiModelConfig.openAiReasoningEffortFast,
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return trimmed;
@@ -95,13 +96,17 @@ class SummaryService {
       'Authorization': 'Bearer $apiKey',
       'Content-Type': 'application/json',
     };
-    final body = json.encode({
+    final payload = <String, dynamic>{
       'model': model,
       'messages': [
         {'role': 'system', 'content': _summarySystemPrompt(langHint)},
         {'role': 'user', 'content': prompt},
       ],
-    });
+    };
+    if (reasoningEffort != null && reasoningEffort.trim().isNotEmpty) {
+      payload['reasoning_effort'] = reasoningEffort.trim();
+    }
+    final body = json.encode(payload);
 
     final sw = Stopwatch()..start();
     DebugConsole.logApiStart(

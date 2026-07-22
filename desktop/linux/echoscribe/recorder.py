@@ -101,7 +101,7 @@ class AudioRecorder:
         return build_record_command(self.command_template, path)
 
 
-def build_record_command(command_template: str, path: Path, max_seconds: int = 0) -> list[str]:
+def build_record_command(command_template: str, path: Path) -> list[str]:
     if command_template:
         return shlex.split(command_template.format(path=str(path)))
     if shutil.which("ffmpeg"):
@@ -120,8 +120,6 @@ def build_record_command(command_template: str, path: Path, max_seconds: int = 0
             "-ar",
             "16000",
         ]
-        if max_seconds > 0:
-            command.extend(["-t", str(max_seconds)])
         command.append(str(path))
         return command
     if shutil.which("arecord"):
@@ -137,9 +135,6 @@ def build_record_command(command_template: str, path: Path, max_seconds: int = 0
             "-t",
             "wav",
         ]
-        if max_seconds > 0:
-            command.extend(["-d", str(max_seconds)])
         command.append(str(path))
         return command
     raise RuntimeError("Neither ffmpeg nor arecord is installed")
-

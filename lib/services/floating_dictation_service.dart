@@ -149,7 +149,15 @@ class FloatingDictationService {
   }
 
   static String _reasoningEffort(SettingsState settings) {
-    if (settings.provider != AiProviderType.xai) return '';
-    return AiModelConfig.xaiReasoningEffort(pro: settings.xaiPro);
+    switch (settings.provider) {
+      case AiProviderType.openai:
+        return AiModelConfig.openAiReasoningEffort(pro: settings.openAiPro);
+      case AiProviderType.xai:
+        return AiModelConfig.xaiReasoningEffort(pro: settings.xaiPro);
+      case AiProviderType.gemini:
+      case AiProviderType.anthropic:
+      case AiProviderType.localAi:
+        return '';
+    }
   }
 }

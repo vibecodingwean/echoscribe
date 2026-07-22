@@ -46,18 +46,20 @@ const String kDefaultDictationPrompt =
 /// Centralized AI model configuration. Update these values to change defaults app-wide.
 class AiModelConfig {
   // ---------- OpenAI ----------
-  // Pro models (May 2026)
-  static const String openAiSummaryPro = 'gpt-5.5';
-  static const String openAiTranslationPro = 'gpt-5.5';
+  // Pro models (July 2026)
+  static const String openAiSummaryPro = 'gpt-5.6-sol';
+  static const String openAiTranslationPro = 'gpt-5.6-sol';
   static const String openAiTranscriptionPro = 'gpt-4o-transcribe';
   static const String openAiImagePro = 'gpt-image-2';
+  static const String openAiReasoningEffortPro = 'medium';
 
   // Fast models
-  static const String openAiSummaryFast = 'gpt-5.4-mini';
-  static const String openAiTranslationFast = 'gpt-5.4-mini';
+  static const String openAiSummaryFast = 'gpt-5.6-terra';
+  static const String openAiTranslationFast = 'gpt-5.6-terra';
   static const String openAiTranscriptionFast = 'gpt-4o-mini-transcribe';
   static const String openAiImageFast = 'gpt-image-1-mini';
   static const String openAiTts = 'gpt-4o-mini-tts';
+  static const String openAiReasoningEffortFast = 'none';
 
   // ---------- Gemini ----------
   // Pro models
@@ -67,9 +69,9 @@ class AiModelConfig {
   static const String geminiImagePro = 'gemini-3-pro-image';
 
   // Fast models
-  static const String geminiSummaryFast = 'gemini-3.5-flash';
-  static const String geminiTranscriptionFast = 'gemini-3.5-flash';
-  static const String geminiTranslationFast = 'gemini-3.5-flash';
+  static const String geminiSummaryFast = 'gemini-3.6-flash';
+  static const String geminiTranscriptionFast = 'gemini-3.6-flash';
+  static const String geminiTranslationFast = 'gemini-3.6-flash';
   static const String geminiImageFast = 'gemini-3.1-flash-image';
   static const String geminiTts = 'gemini-3.1-flash-tts-preview';
 
@@ -80,6 +82,8 @@ class AiModelConfig {
       pro ? openAiTranslationPro : openAiTranslationFast;
   static String openAiTranscription({required bool pro}) =>
       pro ? openAiTranscriptionPro : openAiTranscriptionFast;
+  static String openAiReasoningEffort({required bool pro}) =>
+      pro ? openAiReasoningEffortPro : openAiReasoningEffortFast;
 
   static String geminiSummary({required bool pro}) =>
       pro ? geminiSummaryPro : geminiSummaryFast;
@@ -92,8 +96,8 @@ class AiModelConfig {
   static const String anthropicSummaryPro = 'claude-opus-4-8';
   static const String anthropicTranslationPro = 'claude-opus-4-8';
 
-  static const String anthropicSummaryFast = 'claude-sonnet-4-6';
-  static const String anthropicTranslationFast = 'claude-sonnet-4-6';
+  static const String anthropicSummaryFast = 'claude-sonnet-5';
+  static const String anthropicTranslationFast = 'claude-sonnet-5';
 
   static String anthropicSummary({required bool pro}) =>
       pro ? anthropicSummaryPro : anthropicSummaryFast;
@@ -101,8 +105,8 @@ class AiModelConfig {
       pro ? anthropicTranslationPro : anthropicTranslationFast;
 
   // ---------- xAI (Grok) ----------
-  static const String xaiSummaryPro = 'grok-4.3';
-  static const String xaiTranslationPro = 'grok-4.3';
+  static const String xaiSummaryPro = 'grok-4.5';
+  static const String xaiTranslationPro = 'grok-4.5';
   static const String xaiTranscriptionPro = 'xai-stt';
   static const String xaiImagePro = 'grok-imagine-image-quality';
   static const String xaiReasoningEffortPro = 'medium';

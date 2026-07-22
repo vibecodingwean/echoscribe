@@ -2,11 +2,6 @@
 # Secrets can stay in the shell environment; OPENAI_API_KEY, GEMINI_API_KEY,
 # ANTHROPIC_API_KEY, XAI_API_KEY, and ELEVENLABS_API_KEY are read by default.
 
-[hotkeys]
-# The physical Fn key is firmware-dependent. If your laptop does not emit KEY_FN,
-# replace these with a visible combination such as "leftctrl+leftalt+a".
-dictation_hold = ["fn+a"]
-
 [providers]
 # Supported values: "openai", "gemini", "xai", "elevenlabs", "localai".
 transcription = "openai"
@@ -23,14 +18,14 @@ xai_reasoning_effort = "none"
 api_key = ""
 api_key_env = "OPENAI_API_KEY"
 transcription_model = "gpt-4o-mini-transcribe"
-summary_model = "gpt-5.4-mini"
+summary_model = "gpt-5.6-terra"
 target_language = "auto"
 
 [gemini]
 api_key = ""
 api_key_env = "GEMINI_API_KEY"
-transcription_model = "gemini-3.5-flash"
-summary_model = "gemini-3.5-flash"
+transcription_model = "gemini-3.6-flash"
+summary_model = "gemini-3.6-flash"
 target_language = "auto"
 
 [xai]
@@ -45,7 +40,7 @@ stt_format = false
 [anthropic]
 api_key = ""
 api_key_env = "ANTHROPIC_API_KEY"
-summary_model = "claude-sonnet-4-6"
+summary_model = "claude-sonnet-5"
 
 [elevenlabs]
 api_key = ""
@@ -68,18 +63,11 @@ target_language = "auto"
 # Leave empty for auto: Linux uses ffmpeg pulse input, falling back to arecord.
 command = ""
 minimum_bytes = 2048
-max_seconds = 90
+# Show a reminder notification after this many seconds; recording continues.
+# Set to 0 to disable the reminder. Provider/API upload limits still apply.
+reminder_seconds = 90
 
 [paste]
-# auto prefers Wayland-safe injection first, then X11 tools.
-method = "auto"
 # auto uses Ctrl+V in normal apps and Ctrl+Shift+V in terminal-like apps.
 shortcut = "auto"
 paste_delay_ms = 120
-
-[overlay]
-icon_path = "assets/floating_dictation.png"
-margin_px = 24
-top_px = 72
-icon_size_px = 58
-toast_ms = 1800

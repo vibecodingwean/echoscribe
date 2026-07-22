@@ -36,6 +36,7 @@ class OpenAiProvider implements AiProvider {
       model: model,
       targetLanguageCode: targetLanguageCode,
       summaryPrompt: summaryPrompt,
+      reasoningEffort: reasoningEffort,
     );
   }
 
@@ -52,6 +53,7 @@ class OpenAiProvider implements AiProvider {
       text: text,
       targetLanguageCode: targetLanguageCode,
       model: model,
+      reasoningEffort: reasoningEffort,
     );
   }
 

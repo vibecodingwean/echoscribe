@@ -16,9 +16,10 @@ def run_config_tui(config: Config) -> int:
         print("EchoScribe Config")
         print("1) Transcription provider")
         print("2) Summary provider")
-        print("3) Dictation hotkey")
-        print("4) Paste shortcut")
-        print("5) Show config path")
+        print("3) Paste shortcut")
+        print("4) Paste delay")
+        print("5) Recording reminder")
+        print("6) Show config path")
         print("q) Quit")
         choice = input("> ").strip().lower()
         if choice == "1":
@@ -38,11 +39,6 @@ def run_config_tui(config: Config) -> int:
             set_value(path, "providers", "summary", provider)
             config.data["providers"]["summary"] = provider
         elif choice == "3":
-            current = first_hotkey(config.data["hotkeys"].get("dictation_hold", ["fn+a"]))
-            hotkey = prompt("Dictation hotkey", current)
-            set_value(path, "hotkeys", "dictation_hold", [hotkey])
-            config.data["hotkeys"]["dictation_hold"] = [hotkey]
-        elif choice == "4":
             shortcut = choose(
                 "Paste shortcut",
                 ["auto", "ctrl+v", "ctrl+shift+v"],
@@ -50,7 +46,27 @@ def run_config_tui(config: Config) -> int:
             )
             set_value(path, "paste", "shortcut", shortcut)
             config.data["paste"]["shortcut"] = shortcut
+        elif choice == "4":
+            current = str(config.data["paste"].get("paste_delay_ms", 120))
+            value = prompt("Paste delay in milliseconds", current)
+            try:
+                delay = max(0, int(value))
+            except ValueError:
+                print("Keeping current value")
+                continue
+            set_value(path, "paste", "paste_delay_ms", delay)
+            config.data["paste"]["paste_delay_ms"] = delay
         elif choice == "5":
+            current = str(config.data["recorder"].get("reminder_seconds", 90))
+            value = prompt("Reminder after seconds (0 disables it; recording continues)", current)
+            try:
+                seconds = max(0, int(value))
+            except ValueError:
+                print("Keeping current value")
+                continue
+            set_value(path, "recorder", "reminder_seconds", seconds)
+            config.data["recorder"]["reminder_seconds"] = seconds
+        elif choice == "6":
             print(path)
         elif choice in {"q", "quit", "exit"}:
             return 0
@@ -85,14 +101,6 @@ def prompt(label: str, current: str) -> str:
     return value or current
 
 
-def first_hotkey(value: Any) -> str:
-    if isinstance(value, list) and value:
-        return str(value[0])
-    if isinstance(value, str):
-        return value
-    return "fn+a"
-
-
 def set_value(path: Path, section: str, key: str, value: Any) -> None:
     lines = path.read_text(encoding="utf-8").splitlines()
     rendered = render_value(value)
@@ -119,6 +127,8 @@ def set_value(path: Path, section: str, key: str, value: Any) -> None:
 def render_value(value: Any) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
+    if isinstance(value, int):
+        return str(value)
     if isinstance(value, list):
         return "[" + ", ".join(render_value(item) for item in value) + "]"
     escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')

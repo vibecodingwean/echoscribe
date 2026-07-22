@@ -178,7 +178,7 @@ class UrlHandler {
             'Redirect resolution failed: ${resolution.error}',
           );
           showInfo(
-            'Die Weiterleitung konnte nicht aufgelöst werden, die Zusammenfassung kann unvollständig sein.',
+            'The redirect could not be resolved, so the summary may be incomplete.',
           );
         } else {
           content.appendLogLine('No redirect detected on whitelisted domain');
