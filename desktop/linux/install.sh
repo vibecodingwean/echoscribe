@@ -160,4 +160,7 @@ echo "EchoScribe installed successfully."
 echo "App: $install_root"
 echo "Config and secrets were preserved in: $config_dir"
 echo "Optional browser hosts: $installed_linux/scripts/register_chrome_host.sh"
-echo "Optional Local AI: $installed_linux/scripts/install-local-ai.sh --help"
+echo
+echo "Local AI setup or model change:"
+echo "  $installed_linux/scripts/install-local-ai.sh --recommend-models"
+echo "  $installed_linux/scripts/install-local-ai.sh --pull-ollama"
