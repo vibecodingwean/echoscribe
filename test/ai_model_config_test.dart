@@ -10,9 +10,15 @@ void main() {
       expect(AiModelConfig.openAiReasoningEffort(pro: true), 'medium');
     });
 
-    test('Gemini and Anthropic use current fast defaults', () {
+    test('Gemini and Anthropic preserve fast and pro roles', () {
       expect(AiModelConfig.geminiSummary(pro: false), 'gemini-3.6-flash');
       expect(AiModelConfig.anthropicSummary(pro: false), 'claude-sonnet-5');
+      expect(AiModelConfig.anthropicSummary(pro: true), 'claude-opus-5');
+      expect(
+        AiModelConfig.anthropicTranslation(pro: false),
+        'claude-sonnet-5',
+      );
+      expect(AiModelConfig.anthropicTranslation(pro: true), 'claude-opus-5');
     });
 
     test('xAI keeps distinct fast and pro tiers', () {
