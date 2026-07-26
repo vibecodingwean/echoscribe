@@ -52,7 +52,14 @@ Browser Native Messaging and Local AI are optional, separate steps:
 
 Local Whisper keeps its own isolated venv under
 `${XDG_DATA_HOME:-~/.local/share}/echoscribe/local-ai`; this venv is not used by
-the core application. Ollama setup remains optional.
+the core application. Ollama setup remains optional. The Local AI installer
+detects CPU, RAM, GPU, and dedicated or estimated shared VRAM. It offers three
+offline choices (`gemma4:e2b-it-qat`, `qwen3.5:9b`, and
+`qwen3.6:35b-a3b-mtp-q4_K_M`) plus up to three unique CanIRun.ai API
+suggestions. Before the optional API request it displays every transmitted
+hardware value and explains that shared/unified VRAM is an estimate. Use
+`--no-canirun` to keep model selection fully offline or `--recommend-models`
+to inspect the choices without installing anything.
 
 ## Configuration
 

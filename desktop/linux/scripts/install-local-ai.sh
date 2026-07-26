@@ -7,9 +7,12 @@ install_ollama="auto"
 whisper_model="whisper-large-v3"
 whisper_port="8000"
 whisper_device="auto"
-ollama_model="qwen2.5:7b"
+ollama_model="qwen3.5:9b"
+ollama_model_explicit="no"
 ollama_host="127.0.0.1"
 ollama_port="11434"
+recommend_models="no"
+use_canirun="yes"
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -43,7 +46,16 @@ while [ "$#" -gt 0 ]; do
       ;;
     --ollama-model)
       ollama_model="$2"
+      ollama_model_explicit="yes"
       shift 2
+      ;;
+    --recommend-models)
+      recommend_models="yes"
+      shift
+      ;;
+    --no-canirun)
+      use_canirun="no"
+      shift
       ;;
     --install-ollama)
       install_ollama="yes"
@@ -65,7 +77,9 @@ Options:
   --whisper-model <model>    Whisper model name, default whisper-large-v3.
   --whisper-port <port>      Local Whisper HTTP port, default 8000.
   --whisper-device <device>  Backend: auto, cuda, or cpu; default auto.
-  --ollama-model <model>     Ollama model name, default qwen2.5:7b.
+  --ollama-model <model>     Use this exact Ollama model and skip model selection.
+  --recommend-models         Show hardware-based model recommendations without installing.
+  --no-canirun               Use only EchoScribe's three built-in recommendations.
 EOF
       exit 0
       ;;
@@ -81,7 +95,7 @@ case "$whisper_device" in
   *) echo "Invalid Whisper device: $whisper_device (expected auto, cuda, or cpu)" >&2; exit 2 ;;
 esac
 
-if [ "$install_whisper" != "yes" ] && [ "$pull_ollama" != "yes" ]; then
+if [ "$install_whisper" != "yes" ] && [ "$pull_ollama" != "yes" ] && [ "$recommend_models" != "yes" ]; then
   echo "Local AI setup skipped."
   exit 0
 fi
@@ -97,6 +111,312 @@ step() {
   printf 'Local AI: %s\n' "$1"
 }
 
+hardware_ram_gb=""
+hardware_cpu_name=""
+hardware_gpu_name=""
+hardware_vram_gb="0"
+hardware_vram_source="not detected"
+hardware_unified="no"
+selected_ollama_model="$ollama_model"
+api_model_tags=()
+api_model_names=()
+api_model_quants=()
+api_model_grades=()
+api_model_statuses=()
+
+builtin_model_tags=(
+  "gemma4:e2b-it-qat"
+  "qwen3.5:9b"
+  "qwen3.6:35b-a3b-mtp-q4_K_M"
+)
+builtin_model_names=(
+  "Fast: Gemma 4 E2B IT QAT"
+  "Recommended: Qwen 3.5 9B"
+  "Maximum quality: Qwen 3.6 35B-A3B MTP"
+)
+builtin_model_vram_gb=(5 8 26)
+builtin_model_ram_gb=(8 12 32)
+builtin_model_notes=(
+  "small and quick for lightweight summaries"
+  "best default balance for multilingual summaries"
+  "strongest option; longer cold start and much higher memory use"
+)
+builtin_canirun_ids=(
+  "gemma4-e2b-it"
+  "qwen3.5-9b"
+  "qwen3.6-35b-a3b"
+)
+
+detect_local_hardware() {
+  hardware_ram_gb="${ECHOSCRIBE_HARDWARE_RAM_GB:-}"
+  if [ -z "$hardware_ram_gb" ]; then
+    hardware_ram_gb="$(awk '/^MemTotal:/ { printf "%.1f", $2 / 1024 / 1024 }' /proc/meminfo 2>/dev/null || true)"
+  fi
+  hardware_ram_gb="${hardware_ram_gb:-0}"
+
+  hardware_cpu_name="${ECHOSCRIBE_HARDWARE_CPU_NAME:-}"
+  if [ -z "$hardware_cpu_name" ] && command -v lscpu >/dev/null 2>&1; then
+    hardware_cpu_name="$(lscpu 2>/dev/null | awk -F: '/Model name/ { sub(/^[[:space:]]+/, "", $2); print $2; exit }')"
+  fi
+  hardware_cpu_name="${hardware_cpu_name:-Unknown CPU}"
+
+  hardware_gpu_name="${ECHOSCRIBE_HARDWARE_GPU_NAME:-}"
+  hardware_vram_gb="${ECHOSCRIBE_HARDWARE_VRAM_GB:-0}"
+  hardware_vram_source="${ECHOSCRIBE_HARDWARE_VRAM_SOURCE:-not detected}"
+  hardware_unified="${ECHOSCRIBE_HARDWARE_UNIFIED:-no}"
+
+  if [ -z "$hardware_gpu_name" ] && command -v nvidia-smi >/dev/null 2>&1; then
+    local gpu_line
+    gpu_line="$(nvidia-smi --query-gpu=name,memory.total --format=csv,noheader,nounits 2>/dev/null | head -n 1 || true)"
+    if [[ "$gpu_line" =~ ^[[:space:]]*(.+),[[:space:]]*([0-9]+)[[:space:]]*$ ]]; then
+      hardware_gpu_name="${BASH_REMATCH[1]}"
+      hardware_vram_gb="$(awk -v mib="${BASH_REMATCH[2]}" 'BEGIN { printf "%.1f", mib / 1024 }')"
+      hardware_vram_source="dedicated VRAM reported by nvidia-smi"
+    fi
+  fi
+
+  if [ -z "$hardware_gpu_name" ] && command -v lspci >/dev/null 2>&1; then
+    hardware_gpu_name="$(lspci 2>/dev/null | awk -F': ' 'tolower($1) ~ /vga|3d|display/ { print $2; exit }')"
+  fi
+
+  if [ -n "$hardware_gpu_name" ] \
+    && { [[ "${hardware_gpu_name,,}" == *intel* ]] \
+      || [[ "${hardware_gpu_name,,}" == *integrated* ]] \
+      || [[ "${hardware_gpu_name,,}" == *"radeon graphics"* ]]; }; then
+    hardware_unified="yes"
+  fi
+
+  if { [ "$hardware_vram_gb" = "0" ] || [ -z "$hardware_vram_gb" ]; } \
+    && [ -n "$hardware_gpu_name" ] \
+    && [ "$hardware_unified" = "yes" ]; then
+    hardware_vram_gb="$(awk -v ram="$hardware_ram_gb" 'BEGIN { printf "%.1f", ram * 0.75 }')"
+    hardware_vram_source="estimated upper bound from 75% of shared system RAM"
+  fi
+
+  hardware_gpu_name="${hardware_gpu_name:-No compatible GPU detected}"
+}
+
+is_builtin_canirun_id() {
+  local candidate="$1" known
+  for known in "${builtin_canirun_ids[@]}"; do
+    [ "$candidate" != "$known" ] || return 0
+  done
+  return 1
+}
+
+is_known_model_tag() {
+  local candidate="$1" known
+  for known in "${builtin_model_tags[@]}" "${api_model_tags[@]}"; do
+    [ "$candidate" != "$known" ] || return 0
+  done
+  return 1
+}
+
+json_field() {
+  local field="$1"
+  python3 -c '
+import json
+import sys
+data = json.load(sys.stdin)
+value = data
+for part in sys.argv[1].split("."):
+    value = value.get(part, {}) if isinstance(value, dict) else {}
+print("" if value is None or isinstance(value, (dict, list)) else value)
+' "$field"
+}
+
+fetch_canirun_recommendations() {
+  [ "$use_canirun" = "yes" ] || return 0
+  command -v curl >/dev/null 2>&1 || {
+    echo "CanIRun.ai recommendations unavailable: curl is missing." >&2
+    return 0
+  }
+  command -v python3 >/dev/null 2>&1 || {
+    echo "CanIRun.ai recommendations unavailable: python3 is missing." >&2
+    return 0
+  }
+
+  local api_base="${ECHOSCRIBE_CANIRUN_API_BASE:-https://www.canirun.ai}"
+  local payload response ids model_id detail tag name quant grade status
+
+  echo
+  echo "CanIRun.ai request parameters"
+  echo "=============================="
+  echo "RAM:                 ${hardware_ram_gb} GB"
+  echo "CPU (local only):    ${hardware_cpu_name}"
+  echo "GPU name:            ${hardware_gpu_name}"
+  echo "VRAM sent to API:    ${hardware_vram_gb} GB"
+  echo "VRAM source:         ${hardware_vram_source}"
+  echo "Use case:            chat"
+  echo "Requested results:   10 (up to 3 unique suggestions are shown)"
+  echo "Note: CanIRun.ai treats the transmitted VRAM value as available VRAM."
+  echo "For iGPUs/unified or shared memory this is an estimate, not dedicated VRAM."
+  echo "The CPU name is displayed locally but is not transmitted to CanIRun.ai."
+  echo
+
+  payload="$(python3 - "$hardware_ram_gb" "$hardware_gpu_name" "$hardware_vram_gb" <<'PY'
+import json
+import sys
+
+ram, gpu, vram = sys.argv[1:]
+hardware = {"ramGb": float(ram)}
+if gpu and gpu != "No compatible GPU detected":
+    hardware["gpu"] = {"name": gpu, "vramGb": float(vram)}
+print(json.dumps({"hardware": hardware, "useCase": "chat", "limit": 10}))
+PY
+)"
+
+  if ! response="$(curl -fsS --max-time 10 -X POST "${api_base}/api/recommend" \
+    -H 'content-type: application/json' -d "$payload" 2>/dev/null)"; then
+    echo "CanIRun.ai is unavailable; continuing with EchoScribe's built-in recommendations." >&2
+    return 0
+  fi
+
+  if ! ids="$(printf '%s' "$response" | python3 -c '
+import json
+import sys
+data = json.load(sys.stdin)
+for item in data.get("recommendations", []):
+    model_id = str(item.get("modelId", "")).strip()
+    if model_id:
+        print(model_id)
+' 2>/dev/null)"; then
+    echo "CanIRun.ai returned an unreadable response; using built-in recommendations." >&2
+    return 0
+  fi
+
+  while IFS= read -r model_id; do
+    [ -n "$model_id" ] || continue
+    is_builtin_canirun_id "$model_id" && continue
+    if ! detail="$(curl -fsS --max-time 6 "${api_base}/api/models/${model_id}" 2>/dev/null)"; then
+      continue
+    fi
+    tag="$(printf '%s' "$detail" | json_field ollamaId 2>/dev/null || true)"
+    name="$(printf '%s' "$detail" | json_field name 2>/dev/null || true)"
+    [ -n "$tag" ] || continue
+    is_known_model_tag "$tag" && continue
+    quant="$(printf '%s' "$response" | python3 -c '
+import json
+import sys
+model_id = sys.argv[1]
+data = json.load(sys.stdin)
+item = next((x for x in data.get("recommendations", []) if x.get("modelId") == model_id), {})
+print(item.get("quantization", ""))
+' "$model_id" 2>/dev/null || true)"
+    grade="$(printf '%s' "$response" | python3 -c '
+import json
+import sys
+model_id = sys.argv[1]
+data = json.load(sys.stdin)
+item = next((x for x in data.get("recommendations", []) if x.get("modelId") == model_id), {})
+print(item.get("grade", ""))
+' "$model_id" 2>/dev/null || true)"
+    status="$(printf '%s' "$response" | python3 -c '
+import json
+import sys
+model_id = sys.argv[1]
+data = json.load(sys.stdin)
+item = next((x for x in data.get("recommendations", []) if x.get("modelId") == model_id), {})
+print(item.get("status", ""))
+' "$model_id" 2>/dev/null || true)"
+    api_model_tags+=("$tag")
+    api_model_names+=("${name:-$model_id}")
+    api_model_quants+=("${quant:-unspecified}")
+    api_model_grades+=("${grade:-?}")
+    api_model_statuses+=("${status:-unknown}")
+    [ "${#api_model_tags[@]}" -ge 3 ] && break
+  done <<<"$ids"
+}
+
+fit_label() {
+  local required_vram="$1" required_ram="$2"
+  local ratio
+  if [ "$hardware_unified" = "no" ] && awk -v v="$hardware_vram_gb" 'BEGIN { exit !(v > 0) }'; then
+    ratio="$(awk -v ram="$hardware_ram_gb" -v rr="$required_ram" -v vram="$hardware_vram_gb" -v vr="$required_vram" \
+      'BEGIN { a=ram/rr; b=vram/vr; printf "%.3f", (a < b ? a : b) }')"
+  else
+    ratio="$(awk -v ram="$hardware_ram_gb" -v rr="$required_ram" 'BEGIN { printf "%.3f", ram/rr }')"
+  fi
+  if awk -v r="$ratio" 'BEGIN { exit !(r >= 1.25) }'; then
+    printf 'green'
+  elif awk -v r="$ratio" 'BEGIN { exit !(r >= 0.85) }'; then
+    printf 'yellow'
+  else
+    printf 'red'
+  fi
+}
+
+choose_summary_model() {
+  detect_local_hardware
+  api_model_tags=()
+  api_model_names=()
+  api_model_quants=()
+  api_model_grades=()
+  api_model_statuses=()
+  fetch_canirun_recommendations
+
+  local default_index=1
+  if awk -v ram="$hardware_ram_gb" 'BEGIN { exit !(ram < 12) }'; then
+    default_index=0
+  fi
+
+  echo
+  echo "Local AI summary model"
+  echo "======================"
+  echo "Detected hardware: ${hardware_cpu_name}; ${hardware_gpu_name}; ${hardware_ram_gb} GB RAM"
+  echo "EchoScribe built-in choices:"
+  local i number marker fit
+  for i in "${!builtin_model_tags[@]}"; do
+    number=$((i + 1))
+    marker=" "
+    [ "$i" -ne "$default_index" ] || marker="*"
+    fit="$(fit_label "${builtin_model_vram_gb[$i]}" "${builtin_model_ram_gb[$i]}")"
+    printf '%s%2d. %-43s [%s]\n' "$marker" "$number" "${builtin_model_tags[$i]}" "$fit"
+    printf '      %s — %s\n' "${builtin_model_names[$i]}" "${builtin_model_notes[$i]}"
+  done
+
+  if [ "${#api_model_tags[@]}" -gt 0 ]; then
+    echo "CanIRun.ai choices:"
+    for i in "${!api_model_tags[@]}"; do
+      number=$((i + 1 + ${#builtin_model_tags[@]}))
+      printf ' %2d. %-43s [grade %s, %s]\n' \
+        "$number" "${api_model_tags[$i]}" "${api_model_grades[$i]}" "${api_model_statuses[$i]}"
+      printf '      %s — CanIRun.ai estimates %s\n' "${api_model_names[$i]}" "${api_model_quants[$i]}"
+    done
+  else
+    echo "No additional CanIRun.ai choices are available."
+  fi
+  echo "* = EchoScribe recommendation for this hardware and summary workload"
+
+  selected_ollama_model="${builtin_model_tags[$default_index]}"
+  if [ "$recommend_models" = "yes" ] && [ ! -t 0 ]; then
+    echo "Recommended model: $selected_ollama_model"
+    return 0
+  fi
+  if [ ! -t 0 ]; then
+    echo "Non-interactive selection: $selected_ollama_model"
+    return 0
+  fi
+
+  local total=$(( ${#builtin_model_tags[@]} + ${#api_model_tags[@]} ))
+  local answer selected_index
+  while true; do
+    read -r -p "Choose model number [$((default_index + 1))] " answer
+    answer="${answer:-$((default_index + 1))}"
+    if [[ "$answer" =~ ^[0-9]+$ ]] && [ "$answer" -ge 1 ] && [ "$answer" -le "$total" ]; then
+      selected_index=$((answer - 1))
+      if [ "$selected_index" -lt "${#builtin_model_tags[@]}" ]; then
+        selected_ollama_model="${builtin_model_tags[$selected_index]}"
+      else
+        selected_ollama_model="${api_model_tags[$((selected_index - ${#builtin_model_tags[@]}))]}"
+      fi
+      break
+    fi
+    echo "Please enter a number from 1 to ${total}." >&2
+  done
+  echo "Selected Ollama model: $selected_ollama_model"
+}
+
 run_logged() {
   local name="$1"
   shift
@@ -110,6 +430,11 @@ run_logged() {
   tail -n 80 "$log" >&2 || true
   return 1
 }
+
+if [ "$recommend_models" = "yes" ]; then
+  choose_summary_model
+  exit 0
+fi
 
 run_logged_retry() {
   local name="$1"
@@ -415,9 +740,18 @@ fi
 if [ "$pull_ollama" = "yes" ]; then
   install_ollama_package
   start_ollama_service
+  if [ "$ollama_model_explicit" != "yes" ]; then
+    choose_summary_model
+    ollama_model="$selected_ollama_model"
+  fi
   step "Pulling/checking Ollama model ${ollama_model}..."
   ollama pull "$ollama_model"
   echo "Ollama model ${ollama_model} is available."
+  linux_root="$(cd "$(dirname "$0")/.." && pwd)"
+  if [ -f "$linux_root/echoscribe/__main__.py" ]; then
+    PYTHONPATH="$linux_root" python3 -m echoscribe config-set summary-model localai "$ollama_model"
+    echo "EchoScribe Local AI summary model set to ${ollama_model}."
+  fi
 fi
 
 echo
