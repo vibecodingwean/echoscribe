@@ -36,8 +36,8 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 
 ### 🚀 Pro Mode & Models
 Access the world's most powerful AI models with a single toggle:
-- **Standard (Fast):** GPT-5.4-mini, Gemini 3.5 Flash, Claude 4.6 Sonnet, Grok 4.3, or local `qwen2.5:7b`.
-- **Pro Mode (Premium):** GPT-5.5, Gemini 3.1 Pro, Claude 4.8 Opus, Grok 4.3.
+- **Standard (Fast):** GPT-5.6 Terra, Gemini 3.6 Flash, Claude Sonnet 5, Grok 4.3, or local `qwen2.5:7b`.
+- **Pro Mode (Premium):** GPT-5.6 Sol, Gemini 3.1 Pro Preview, Claude Opus 5, Grok 4.5.
 
 ### 🌍 Intelligent Re-Translation
 Need a result in another language? Change the target language via the globe icon, and EchoScribe will automatically re-process the source content to provide a high-quality summary in the new language.
