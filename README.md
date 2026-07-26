@@ -31,7 +31,7 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 ### ✍️ Smart Summarization
 - **Audio • Text • URL:** Summarize everything in one tap.
 - **Local URL Extraction:** A privacy-first mechanism extracts web content directly on your device, bypassing paywalls and bot-detection while keeping your browsing private. Mandatory for Claude 🦀 and Grok 𝕏.
-- **Local AI Provider:** Use an Ollama-compatible `/api/chat` endpoint for summaries/translations and an OpenAI-compatible Whisper endpoint. Defaults are `qwen2.5:7b` and `whisper-1`; local model names remain editable.
+- **Local AI Provider:** Use an Ollama-compatible `/api/chat` endpoint for summaries/translations and an OpenAI-compatible Whisper endpoint. Local model names remain editable. The Linux installer can recommend models from detected CPU, RAM, GPU, and VRAM; the Linux installer can optionally add CanIRun.ai suggestions after showing the exact hardware values that would be transmitted.
 - **Custom Prompts:** Fine-tune how your summaries look and feel in the settings.
 
 ### 🚀 Pro Mode & Models
@@ -56,7 +56,7 @@ To use EchoScribe, you'll need at least one API key:
 - **Google Gemini:** [Get API Key](https://aistudio.google.com/app/apikey)
 - **Anthropic Claude:** [Get API Key](https://console.anthropic.com/settings/keys)
 - **xAI Grok:** [Get API Key](https://console.x.ai/)
-- **Local AI:** Configure your own Ollama endpoint such as `http://host:11434/api/chat` and a Whisper-compatible endpoint such as `http://host:8000/v1/audio/transcriptions`. Example local LLMs include `qwen2.5:7b`, `gemma4:e4b`, `gemma3`, and `deepseek-r1`.
+- **Local AI:** Configure your own Ollama endpoint such as `http://host:11434/api/chat` and a Whisper-compatible endpoint such as `http://host:8000/v1/audio/transcriptions`. Hardware-aware installer choices include compact Gemma models, `qwen3.5:9b`, and larger Qwen options where memory permits.
 
 *Tip: Set a usage limit in your AI provider's dashboard to keep full control over your costs. For Local AI PoC use, keep endpoints on a trusted local network or VPN; EchoScribe does not add authentication to Local AI requests.*
 
