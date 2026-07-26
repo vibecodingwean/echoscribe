@@ -53,10 +53,10 @@ class LocalAiInstallerTests(unittest.TestCase):
         self.env = {
             **os.environ,
             "PATH": f"{self.bin}:{os.environ['PATH']}",
-            "ECHOSCRIBE_HARDWARE_RAM_GB": "60",
+            "ECHOSCRIBE_HARDWARE_RAM_GB": "60,5",
             "ECHOSCRIBE_HARDWARE_CPU_NAME": "Test CPU",
             "ECHOSCRIBE_HARDWARE_GPU_NAME": "Test Integrated GPU",
-            "ECHOSCRIBE_HARDWARE_VRAM_GB": "45",
+            "ECHOSCRIBE_HARDWARE_VRAM_GB": "45,4",
             "ECHOSCRIBE_HARDWARE_VRAM_SOURCE": "test shared-memory estimate",
             "ECHOSCRIBE_HARDWARE_UNIFIED": "yes",
             "ECHOSCRIBE_CANIRUN_API_BASE": "https://canirun.test",
@@ -77,14 +77,14 @@ class LocalAiInstallerTests(unittest.TestCase):
             check=False,
         )
 
-    def test_recommendations_show_transmitted_parameters_and_six_unique_models(self) -> None:
+    def test_recommendations_normalize_localized_numbers_and_show_six_unique_models(self) -> None:
         result = self.run_installer("--recommend-models")
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("CanIRun.ai request parameters", result.stdout)
-        self.assertIn("RAM:                 60 GB", result.stdout)
+        self.assertIn("RAM:                 60.5 GB", result.stdout)
         self.assertIn("CPU (local only):    Test CPU", result.stdout)
-        self.assertIn("VRAM sent to API:    45 GB", result.stdout)
+        self.assertIn("VRAM sent to API:    45.4 GB", result.stdout)
         self.assertIn("estimate, not dedicated VRAM", result.stdout)
         self.assertIn("gemma4:e2b-it-qat", result.stdout)
         self.assertIn("qwen3.5:9b", result.stdout)

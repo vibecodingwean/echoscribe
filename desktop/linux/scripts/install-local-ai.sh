@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Hardware values are serialized as JSON numbers. Keep decimal parsing stable
+# even when the desktop locale formats them with a comma.
+export LC_NUMERIC=C
+
 install_whisper="no"
 pull_ollama="no"
 install_ollama="auto"
@@ -150,18 +154,29 @@ builtin_canirun_ids=(
 detect_local_hardware() {
   hardware_ram_gb="${ECHOSCRIBE_HARDWARE_RAM_GB:-}"
   if [ -z "$hardware_ram_gb" ]; then
-    hardware_ram_gb="$(awk '/^MemTotal:/ { printf "%.1f", $2 / 1024 / 1024 }' /proc/meminfo 2>/dev/null || true)"
+    hardware_ram_gb="$(LC_ALL=C awk '/^MemTotal:/ { printf "%.1f", $2 / 1024 / 1024 }' /proc/meminfo 2>/dev/null || true)"
   fi
+  hardware_ram_gb="${hardware_ram_gb/,/.}"
   hardware_ram_gb="${hardware_ram_gb:-0}"
 
   hardware_cpu_name="${ECHOSCRIBE_HARDWARE_CPU_NAME:-}"
+  if [ -z "$hardware_cpu_name" ] && [ -r /proc/cpuinfo ]; then
+    hardware_cpu_name="$(LC_ALL=C awk -F: '
+      /^model name[[:space:]]*:/ || /^Hardware[[:space:]]*:/ {
+        sub(/^[[:space:]]+/, "", $2)
+        print $2
+        exit
+      }
+    ' /proc/cpuinfo 2>/dev/null || true)"
+  fi
   if [ -z "$hardware_cpu_name" ] && command -v lscpu >/dev/null 2>&1; then
-    hardware_cpu_name="$(lscpu 2>/dev/null | awk -F: '/Model name/ { sub(/^[[:space:]]+/, "", $2); print $2; exit }')"
+    hardware_cpu_name="$(LC_ALL=C lscpu 2>/dev/null | awk -F: '/^Model name/ { sub(/^[[:space:]]+/, "", $2); print $2; exit }')"
   fi
   hardware_cpu_name="${hardware_cpu_name:-Unknown CPU}"
 
   hardware_gpu_name="${ECHOSCRIBE_HARDWARE_GPU_NAME:-}"
   hardware_vram_gb="${ECHOSCRIBE_HARDWARE_VRAM_GB:-0}"
+  hardware_vram_gb="${hardware_vram_gb/,/.}"
   hardware_vram_source="${ECHOSCRIBE_HARDWARE_VRAM_SOURCE:-not detected}"
   hardware_unified="${ECHOSCRIBE_HARDWARE_UNIFIED:-no}"
 
