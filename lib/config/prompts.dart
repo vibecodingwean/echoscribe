@@ -93,8 +93,8 @@ class AiModelConfig {
       pro ? geminiTranscriptionPro : geminiTranscriptionFast;
 
   // ---------- Anthropic (Claude) ----------
-  static const String anthropicSummaryPro = 'claude-opus-4-8';
-  static const String anthropicTranslationPro = 'claude-opus-4-8';
+  static const String anthropicSummaryPro = 'claude-opus-5';
+  static const String anthropicTranslationPro = 'claude-opus-5';
 
   static const String anthropicSummaryFast = 'claude-sonnet-5';
   static const String anthropicTranslationFast = 'claude-sonnet-5';
