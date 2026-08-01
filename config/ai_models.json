@@ -10,7 +10,7 @@
     },
     "transcription": {
       "fast": "gpt-4o-mini-transcribe",
-      "pro": "gpt-4o-transcribe"
+      "pro": "gpt-transcribe"
     },
     "image": {
       "fast": "gpt-image-1-mini",

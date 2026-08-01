@@ -49,7 +49,7 @@ class AiModelConfig {
   // Pro models (July 2026)
   static const String openAiSummaryPro = 'gpt-5.6-sol';
   static const String openAiTranslationPro = 'gpt-5.6-sol';
-  static const String openAiTranscriptionPro = 'gpt-4o-transcribe';
+  static const String openAiTranscriptionPro = 'gpt-transcribe';
   static const String openAiImagePro = 'gpt-image-2';
   static const String openAiReasoningEffortPro = 'medium';
 
