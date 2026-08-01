@@ -105,6 +105,8 @@ class _HomePageState extends State<HomePage> {
       final dbg = await secure.readDebugMode();
       final openAiPro = await secure.readOpenAiPro();
       final openAiRealtime = await secure.readOpenAiRealtime();
+      final elevenLabsKey = await secure.readElevenLabsKey();
+      final elevenLabsRealtime = await secure.readElevenLabsRealtime();
       final geminiPro = await secure.readGeminiPro();
       final anthropicPro = await secure.readAnthropicPro();
       final xai = await secure.readXaiKey();
@@ -123,6 +125,9 @@ class _HomePageState extends State<HomePage> {
       if (gem.isNotEmpty) _settings.setGeminiKey(gem);
       if (ant.isNotEmpty) _settings.setAnthropicKey(ant);
       if (xai.isNotEmpty) _settings.setXaiKey(xai);
+      if (elevenLabsKey.isNotEmpty) {
+        _settings.setElevenLabsKey(elevenLabsKey);
+      }
       _settings.setLocalAiLlmUrl(localAiLlmUrl);
       _settings.setLocalAiLlmModel(localAiLlmModel);
       _settings.setLocalAiWhisperUrl(localAiWhisperUrl);
@@ -137,6 +142,7 @@ class _HomePageState extends State<HomePage> {
       _settings.setDebugMode(dbg);
       _settings.setOpenAiPro(openAiPro);
       _settings.setOpenAiRealtime(openAiRealtime);
+      _settings.setElevenLabsRealtime(elevenLabsRealtime);
       _settings.setGeminiPro(geminiPro);
       _settings.setAnthropicPro(anthropicPro);
       _settings.setXaiPro(xaiPro);
@@ -404,8 +410,7 @@ class _HomePageState extends State<HomePage> {
                     supportsImage: _settings.provider.supportsImage,
                     isLoading: _content.isTranscribing,
                     isRecording: _content.isRecording,
-                    isRealtime: _settings.provider == AiProviderType.openai &&
-                        _settings.openAiRealtime,
+                    isRealtime: _settings.realtimeEnabled,
                     recordDurationNotifier: _content.recordDuration,
                     maxRecordDuration:
                         _settings.provider == AiProviderType.openai

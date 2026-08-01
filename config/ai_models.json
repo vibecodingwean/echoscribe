@@ -76,6 +76,9 @@
   "elevenlabs": {
     "transcription": {
       "default": "scribe_v2"
+    },
+    "realtime": {
+      "transcription": "scribe_v2_realtime"
     }
   },
   "localai": {

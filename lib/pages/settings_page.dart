@@ -22,11 +22,13 @@ class _SettingsPageState extends State<SettingsPage>
   final _openAiFormKey = GlobalKey<FormState>();
   final _geminiFormKey = GlobalKey<FormState>();
   final _anthropicFormKey = GlobalKey<FormState>();
+  final _elevenLabsFormKey = GlobalKey<FormState>();
   final _localAiFormKey = GlobalKey<FormState>();
   late final TextEditingController _openAiCtrl;
   late final TextEditingController _geminiCtrl;
   late final TextEditingController _anthropicCtrl;
   late final TextEditingController _xaiCtrl;
+  late final TextEditingController _elevenLabsCtrl;
   late final TextEditingController _localAiLlmUrlCtrl;
   late final TextEditingController _localAiLlmModelCtrl;
   late final TextEditingController _localAiWhisperUrlCtrl;
@@ -38,11 +40,13 @@ class _SettingsPageState extends State<SettingsPage>
   bool _obscureGemini = true;
   bool _obscureAnthropic = true;
   bool _obscureXai = true;
+  bool _obscureElevenLabs = true;
   bool _testingLocalAiLlm = false;
   bool _testingLocalAiWhisper = false;
   late bool _debugMode;
   late bool _openAiPro;
   late bool _openAiRealtime;
+  late bool _elevenLabsRealtime;
   late bool _geminiPro;
   late bool _anthropicPro;
   late bool _xaiPro;
@@ -58,6 +62,9 @@ class _SettingsPageState extends State<SettingsPage>
     _geminiCtrl = TextEditingController(text: widget.settings.geminiKey);
     _anthropicCtrl = TextEditingController(text: widget.settings.anthropicKey);
     _xaiCtrl = TextEditingController(text: widget.settings.xaiKey);
+    _elevenLabsCtrl = TextEditingController(
+      text: widget.settings.elevenLabsKey,
+    );
     _localAiLlmUrlCtrl = TextEditingController(
       text: widget.settings.localAiLlmUrl,
     );
@@ -73,6 +80,7 @@ class _SettingsPageState extends State<SettingsPage>
     _debugMode = widget.settings.debugMode;
     _openAiPro = widget.settings.openAiPro;
     _openAiRealtime = widget.settings.openAiRealtime;
+    _elevenLabsRealtime = widget.settings.elevenLabsRealtime;
     _geminiPro = widget.settings.geminiPro;
     _anthropicPro = widget.settings.anthropicPro;
     _xaiPro = widget.settings.xaiPro;
@@ -87,6 +95,7 @@ class _SettingsPageState extends State<SettingsPage>
     _geminiCtrl.dispose();
     _anthropicCtrl.dispose();
     _xaiCtrl.dispose();
+    _elevenLabsCtrl.dispose();
     _localAiLlmUrlCtrl.dispose();
     _localAiLlmModelCtrl.dispose();
     _localAiWhisperUrlCtrl.dispose();
@@ -219,14 +228,21 @@ class _SettingsPageState extends State<SettingsPage>
     final validGem = _geminiFormKey.currentState?.validate() ?? true;
     final validAnt = _anthropicFormKey.currentState?.validate() ?? true;
     final validXai = _xaiFormKey.currentState?.validate() ?? true;
+    final validElevenLabs = _elevenLabsFormKey.currentState?.validate() ?? true;
     final validLocal = _localAiFormKey.currentState?.validate() ?? true;
-    if (!validOpen || !validGem || !validAnt || !validXai || !validLocal) {
+    if (!validOpen ||
+        !validGem ||
+        !validAnt ||
+        !validXai ||
+        !validElevenLabs ||
+        !validLocal) {
       return;
     }
     final openKey = _openAiCtrl.text.trim();
     final gemKey = _geminiCtrl.text.trim();
     final antKey = _anthropicCtrl.text.trim();
     final xaiKey = _xaiCtrl.text.trim();
+    final elevenLabsKey = _elevenLabsCtrl.text.trim();
     final localLlmUrl = _localAiLlmUrlCtrl.text.trim();
     final localLlmModel = _localAiLlmModelCtrl.text.trim();
     final localWhisperUrl = _localAiWhisperUrlCtrl.text.trim();
@@ -235,6 +251,7 @@ class _SettingsPageState extends State<SettingsPage>
     widget.settings.setGeminiKey(gemKey);
     widget.settings.setAnthropicKey(antKey);
     widget.settings.setXaiKey(xaiKey);
+    widget.settings.setElevenLabsKey(elevenLabsKey);
     widget.settings.setLocalAiLlmUrl(localLlmUrl);
     widget.settings.setLocalAiLlmModel(localLlmModel);
     widget.settings.setLocalAiWhisperUrl(localWhisperUrl);
@@ -243,6 +260,7 @@ class _SettingsPageState extends State<SettingsPage>
     await _storage.saveGeminiKey(gemKey);
     await _storage.saveAnthropicKey(antKey);
     await _storage.saveXaiKey(xaiKey);
+    await _storage.saveElevenLabsKey(elevenLabsKey);
     await _storage.saveLocalAiLlmUrl(localLlmUrl);
     await _storage.saveLocalAiLlmModel(localLlmModel);
     await _storage.saveLocalAiWhisperUrl(localWhisperUrl);
@@ -260,9 +278,9 @@ class _SettingsPageState extends State<SettingsPage>
         model: _localAiLlmModelCtrl.text,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${result.message}.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${result.message}.')));
     } on AppException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -286,9 +304,9 @@ class _SettingsPageState extends State<SettingsPage>
         model: _localAiWhisperModelCtrl.text,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${result.message}.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${result.message}.')));
     } on AppException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -309,6 +327,7 @@ class _SettingsPageState extends State<SettingsPage>
       final gemKey = _geminiCtrl.text.trim();
       final antKey = _anthropicCtrl.text.trim();
       final xaiKey = _xaiCtrl.text.trim();
+      final elevenLabsKey = _elevenLabsCtrl.text.trim();
       final localLlmUrl = _localAiLlmUrlCtrl.text.trim();
       final localLlmModel = _localAiLlmModelCtrl.text.trim();
       final localWhisperUrl = _localAiWhisperUrlCtrl.text.trim();
@@ -317,6 +336,7 @@ class _SettingsPageState extends State<SettingsPage>
       widget.settings.setGeminiKey(gemKey);
       widget.settings.setAnthropicKey(antKey);
       widget.settings.setXaiKey(xaiKey);
+      widget.settings.setElevenLabsKey(elevenLabsKey);
       widget.settings.setLocalAiLlmUrl(localLlmUrl);
       widget.settings.setLocalAiLlmModel(localLlmModel);
       widget.settings.setLocalAiWhisperUrl(localWhisperUrl);
@@ -325,6 +345,7 @@ class _SettingsPageState extends State<SettingsPage>
       await _storage.saveGeminiKey(gemKey);
       await _storage.saveAnthropicKey(antKey);
       await _storage.saveXaiKey(xaiKey);
+      await _storage.saveElevenLabsKey(elevenLabsKey);
       await _storage.saveLocalAiLlmUrl(localLlmUrl);
       await _storage.saveLocalAiLlmModel(localLlmModel);
       await _storage.saveLocalAiWhisperUrl(localWhisperUrl);
@@ -523,9 +544,15 @@ class _SettingsPageState extends State<SettingsPage>
                       await _syncAndRefreshFloatingStatus();
                     },
                     onRealtimeChanged: (val) async {
-                      setState(() => _openAiRealtime = val);
+                      setState(() {
+                        _openAiRealtime = val;
+                        if (val) _elevenLabsRealtime = false;
+                      });
                       widget.settings.setOpenAiRealtime(val);
                       await _storage.saveOpenAiRealtime(val);
+                      if (val) {
+                        await _storage.saveElevenLabsRealtime(false);
+                      }
                     },
                     onDelete: () async {
                       await _storage.deleteOpenAiKey();
@@ -535,6 +562,31 @@ class _SettingsPageState extends State<SettingsPage>
                     },
                     formKey: _openAiFormKey,
                   ),
+                _ApiKeyCard(
+                  labelText: 'ElevenLabs API Key',
+                  hintText: 'xi-...',
+                  controller: _elevenLabsCtrl,
+                  obscure: _obscureElevenLabs,
+                  realtimeValue: _elevenLabsRealtime,
+                  onObscureToggle: () =>
+                      setState(() => _obscureElevenLabs = !_obscureElevenLabs),
+                  onChanged: (_) => _scheduleAutoSaveImmediate(),
+                  onRealtimeChanged: (val) async {
+                    setState(() {
+                      _elevenLabsRealtime = val;
+                      if (val) _openAiRealtime = false;
+                    });
+                    widget.settings.setElevenLabsRealtime(val);
+                    await _storage.saveElevenLabsRealtime(val);
+                    if (val) await _storage.saveOpenAiRealtime(false);
+                  },
+                  onDelete: () async {
+                    await _storage.deleteElevenLabsKey();
+                    widget.settings.setElevenLabsKey('');
+                    _elevenLabsCtrl.clear();
+                  },
+                  formKey: _elevenLabsFormKey,
+                ),
                 if (widget.settings.provider == AiProviderType.gemini)
                   _ApiKeyCard(
                     labelText: 'Gemini API Key',
@@ -845,10 +897,10 @@ class _ApiKeyCard extends StatelessWidget {
   final String hintText;
   final TextEditingController controller;
   final bool obscure;
-  final bool proValue;
+  final bool? proValue;
   final VoidCallback onObscureToggle;
   final ValueChanged<String> onChanged;
-  final ValueChanged<bool> onProChanged;
+  final ValueChanged<bool>? onProChanged;
   final VoidCallback onDelete;
   final GlobalKey<FormState> formKey;
   final bool? realtimeValue;
@@ -859,10 +911,10 @@ class _ApiKeyCard extends StatelessWidget {
     required this.hintText,
     required this.controller,
     required this.obscure,
-    required this.proValue,
+    this.proValue,
     required this.onObscureToggle,
     required this.onChanged,
-    required this.onProChanged,
+    this.onProChanged,
     required this.onDelete,
     required this.formKey,
     this.realtimeValue,
@@ -941,14 +993,16 @@ class _ApiKeyCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                   ],
-                  const Text('Pro', style: TextStyle(fontSize: 11)),
-                  SizedBox(
-                    height: 32,
-                    child: Switch.adaptive(
-                      value: proValue,
-                      onChanged: onProChanged,
+                  if (proValue != null && onProChanged != null) ...[
+                    const Text('Pro', style: TextStyle(fontSize: 11)),
+                    SizedBox(
+                      height: 32,
+                      child: Switch.adaptive(
+                        value: proValue!,
+                        onChanged: onProChanged,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ],

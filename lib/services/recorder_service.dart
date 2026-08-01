@@ -11,8 +11,9 @@ class RecorderService {
 
   // Stream a normalized input level (0..1) derived from mic amplitude.
   // More sensitive mapping with a gentle gamma curve to amplify quiet signals.
-  Stream<double> levelStream(
-      {Duration interval = const Duration(milliseconds: 120)}) {
+  Stream<double> levelStream({
+    Duration interval = const Duration(milliseconds: 120),
+  }) {
     return _record.onAmplitudeChanged(interval).map((amp) {
       // Amplitude.current is in dB, typically [-160, 0]. Map roughly [-90, 0] to [0, 1]
       // and apply a gamma (<1) to boost lower levels for a more responsive flicker.
@@ -46,11 +47,11 @@ class RecorderService {
     return null;
   }
 
-  Future<Stream<List<int>>?> startAudioStream() async {
+  Future<Stream<List<int>>?> startAudioStream({int sampleRate = 24000}) async {
     if (!await hasPermission()) return null;
-    const config = RecordConfig(
+    final config = RecordConfig(
       encoder: AudioEncoder.pcm16bits,
-      sampleRate: 24000,
+      sampleRate: sampleRate,
       numChannels: 1,
     );
     return await _record.startStream(config);

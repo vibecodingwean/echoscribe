@@ -9,12 +9,14 @@ class SettingsState extends ChangeNotifier {
   String _geminiKey = "";
   String _anthropicKey = "";
   String _xaiKey = "";
+  String _elevenLabsKey = "";
   String _localAiLlmUrl = AiModelConfig.localAiLlmUrl;
   String _localAiLlmModel = AiModelConfig.localAiLlmModel;
   String _localAiWhisperUrl = AiModelConfig.localAiWhisperUrl;
   String _localAiWhisperModel = AiModelConfig.localAiWhisperModel;
   bool _openAiPro = false;
   bool _openAiRealtime = false;
+  bool _elevenLabsRealtime = false;
   bool _geminiPro = false;
   bool _anthropicPro = false;
   bool _xaiPro = false;
@@ -42,6 +44,7 @@ class SettingsState extends ChangeNotifier {
   String get geminiKey => _geminiKey;
   String get anthropicKey => _anthropicKey;
   String get xaiKey => _xaiKey;
+  String get elevenLabsKey => _elevenLabsKey;
   String get localAiLlmUrl => _localAiLlmUrl;
   String get localAiLlmModel => _localAiLlmModel;
   String get localAiWhisperUrl => _localAiWhisperUrl;
@@ -64,6 +67,11 @@ class SettingsState extends ChangeNotifier {
 
   void setXaiKey(String key) {
     _xaiKey = key.trim();
+    notifyListeners();
+  }
+
+  void setElevenLabsKey(String key) {
+    _elevenLabsKey = key.trim();
     notifyListeners();
   }
 
@@ -121,6 +129,8 @@ class SettingsState extends ChangeNotifier {
 
   bool get openAiPro => _openAiPro;
   bool get openAiRealtime => _openAiRealtime;
+  bool get elevenLabsRealtime => _elevenLabsRealtime;
+  bool get realtimeEnabled => _openAiRealtime || _elevenLabsRealtime;
   bool get geminiPro => _geminiPro;
   bool get anthropicPro => _anthropicPro;
   bool get xaiPro => _xaiPro;
@@ -132,6 +142,13 @@ class SettingsState extends ChangeNotifier {
 
   void setOpenAiRealtime(bool enabled) {
     _openAiRealtime = enabled;
+    if (enabled) _elevenLabsRealtime = false;
+    notifyListeners();
+  }
+
+  void setElevenLabsRealtime(bool enabled) {
+    _elevenLabsRealtime = enabled;
+    if (enabled) _openAiRealtime = false;
     notifyListeners();
   }
 

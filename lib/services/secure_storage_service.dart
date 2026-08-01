@@ -25,6 +25,8 @@ class SecureStorageService {
   static const _keyDebugMode = 'debug_mode_enabled';
   static const _keyOpenAiPro = 'openai_pro_enabled';
   static const _keyOpenAiRealtime = 'openai_realtime_enabled';
+  static const _keyElevenLabs = 'elevenlabs_api_key';
+  static const _keyElevenLabsRealtime = 'elevenlabs_realtime_enabled';
   static const _keyGeminiPro = 'gemini_pro_enabled';
   static const _keyAnthropicPro = 'anthropic_pro_enabled';
   static const _keyAppFetchUrl = 'app_fetch_url_enabled';
@@ -121,6 +123,10 @@ class SecureStorageService {
   Future<String> readOpenAiKey() async => _safeRead(_keyOpenAi);
   Future<void> deleteOpenAiKey() => _safeDelete(_keyOpenAi);
 
+  Future<void> saveElevenLabsKey(String key) => _safeWrite(_keyElevenLabs, key);
+  Future<String> readElevenLabsKey() async => _safeRead(_keyElevenLabs);
+  Future<void> deleteElevenLabsKey() => _safeDelete(_keyElevenLabs);
+
   // Gemini Key
   Future<void> saveGeminiKey(String key) => _safeWrite(_keyGemini, key);
   Future<String> readGeminiKey() async => _safeRead(_keyGemini);
@@ -173,6 +179,11 @@ class SecureStorageService {
       _safeWrite(_keyOpenAiRealtime, enabled ? '1' : '0');
   Future<bool> readOpenAiRealtime() async =>
       (await _safeRead(_keyOpenAiRealtime, fallback: '0')) == '1';
+
+  Future<void> saveElevenLabsRealtime(bool enabled) =>
+      _safeWrite(_keyElevenLabsRealtime, enabled ? '1' : '0');
+  Future<bool> readElevenLabsRealtime() async =>
+      (await _safeRead(_keyElevenLabsRealtime, fallback: '0')) == '1';
 
   Future<void> saveGeminiPro(bool enabled) =>
       _safeWrite(_keyGeminiPro, enabled ? '1' : '0');

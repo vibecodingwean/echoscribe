@@ -1,13 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'realtime_transcription_client.dart';
-import 'openai_realtime_client_stub.dart'
-    if (dart.library.io) 'openai_realtime_client_io.dart'
-    if (dart.library.html) 'openai_realtime_client_web.dart';
 
-abstract class OpenAiRealtimeClient implements RealtimeTranscriptionClient {
-  factory OpenAiRealtimeClient() => getRealtimeClient();
-
-  @override
+abstract class RealtimeTranscriptionClient {
   Future<void> connect({
     required String apiKey,
     required String model,
@@ -19,12 +12,9 @@ abstract class OpenAiRealtimeClient implements RealtimeTranscriptionClient {
     required VoidCallback onDisconnected,
   });
 
-  @override
   void sendAudioChunk(List<int> chunk);
 
-  @override
   Future<void> finishAudio();
 
-  @override
   Future<void> close();
 }

@@ -16,6 +16,8 @@ import 'package:echoscribe/models/app_exception.dart';
 import 'package:echoscribe/services/local_ai_health_service.dart';
 
 import 'package:echoscribe/services/ai/openai_realtime_client.dart';
+import 'package:echoscribe/services/ai/elevenlabs_realtime_client.dart';
+import 'package:echoscribe/services/ai/realtime_transcription_client.dart';
 
 class HomeController extends ChangeNotifier {
   final SettingsState settings;
@@ -31,7 +33,7 @@ class HomeController extends ChangeNotifier {
   Timer? _imageCycleTimer;
   bool _imageCycleDone = false;
 
-  OpenAiRealtimeClient? _realtimeClient;
+  RealtimeTranscriptionClient? _realtimeClient;
   StreamSubscription<List<int>>? _audioStreamSub;
 
   // Expose these for the UI to use
@@ -580,8 +582,10 @@ class HomeController extends ChangeNotifier {
       return;
     }
 
-    final bool isRealtime =
+    final bool isElevenLabsRealtime = settings.elevenLabsRealtime;
+    final bool isOpenAiRealtime =
         settings.provider == AiProviderType.openai && settings.openAiRealtime;
+    final bool isRealtime = isOpenAiRealtime || isElevenLabsRealtime;
 
     try {
       if (playback.isPlaying) {
@@ -590,13 +594,23 @@ class HomeController extends ChangeNotifier {
       content.clearTranscription();
 
       if (isRealtime) {
-        if (!settings.hasActiveApiKey) {
-          throw const AppException('Please add your OpenAI API key first.');
+        final realtimeApiKey =
+            isElevenLabsRealtime ? settings.elevenLabsKey : settings.openAiKey;
+        final realtimeBrand = isElevenLabsRealtime ? 'ElevenLabs' : 'OpenAI';
+        if (realtimeApiKey.trim().isEmpty) {
+          throw AppException('Please add your $realtimeBrand API key first.');
+        }
+        if (isElevenLabsRealtime && settings.targetLanguageCode != 'auto') {
+          throw const AppException(
+            'ElevenLabs Realtime transcribes speech but does not translate it. Choose Auto Detect as target language.',
+          );
         }
 
-        final String modelName = settings.targetLanguageCode == 'auto'
-            ? AiModelConfig.openAiRealtimeTranscription
-            : AiModelConfig.openAiRealtimeTranslation;
+        final String modelName = isElevenLabsRealtime
+            ? AiModelConfig.elevenLabsRealtimeTranscription
+            : settings.targetLanguageCode == 'auto'
+                ? AiModelConfig.openAiRealtimeTranscription
+                : AiModelConfig.openAiRealtimeTranslation;
 
         final StringBuffer logsBuffer = StringBuffer();
 
@@ -611,16 +625,22 @@ class HomeController extends ChangeNotifier {
           );
         }
 
-        content.appendLogLine('🔌 Connecting to OpenAI Realtime WebSocket...');
-        logsBuffer.writeln('🔌 Connecting to OpenAI Realtime WebSocket...');
+        content.appendLogLine(
+          '🔌 Connecting to $realtimeBrand Realtime WebSocket...',
+        );
+        logsBuffer.writeln(
+          '🔌 Connecting to $realtimeBrand Realtime WebSocket...',
+        );
         updateDisplayWithLogs("");
 
-        _realtimeClient = OpenAiRealtimeClient();
+        _realtimeClient = isElevenLabsRealtime
+            ? ElevenLabsRealtimeClient()
+            : OpenAiRealtimeClient();
         String finalizedTextAccumulated = "";
         final StringBuffer currentWordBuffer = StringBuffer();
 
         await _realtimeClient!.connect(
-          apiKey: settings.activeApiKey,
+          apiKey: realtimeApiKey,
           model: modelName,
           targetLanguageCode: settings.targetLanguageCode,
           onTranscriptDelta: (delta) {
@@ -659,7 +679,9 @@ class HomeController extends ChangeNotifier {
           },
         );
 
-        final stream = await recorder.startAudioStream();
+        final stream = await recorder.startAudioStream(
+          sampleRate: isElevenLabsRealtime ? 16000 : 24000,
+        );
         if (stream == null) {
           throw const AppException(
             'Recording could not be started (no permission or audio stream).',
@@ -763,8 +785,9 @@ class HomeController extends ChangeNotifier {
   }
 
   Future<void> stopAndTranscribe() async {
-    final bool isRealtime =
-        settings.provider == AiProviderType.openai && settings.openAiRealtime;
+    final bool isRealtime = (settings.provider == AiProviderType.openai &&
+            settings.openAiRealtime) ||
+        settings.elevenLabsRealtime;
     try {
       if (isRealtime) {
         // Stop the microphone stream immediately to stop sending audio chunks
