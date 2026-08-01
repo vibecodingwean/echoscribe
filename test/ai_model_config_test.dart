@@ -6,6 +6,11 @@ void main() {
     test('OpenAI preserves fast and pro reasoning roles', () {
       expect(AiModelConfig.openAiSummary(pro: false), 'gpt-5.6-terra');
       expect(AiModelConfig.openAiSummary(pro: true), 'gpt-5.6-sol');
+      expect(
+        AiModelConfig.openAiTranscription(pro: false),
+        'gpt-4o-mini-transcribe',
+      );
+      expect(AiModelConfig.openAiTranscription(pro: true), 'gpt-transcribe');
       expect(AiModelConfig.openAiReasoningEffort(pro: false), 'none');
       expect(AiModelConfig.openAiReasoningEffort(pro: true), 'medium');
     });
