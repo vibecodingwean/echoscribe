@@ -16,6 +16,7 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 ### 🎙️ Audio & Transcription
 - **On-Device Recording:** Capture high-quality audio with live amplitude feedback.
 - **OpenAI, Gemini, xAI & Local AI Support:** Choose OpenAI, Google Gemini, xAI Grok, or a local Whisper-compatible endpoint for voice transcription.
+- **Realtime STT:** Stream live transcription through OpenAI GPT Live Transcribe or ElevenLabs Scribe v2 Realtime in the installed app. ElevenLabs uses its own securely stored API key and is unavailable in the browser build because browser WebSockets cannot attach the required authentication header.
 - **Voice Message Summary:** Share voice messages from WhatsApp or other apps directly to EchoScribe.
 - **Note:** Claude 🦀 is text-only for app-side speech input.
 
@@ -38,6 +39,7 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 Access the world's most powerful AI models with a single toggle:
 - **Standard (Fast):** GPT-5.6 Terra, Gemini 3.6 Flash, Claude Sonnet 5, Grok 4.3, or local `qwen2.5:7b`.
 - **Pro Mode (Premium):** GPT-5.6 Sol, Gemini 3.1 Pro Preview, Claude Opus 5, Grok 4.5.
+- **Speech Models:** OpenAI Pro file transcription uses GPT Transcribe; OpenAI Realtime uses GPT Live Transcribe; optional ElevenLabs Realtime uses Scribe v2 Realtime.
 
 ### 🌍 Intelligent Re-Translation
 Need a result in another language? Change the target language via the globe icon, and EchoScribe will automatically re-process the source content to provide a high-quality summary in the new language.
@@ -56,6 +58,7 @@ To use EchoScribe, you'll need at least one API key:
 - **Google Gemini:** [Get API Key](https://aistudio.google.com/app/apikey)
 - **Anthropic Claude:** [Get API Key](https://console.anthropic.com/settings/keys)
 - **xAI Grok:** [Get API Key](https://console.x.ai/)
+- **ElevenLabs Realtime STT:** [Get API Key](https://elevenlabs.io/app/settings/api-keys)
 - **Local AI:** Configure your own Ollama endpoint such as `http://host:11434/api/chat` and a Whisper-compatible endpoint such as `http://host:8000/v1/audio/transcriptions`. Hardware-aware installer choices include compact Gemma models, `qwen3.5:9b`, and larger Qwen options where memory permits.
 
 *Tip: Set a usage limit in your AI provider's dashboard to keep full control over your costs. For Local AI PoC use, keep endpoints on a trusted local network or VPN; EchoScribe does not add authentication to Local AI requests.*

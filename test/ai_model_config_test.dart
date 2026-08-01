@@ -16,6 +16,10 @@ void main() {
         AiModelConfig.openAiRealtimeTranslation,
         'gpt-realtime-translate',
       );
+      expect(
+        AiModelConfig.elevenLabsRealtimeTranscription,
+        'scribe_v2_realtime',
+      );
       expect(AiModelConfig.openAiReasoningEffort(pro: false), 'none');
       expect(AiModelConfig.openAiReasoningEffort(pro: true), 'medium');
     });
