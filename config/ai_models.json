@@ -18,7 +18,7 @@
     },
     "tts": "gpt-4o-mini-tts",
     "realtime": {
-      "transcription": "gpt-realtime-whisper",
+      "transcription": "gpt-live-transcribe",
       "translation": "gpt-realtime-translate"
     }
   },

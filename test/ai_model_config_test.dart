@@ -11,6 +11,11 @@ void main() {
         'gpt-4o-mini-transcribe',
       );
       expect(AiModelConfig.openAiTranscription(pro: true), 'gpt-transcribe');
+      expect(AiModelConfig.openAiRealtimeTranscription, 'gpt-live-transcribe');
+      expect(
+        AiModelConfig.openAiRealtimeTranslation,
+        'gpt-realtime-translate',
+      );
       expect(AiModelConfig.openAiReasoningEffort(pro: false), 'none');
       expect(AiModelConfig.openAiReasoningEffort(pro: true), 'medium');
     });

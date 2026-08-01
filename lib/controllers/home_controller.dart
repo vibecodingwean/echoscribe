@@ -595,8 +595,8 @@ class HomeController extends ChangeNotifier {
         }
 
         final String modelName = settings.targetLanguageCode == 'auto'
-            ? 'gpt-realtime-whisper'
-            : 'gpt-realtime-translate';
+            ? AiModelConfig.openAiRealtimeTranscription
+            : AiModelConfig.openAiRealtimeTranslation;
 
         final StringBuffer logsBuffer = StringBuffer();
 
