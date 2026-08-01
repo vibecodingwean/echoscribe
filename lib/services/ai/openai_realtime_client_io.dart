@@ -61,7 +61,7 @@ class OpenAiRealtimeClientImpl implements OpenAiRealtimeClient {
                 'audio': {
                   'input': {
                     'format': {'type': 'audio/pcm', 'rate': 24000},
-                    'transcription': {'model': 'gpt-realtime-whisper'},
+                    'transcription': {'model': model},
                     'turn_detection': null,
                   },
                 },

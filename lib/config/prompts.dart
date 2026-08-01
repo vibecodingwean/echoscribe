@@ -59,6 +59,8 @@ class AiModelConfig {
   static const String openAiTranscriptionFast = 'gpt-4o-mini-transcribe';
   static const String openAiImageFast = 'gpt-image-1-mini';
   static const String openAiTts = 'gpt-4o-mini-tts';
+  static const String openAiRealtimeTranscription = 'gpt-live-transcribe';
+  static const String openAiRealtimeTranslation = 'gpt-realtime-translate';
   static const String openAiReasoningEffortFast = 'none';
 
   // ---------- Gemini ----------
