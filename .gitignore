@@ -1,4 +1,5 @@
 # Miscellaneous
+/_dev_tools/
 .claude/
 *.class
 *.log
