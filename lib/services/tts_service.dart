@@ -7,6 +7,10 @@ import 'package:echoscribe/services/debug_console.dart';
 import 'package:echoscribe/config/prompts.dart';
 
 class TtsService {
+  final http.Client _client;
+
+  TtsService({http.Client? client}) : _client = client ?? http.Client();
+
   // OpenAI TTS: returns MP3 bytes
   Future<Uint8List> generateSpeechOpenAI({
     required String apiKey,
@@ -37,7 +41,7 @@ class TtsService {
         url: uri,
         requestBytes: utf8.encode(body).length,
         note: 'OpenAI TTS');
-    final res = await http.post(uri, headers: headers, body: body);
+    final res = await _client.post(uri, headers: headers, body: body);
     sw.stop();
     DebugConsole.logApiEnd(
         status: res.statusCode,
@@ -102,7 +106,7 @@ class TtsService {
         requestBytes: utf8.encode(body).length,
         note: 'Gemini TTS');
     // Keep request body logging out to prevent panel spam; rely on concise lines
-    final res = await http.post(uri, headers: headers, body: body);
+    final res = await _client.post(uri, headers: headers, body: body);
     sw.stop();
     DebugConsole.logApiEnd(
         status: res.statusCode,
@@ -178,7 +182,7 @@ class TtsService {
         url: uri,
         requestBytes: utf8.encode(body).length,
         note: 'xAI TTS');
-    final res = await http.post(uri, headers: headers, body: body);
+    final res = await _client.post(uri, headers: headers, body: body);
     sw.stop();
     DebugConsole.logApiEnd(
         status: res.statusCode,
@@ -195,6 +199,71 @@ class TtsService {
           json.decode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
       final msg = data['error']?['message'];
       if (msg is String && msg.isNotEmpty) reason = msg;
+    } catch (_) {}
+    throw Exception(reason);
+  }
+
+  // ElevenLabs TTS: returns MP3 bytes.
+  Future<Uint8List> generateSpeechElevenLabs({
+    required String apiKey,
+    required String text,
+    String model = AiModelConfig.elevenLabsTts,
+    String voiceId = AiModelConfig.elevenLabsTtsVoice,
+  }) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return Uint8List(0);
+
+    final uri = Uri.parse(
+      'https://api.elevenlabs.io/v1/text-to-speech/${Uri.encodeComponent(voiceId)}',
+    ).replace(queryParameters: const {'output_format': 'mp3_44100_128'});
+    final headers = {
+      'xi-api-key': apiKey,
+      'accept': 'audio/mpeg',
+      'Content-Type': 'application/json',
+    };
+    final body = json.encode({
+      'text': trimmed,
+      'model_id': model,
+    });
+
+    final sw = Stopwatch()..start();
+    DebugConsole.logApiStart(
+      method: 'POST',
+      url: uri,
+      requestBytes: utf8.encode(body).length,
+      note: 'ElevenLabs TTS',
+    );
+    final res = await _client.post(uri, headers: headers, body: body);
+    sw.stop();
+    DebugConsole.logApiEnd(
+      status: res.statusCode,
+      elapsedMs: sw.elapsedMilliseconds,
+      responseBytes: res.bodyBytes.length,
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return Uint8List.fromList(res.bodyBytes);
+    }
+
+    String reason = 'ElevenLabs TTS failed (${res.statusCode})';
+    try {
+      final data =
+          json.decode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+      final detail = data['detail'];
+      if (detail is Map<String, dynamic>) {
+        final message = detail['message'];
+        if (message is String && message.isNotEmpty) reason = message;
+      } else if (detail is List) {
+        final messages = detail
+            .whereType<Map>()
+            .map((entry) => entry['msg'])
+            .whereType<String>()
+            .where((message) => message.isNotEmpty)
+            .toList();
+        if (messages.isNotEmpty) reason = messages.join('; ');
+      } else if (detail is String && detail.isNotEmpty) {
+        reason = detail;
+      }
     } catch (_) {}
     throw Exception(reason);
   }

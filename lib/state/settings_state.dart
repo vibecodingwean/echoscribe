@@ -16,7 +16,7 @@ class SettingsState extends ChangeNotifier {
   String _localAiWhisperModel = AiModelConfig.localAiWhisperModel;
   bool _openAiPro = false;
   bool _openAiRealtime = false;
-  bool _elevenLabsRealtime = false;
+
   bool _geminiPro = false;
   bool _anthropicPro = false;
   bool _xaiPro = false;
@@ -37,6 +37,7 @@ class SettingsState extends ChangeNotifier {
   AiProviderType get provider => _provider;
   void setProvider(AiProviderType p) {
     _provider = p;
+    if (!p.supportsTranslation) _targetLanguageCode = 'auto';
     notifyListeners();
   }
 
@@ -101,6 +102,7 @@ class SettingsState extends ChangeNotifier {
 
   String get activeApiKey {
     if (_provider == AiProviderType.localAi) return "";
+    if (_provider == AiProviderType.elevenLabs) return _elevenLabsKey;
     if (_provider == AiProviderType.gemini) return _geminiKey;
     if (_provider == AiProviderType.anthropic) return _anthropicKey;
     if (_provider == AiProviderType.xai) return _xaiKey;
@@ -129,8 +131,14 @@ class SettingsState extends ChangeNotifier {
 
   bool get openAiPro => _openAiPro;
   bool get openAiRealtime => _openAiRealtime;
-  bool get elevenLabsRealtime => _elevenLabsRealtime;
-  bool get realtimeEnabled => _openAiRealtime || _elevenLabsRealtime;
+  bool get elevenLabsRealtime =>
+      _provider == AiProviderType.elevenLabs &&
+      providerSupportsRealtimeOnPlatform(_provider, isWeb: false);
+  bool get realtimeEnabled =>
+      (_provider == AiProviderType.openai && _openAiRealtime) ||
+      elevenLabsRealtime;
+  bool get recordingSupportedOnCurrentPlatform =>
+      _provider != AiProviderType.elevenLabs || elevenLabsRealtime;
   bool get geminiPro => _geminiPro;
   bool get anthropicPro => _anthropicPro;
   bool get xaiPro => _xaiPro;
@@ -142,13 +150,6 @@ class SettingsState extends ChangeNotifier {
 
   void setOpenAiRealtime(bool enabled) {
     _openAiRealtime = enabled;
-    if (enabled) _elevenLabsRealtime = false;
-    notifyListeners();
-  }
-
-  void setElevenLabsRealtime(bool enabled) {
-    _elevenLabsRealtime = enabled;
-    if (enabled) _openAiRealtime = false;
     notifyListeners();
   }
 
@@ -181,7 +182,7 @@ class SettingsState extends ChangeNotifier {
 
   String get targetLanguageCode => _targetLanguageCode;
   void setTargetLanguageCode(String code) {
-    _targetLanguageCode = code;
+    _targetLanguageCode = _provider.supportsTranslation ? code : 'auto';
     notifyListeners();
   }
 

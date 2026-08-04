@@ -81,28 +81,34 @@ class FloatingDictationService {
       _invoke('openAccessibilitySettings');
   static Future<void> openAppSettings() => _invoke('openAppSettings');
 
-  static Future<void> syncSettings(SettingsState settings) async {
-    if (!isAndroid) return;
+  static Map<String, dynamic> buildConfigPayload(SettingsState settings) {
     final provider = settings.provider;
-    final payload = <String, dynamic>{
+    final supported = provider.supportsFloatingDictation;
+    return <String, dynamic>{
       'provider': provider.name,
-      'enabled': settings.floatingDictationEnabled,
+      'enabled': supported && settings.floatingDictationEnabled,
       'brandName': provider.brandName,
-      'apiKey': settings.activeApiKey,
+      'apiKey': supported ? settings.activeApiKey : '',
       'targetLanguageCode': settings.targetLanguageCode,
       'dictationPrompt': settings.dictationPrompt.trim().isNotEmpty
           ? settings.dictationPrompt.trim()
           : kDefaultDictationPrompt,
-      'transcriptionModel': _transcriptionModel(settings),
-      'formattingModel': _formattingModel(settings),
-      'reasoningEffort': _reasoningEffort(settings),
-      'localAiLlmUrl': settings.localAiLlmUrl,
-      'localAiWhisperUrl': settings.localAiWhisperUrl,
-      'supportsDictation': provider == AiProviderType.openai ||
-          provider == AiProviderType.gemini ||
-          provider == AiProviderType.xai ||
-          provider == AiProviderType.localAi,
+      'transcriptionModel': supported ? _transcriptionModel(settings) : '',
+      'formattingModel': supported ? _formattingModel(settings) : '',
+      'reasoningEffort': supported ? _reasoningEffort(settings) : '',
+      'localAiLlmUrl': supported && provider == AiProviderType.localAi
+          ? settings.localAiLlmUrl
+          : '',
+      'localAiWhisperUrl': supported && provider == AiProviderType.localAi
+          ? settings.localAiWhisperUrl
+          : '',
+      'supportsDictation': supported,
     };
+  }
+
+  static Future<void> syncSettings(SettingsState settings) async {
+    if (!isAndroid) return;
+    final payload = buildConfigPayload(settings);
     try {
       await _channel.invokeMethod<void>('syncConfig', payload);
     } on MissingPluginException {
@@ -130,6 +136,8 @@ class FloatingDictationService {
       case AiProviderType.openai:
       case AiProviderType.anthropic:
         return AiModelConfig.openAiTranscription(pro: settings.openAiPro);
+      case AiProviderType.elevenLabs:
+        return '';
     }
   }
 
@@ -145,6 +153,8 @@ class FloatingDictationService {
         return AiModelConfig.anthropicSummary(pro: settings.anthropicPro);
       case AiProviderType.openai:
         return AiModelConfig.openAiSummary(pro: settings.openAiPro);
+      case AiProviderType.elevenLabs:
+        return '';
     }
   }
 
@@ -157,6 +167,7 @@ class FloatingDictationService {
       case AiProviderType.gemini:
       case AiProviderType.anthropic:
       case AiProviderType.localAi:
+      case AiProviderType.elevenLabs:
         return '';
     }
   }

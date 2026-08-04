@@ -119,6 +119,12 @@ class UrlHandler {
       );
     }
 
+    if (!settings.provider.supportsSummary) {
+      showError0(
+          '${settings.provider.brandName} does not support URL summaries');
+      return;
+    }
+
     if (!settings.hasActiveApiKey) {
       showError0(settings.missingProviderConfigMessage);
       await Navigator.of(context).push(
@@ -150,6 +156,8 @@ class UrlHandler {
             return settings.localAiLlmModel;
           case AiProviderType.openai:
             return AiModelConfig.openAiSummary(pro: settings.openAiPro);
+          case AiProviderType.elevenLabs:
+            return '';
         }
       }
 

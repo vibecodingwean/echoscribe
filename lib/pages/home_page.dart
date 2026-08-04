@@ -23,6 +23,7 @@ import "package:echoscribe/controllers/share_intent_controller.dart";
 import "package:echoscribe/widgets/home/recording_controls.dart";
 import "package:echoscribe/widgets/home/transcription_panel.dart";
 import "package:echoscribe/models/enums.dart";
+import "package:echoscribe/models/recording_session.dart";
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -94,7 +95,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _initializeFromStorage() async {
     try {
       final secure = _sl.secureStorage;
-      final provider = await secure.readProvider();
+      var provider = await secure.readProvider();
       final open = await secure.readOpenAiKey();
       final gem = await secure.readGeminiKey();
       final ant = await secure.readAnthropicKey();
@@ -106,7 +107,7 @@ class _HomePageState extends State<HomePage> {
       final openAiPro = await secure.readOpenAiPro();
       final openAiRealtime = await secure.readOpenAiRealtime();
       final elevenLabsKey = await secure.readElevenLabsKey();
-      final elevenLabsRealtime = await secure.readElevenLabsRealtime();
+      final legacyElevenLabsRealtime = await secure.readElevenLabsRealtime();
       final geminiPro = await secure.readGeminiPro();
       final anthropicPro = await secure.readAnthropicPro();
       final xai = await secure.readXaiKey();
@@ -119,6 +120,14 @@ class _HomePageState extends State<HomePage> {
       final floatingDictationEnabled =
           await secure.readFloatingDictationEnabled();
       final lastIntent = await secure.readLastSharedIntentId();
+
+      if (legacyElevenLabsRealtime) {
+        if (provider != AiProviderType.elevenLabs) {
+          provider = AiProviderType.elevenLabs;
+          await secure.saveProvider(provider);
+        }
+        await secure.saveElevenLabsRealtime(false);
+      }
 
       _settings.setProvider(provider);
       if (open.isNotEmpty) _settings.setOpenAiKey(open);
@@ -142,7 +151,6 @@ class _HomePageState extends State<HomePage> {
       _settings.setDebugMode(dbg);
       _settings.setOpenAiPro(openAiPro);
       _settings.setOpenAiRealtime(openAiRealtime);
-      _settings.setElevenLabsRealtime(elevenLabsRealtime);
       _settings.setGeminiPro(geminiPro);
       _settings.setAnthropicPro(anthropicPro);
       _settings.setXaiPro(xaiPro);
@@ -384,14 +392,23 @@ class _HomePageState extends State<HomePage> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.language),
-                  tooltip: "Target language",
-                  onPressed: _showLanguagePicker,
+                  tooltip: _settings.provider.supportsTranslation
+                      ? "Target language"
+                      : "${_settings.provider.brandName} does not support translation",
+                  onPressed: _settings.provider.supportsTranslation
+                      ? _showLanguagePicker
+                      : null,
                 ),
                 IconButton(
                   icon: const Icon(Icons.vpn_key),
                   tooltip: "API Config",
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => SettingsPage(settings: _settings))),
+                  onPressed: () async {
+                    await Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => SettingsPage(settings: _settings)));
+                    if (!_settings.provider.supportsSummary) {
+                      _content.setOutputMode(OutputMode.transcription);
+                    }
+                  },
                 ),
               ],
             ),
@@ -472,6 +489,10 @@ class _HomePageState extends State<HomePage> {
                           return ToggleButtons(
                             isSelected: [isTranscription, !isTranscription],
                             onPressed: (index) async {
+                              if (index == 1 &&
+                                  !_settings.provider.supportsSummary) {
+                                return;
+                              }
                               if (index == 0) {
                                 _content
                                     .setOutputMode(OutputMode.transcription);
@@ -493,8 +514,8 @@ class _HomePageState extends State<HomePage> {
                             color:
                                 Theme.of(context).colorScheme.onSurfaceVariant,
                             fillColor: Theme.of(context).colorScheme.primary,
-                            children: const [
-                              Padding(
+                            children: [
+                              const Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 8),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -507,17 +528,22 @@ class _HomePageState extends State<HomePage> {
                                   ],
                                 ),
                               ),
-                              Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 8),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.summarize),
-                                    SizedBox(width: 8),
-                                    Text("Summary",
-                                        overflow: TextOverflow.ellipsis,
-                                        softWrap: false),
-                                  ],
+                              Opacity(
+                                opacity: _settings.provider.supportsSummary
+                                    ? 1.0
+                                    : 0.35,
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 8),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.summarize),
+                                      SizedBox(width: 8),
+                                      Text("Summary",
+                                          overflow: TextOverflow.ellipsis,
+                                          softWrap: false),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],
@@ -528,8 +554,17 @@ class _HomePageState extends State<HomePage> {
                       Center(
                         child: Builder(
                           builder: (context) {
-                            final bool showTts = _content.isSummaryMode &&
-                                _content.currentSummaryValue.trim().isNotEmpty;
+                            final bool showTts =
+                                _settings.provider.supportsTts &&
+                                    (_content.isSummaryMode
+                                        ? _content.currentSummaryValue
+                                            .trim()
+                                            .isNotEmpty
+                                        : _settings.provider ==
+                                                AiProviderType.elevenLabs &&
+                                            _content.currentTranscriptValue
+                                                .trim()
+                                                .isNotEmpty);
                             final bool showImage =
                                 _settings.provider.supportsImage &&
                                     !_content.isTranscribing &&
@@ -651,8 +686,12 @@ class _HomePageState extends State<HomePage> {
                                                                   _showSuccess);
                                                         } catch (e) {
                                                           _hideProgressToast();
-                                                          _showError(
-                                                              "TTS error");
+                                                          final message = e
+                                                              .toString()
+                                                              .replaceFirst(
+                                                                  'Exception: ',
+                                                                  '');
+                                                          _showError(message);
                                                         }
                                                       },
                                                     ),
@@ -722,8 +761,17 @@ class _HomePageState extends State<HomePage> {
                                               recording: _content.isRecording,
                                               transcribing:
                                                   _content.isTranscribing,
-                                              enabled:
-                                                  _settings.hasActiveApiKey,
+                                              enabled: microphoneControlEnabled(
+                                                isRecording:
+                                                    _content.isRecording,
+                                                hasActiveApiKey:
+                                                    _settings.hasActiveApiKey,
+                                                providerSupportsAudio: _settings
+                                                    .provider.supportsAudio,
+                                                recordingSupportedOnCurrentPlatform:
+                                                    _settings
+                                                        .recordingSupportedOnCurrentPlatform,
+                                              ),
                                               isAnthropic: !_settings
                                                   .provider.supportsAudio,
                                               level: pulse,
@@ -737,6 +785,11 @@ class _HomePageState extends State<HomePage> {
                                                   _controller
                                                       .cancelActiveOperations();
                                                   _hideProgressToast();
+                                                }
+                                                if (_content.isRecording) {
+                                                  await _controller
+                                                      .stopAndTranscribe();
+                                                  return;
                                                 }
                                                 if (!_settings
                                                     .hasActiveApiKey) {
@@ -753,18 +806,19 @@ class _HomePageState extends State<HomePage> {
                                                   return;
                                                 }
                                                 if (!_settings
+                                                    .recordingSupportedOnCurrentPlatform) {
+                                                  _showError(
+                                                      'ElevenLabs Realtime is available in the installed app, not the browser build.');
+                                                  return;
+                                                }
+                                                if (!_settings
                                                     .provider.supportsAudio) {
                                                   _showError(
                                                       '${_settings.provider.brandName} does not support audio.');
                                                   return;
                                                 }
-                                                if (!_content.isRecording) {
-                                                  await _controller
-                                                      .startRecording();
-                                                } else {
-                                                  await _controller
-                                                      .stopAndTranscribe();
-                                                }
+                                                await _controller
+                                                    .startRecording();
                                               },
                                             ),
                                           ],
