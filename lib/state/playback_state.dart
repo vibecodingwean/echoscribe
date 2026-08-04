@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:convert";
 import "package:flutter/foundation.dart";
 import "package:crypto/crypto.dart";
+import "package:echoscribe/config/prompts.dart";
 import "package:echoscribe/services/tts_service.dart";
 import "package:echoscribe/utils/cross_audio_player.dart";
 import "package:echoscribe/models/enums.dart";
@@ -45,26 +46,40 @@ class PlaybackState extends ChangeNotifier {
     return "${provider.name}|$voice|$md5sum";
   }
 
-  String _voiceForProvider(AiProviderType provider,
-      {String openAiVoice = "alloy",
-      String geminiVoice = "Zephyr",
-      String xaiVoice = "eve"}) {
+  String _voiceForProvider(
+    AiProviderType provider, {
+    String openAiVoice = "alloy",
+    String geminiVoice = "Zephyr",
+    String xaiVoice = "eve",
+    String elevenLabsVoice = AiModelConfig.elevenLabsTtsVoice,
+  }) {
     switch (provider) {
       case AiProviderType.gemini:
         return geminiVoice;
       case AiProviderType.xai:
         return xaiVoice;
+      case AiProviderType.elevenLabs:
+        return elevenLabsVoice;
       default:
         return openAiVoice;
     }
   }
 
-  bool canResumeCurrentAudio(String text, AiProviderType provider,
-      {String openAiVoice = "alloy",
-      String geminiVoice = "Zephyr",
-      String xaiVoice = "eve"}) {
-    final voice = _voiceForProvider(provider,
-        openAiVoice: openAiVoice, geminiVoice: geminiVoice, xaiVoice: xaiVoice);
+  bool canResumeCurrentAudio(
+    String text,
+    AiProviderType provider, {
+    String openAiVoice = "alloy",
+    String geminiVoice = "Zephyr",
+    String xaiVoice = "eve",
+    String elevenLabsVoice = AiModelConfig.elevenLabsTtsVoice,
+  }) {
+    final voice = _voiceForProvider(
+      provider,
+      openAiVoice: openAiVoice,
+      geminiVoice: geminiVoice,
+      xaiVoice: xaiVoice,
+      elevenLabsVoice: elevenLabsVoice,
+    );
     final key = _audioCacheKey(text, provider, voice: voice);
     return key != null &&
         key == _currentAudioKey &&
@@ -72,12 +87,21 @@ class PlaybackState extends ChangeNotifier {
         !_playbackCompleted;
   }
 
-  int? cachedSummaryAudioSize(String text, AiProviderType provider,
-      {String openAiVoice = "alloy",
-      String geminiVoice = "Zephyr",
-      String xaiVoice = "eve"}) {
-    final voice = _voiceForProvider(provider,
-        openAiVoice: openAiVoice, geminiVoice: geminiVoice, xaiVoice: xaiVoice);
+  int? cachedSummaryAudioSize(
+    String text,
+    AiProviderType provider, {
+    String openAiVoice = "alloy",
+    String geminiVoice = "Zephyr",
+    String xaiVoice = "eve",
+    String elevenLabsVoice = AiModelConfig.elevenLabsTtsVoice,
+  }) {
+    final voice = _voiceForProvider(
+      provider,
+      openAiVoice: openAiVoice,
+      geminiVoice: geminiVoice,
+      xaiVoice: xaiVoice,
+      elevenLabsVoice: elevenLabsVoice,
+    );
     final key = _audioCacheKey(text, provider, voice: voice);
     if (key == null) return null;
     final bytes = _audioCache[key];
@@ -92,13 +116,18 @@ class PlaybackState extends ChangeNotifier {
     String openAiVoice = "alloy",
     String geminiVoice = "Zephyr",
     String xaiVoice = "eve",
+    String elevenLabsVoice = AiModelConfig.elevenLabsTtsVoice,
     String languageCode = "en",
   }) async {
     final t = text.trim();
-    if (t.isEmpty) return;
-    if (_isAudioLoading) return;
-    final voice = _voiceForProvider(provider,
-        openAiVoice: openAiVoice, geminiVoice: geminiVoice, xaiVoice: xaiVoice);
+    if (t.isEmpty || _isAudioLoading) return;
+    final voice = _voiceForProvider(
+      provider,
+      openAiVoice: openAiVoice,
+      geminiVoice: geminiVoice,
+      xaiVoice: xaiVoice,
+      elevenLabsVoice: elevenLabsVoice,
+    );
     final key = _audioCacheKey(t, provider, voice: voice);
     if (key == null) return;
 
@@ -111,16 +140,29 @@ class PlaybackState extends ChangeNotifier {
         switch (provider) {
           case AiProviderType.gemini:
             bytes = await tts.generateSpeechGemini(
-                apiKey: activeApiKey, text: t, voice: geminiVoice);
+              apiKey: activeApiKey,
+              text: t,
+              voice: geminiVoice,
+            );
           case AiProviderType.xai:
             bytes = await tts.generateSpeechXai(
-                apiKey: activeApiKey,
-                text: t,
-                voice: xaiVoice,
-                language: languageCode);
+              apiKey: activeApiKey,
+              text: t,
+              voice: xaiVoice,
+              language: languageCode,
+            );
+          case AiProviderType.elevenLabs:
+            bytes = await tts.generateSpeechElevenLabs(
+              apiKey: activeApiKey,
+              text: t,
+              voiceId: elevenLabsVoice,
+            );
           default:
             bytes = await tts.generateSpeechOpenAI(
-                apiKey: activeApiKey, text: t, voice: openAiVoice);
+              apiKey: activeApiKey,
+              text: t,
+              voice: openAiVoice,
+            );
         }
         _audioCache[key] = bytes;
       }
@@ -132,8 +174,6 @@ class PlaybackState extends ChangeNotifier {
       _currentAudioKey = key;
       _isPlaying = true;
       _playbackCompleted = false;
-    } catch (e) {
-      rethrow;
     } finally {
       _isAudioLoading = false;
       notifyListeners();

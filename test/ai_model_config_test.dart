@@ -20,6 +20,8 @@ void main() {
         AiModelConfig.elevenLabsRealtimeTranscription,
         'scribe_v2_realtime',
       );
+      expect(AiModelConfig.elevenLabsTts, 'eleven_flash_v2_5');
+      expect(AiModelConfig.elevenLabsTtsVoice, 'JBFqnCBsd6RMkjVDRZzb');
       expect(AiModelConfig.openAiReasoningEffort(pro: false), 'none');
       expect(AiModelConfig.openAiReasoningEffort(pro: true), 'medium');
     });

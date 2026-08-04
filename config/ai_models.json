@@ -79,6 +79,19 @@
     },
     "realtime": {
       "transcription": "scribe_v2_realtime"
+    },
+    "tts": {
+      "model": "eleven_flash_v2_5",
+      "default_voice": "JBFqnCBsd6RMkjVDRZzb"
+    },
+    "capabilities": {
+      "realtime_transcription": true,
+      "tts": true,
+      "summary": false,
+      "translation": false,
+      "image": false,
+      "batch_transcription": false,
+      "floating_dictation": false
     }
   },
   "localai": {

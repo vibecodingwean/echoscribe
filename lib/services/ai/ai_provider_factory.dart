@@ -4,6 +4,7 @@ import 'package:echoscribe/services/ai/local_ai_provider.dart';
 import 'package:echoscribe/services/ai/gemini_provider.dart';
 import 'package:echoscribe/services/ai/anthropic_provider.dart';
 import 'package:echoscribe/services/ai/xai_provider.dart';
+import 'package:echoscribe/services/ai/elevenlabs_provider.dart';
 import 'package:echoscribe/services/whisper_service.dart';
 import 'package:echoscribe/services/gemini_service.dart';
 import 'package:echoscribe/services/summary_service.dart';
@@ -31,7 +32,12 @@ class AiProviderFactory {
     required this.xaiSpeech,
   });
 
-  AiProvider create(AiProviderType provider, {SettingsState? settings}) {
+  AiProvider create(
+    AiProviderType provider, {
+    SettingsState? settings,
+    String? localAiLlmUrl,
+    String? localAiWhisperUrl,
+  }) {
     switch (provider) {
       case AiProviderType.gemini:
         return GeminiProvider(
@@ -54,10 +60,15 @@ class AiProviderFactory {
           whisper: whisper,
           summary: summary,
           translation: translation,
-          llmUrl: settings?.localAiLlmUrl ?? AiModelConfig.localAiLlmUrl,
-          whisperUrl:
-              settings?.localAiWhisperUrl ?? AiModelConfig.localAiWhisperUrl,
+          llmUrl: localAiLlmUrl ??
+              settings?.localAiLlmUrl ??
+              AiModelConfig.localAiLlmUrl,
+          whisperUrl: localAiWhisperUrl ??
+              settings?.localAiWhisperUrl ??
+              AiModelConfig.localAiWhisperUrl,
         );
+      case AiProviderType.elevenLabs:
+        return const ElevenLabsProvider();
       case AiProviderType.openai:
         return OpenAiProvider(
           whisper: whisper,

@@ -62,6 +62,8 @@ class AiModelConfig {
   static const String openAiRealtimeTranscription = 'gpt-live-transcribe';
   static const String openAiRealtimeTranslation = 'gpt-realtime-translate';
   static const String elevenLabsRealtimeTranscription = 'scribe_v2_realtime';
+  static const String elevenLabsTts = 'eleven_flash_v2_5';
+  static const String elevenLabsTtsVoice = 'JBFqnCBsd6RMkjVDRZzb';
   static const String openAiReasoningEffortFast = 'none';
 
   // ---------- Gemini ----------

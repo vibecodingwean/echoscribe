@@ -47,6 +47,10 @@ class TranslationService {
           targetLanguageCode: targetLanguageCode,
           model: AiModelConfig.localAiLlmModel,
         );
+      case AiProviderType.elevenLabs:
+        throw const AppException(
+          'ElevenLabs Realtime transcribes speech but does not translate it.',
+        );
       case AiProviderType.openai:
         return await translateOpenAI(
           apiKey: apiKey,

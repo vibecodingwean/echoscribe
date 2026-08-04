@@ -7,7 +7,15 @@ import "package:echoscribe/models/transcription_item.dart";
 import "package:echoscribe/models/enums.dart";
 import "package:echoscribe/services/url_content_service.dart";
 
+typedef HistoryWriter = Future<void> Function(String encodedHistory);
+
 class ContentState extends ChangeNotifier {
+  ContentState({HistoryWriter? historyWriter})
+      : _historyWriter = historyWriter ?? _writeHistoryToPreferences;
+
+  final HistoryWriter _historyWriter;
+  Future<void> _historySaveQueue = Future<void>.value();
+
   OutputMode _outputMode = OutputMode.transcription;
   bool _isRecording = false;
   bool _isTranscribing = false;
@@ -122,10 +130,25 @@ class ContentState extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> _saveHistory() async {
+  static Future<void> _writeHistoryToPreferences(String encoded) async {
     final prefs = await SharedPreferences.getInstance();
-    final encoded = json.encode(_history.map((e) => e.toJson()).toList());
     await prefs.setString(_historyKey, encoded);
+  }
+
+  Future<void> _queueHistorySave() {
+    final encoded = json.encode(_history.map((e) => e.toJson()).toList());
+    final operation = _historySaveQueue.then(
+      (_) => _historyWriter(encoded),
+    );
+    _historySaveQueue = operation.then<void>(
+      (_) {},
+      onError: (_, __) {},
+    );
+    return operation;
+  }
+
+  void _queueHistorySaveWithoutWaiting() {
+    unawaited(_queueHistorySave().catchError((_) {}));
   }
 
   String? _cachedUrlForHistoryItem(TranscriptionItem item) {
@@ -143,9 +166,22 @@ class ContentState extends ChangeNotifier {
   }
 
   void addHistory(TranscriptionItem item) {
+    _addHistory(item);
+    _queueHistorySaveWithoutWaiting();
+  }
+
+  Future<void> addHistoryAndPersist(
+    TranscriptionItem item, {
+    bool setActive = false,
+  }) {
+    _addHistory(item, setActive: setActive);
+    return _queueHistorySave();
+  }
+
+  void _addHistory(TranscriptionItem item, {bool setActive = false}) {
     _history.insert(0, item);
+    if (setActive) _activeHistoryId = item.id;
     notifyListeners();
-    _saveHistory();
   }
 
   void updateActiveHistory(
@@ -156,9 +192,51 @@ class ContentState extends ChangeNotifier {
       DateTime? createdAt,
       Duration? duration,
       String? language}) {
-    if (_activeHistoryId == null) return;
+    final changed = _updateActiveHistory(
+      transcript: transcript,
+      summary: summary,
+      mode: mode,
+      text: text,
+      createdAt: createdAt,
+      duration: duration,
+      language: language,
+    );
+    if (changed) _queueHistorySaveWithoutWaiting();
+  }
+
+  Future<void> updateActiveHistoryAndPersist({
+    String? transcript,
+    String? summary,
+    String? mode,
+    String? text,
+    DateTime? createdAt,
+    Duration? duration,
+    String? language,
+  }) {
+    final changed = _updateActiveHistory(
+      transcript: transcript,
+      summary: summary,
+      mode: mode,
+      text: text,
+      createdAt: createdAt,
+      duration: duration,
+      language: language,
+    );
+    return changed ? _queueHistorySave() : Future<void>.value();
+  }
+
+  bool _updateActiveHistory({
+    String? transcript,
+    String? summary,
+    String? mode,
+    String? text,
+    DateTime? createdAt,
+    Duration? duration,
+    String? language,
+  }) {
+    if (_activeHistoryId == null) return false;
     final idx = _history.indexWhere((e) => e.id == _activeHistoryId);
-    if (idx == -1) return;
+    if (idx == -1) return false;
     final current = _history[idx];
     _history[idx] = current.copyWith(
       transcript: transcript ?? current.transcript,
@@ -170,7 +248,7 @@ class ContentState extends ChangeNotifier {
       language: language ?? current.language,
     );
     notifyListeners();
-    _saveHistory();
+    return true;
   }
 
   void deleteHistoryItem(String id) {
@@ -183,7 +261,7 @@ class ContentState extends ChangeNotifier {
     _history.removeWhere((e) => e.id == id);
     if (_activeHistoryId == id) _activeHistoryId = null;
     notifyListeners();
-    _saveHistory();
+    _queueHistorySaveWithoutWaiting();
   }
 
   void clearHistory() {
@@ -191,7 +269,7 @@ class ContentState extends ChangeNotifier {
     _history.clear();
     _activeHistoryId = null;
     notifyListeners();
-    _saveHistory();
+    _queueHistorySaveWithoutWaiting();
   }
 
   void startTimer() {

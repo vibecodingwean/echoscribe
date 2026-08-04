@@ -7,6 +7,26 @@ import 'package:echoscribe/models/enums.dart';
 
 import 'package:share_plus/share_plus.dart';
 
+void loadHistoryItemForProvider({
+  required ContentState content,
+  required SettingsState settings,
+  required TranscriptionItem item,
+}) {
+  content.clearLog();
+  content.setActiveHistory(item.id);
+  final hasSummary =
+      item.mode == OutputMode.summary.name || item.summary != null;
+  if (hasSummary && settings.provider.supportsSummary) {
+    content.setCurrentTranscript(item.transcript ?? item.text);
+    content.setCurrentSummary(item.summary ?? item.text);
+    content.setOutputMode(OutputMode.summary);
+    return;
+  }
+  content.setCurrentTranscript(item.transcript ?? item.text);
+  content.setCurrentSummary('');
+  content.setOutputMode(OutputMode.transcription);
+}
+
 class HistoryPage extends StatelessWidget {
   final ContentState content;
   final SettingsState settings;
@@ -85,24 +105,11 @@ class HistoryPage extends StatelessWidget {
                         _resetShareDuplicateGuard();
                       },
                       onSelect: () {
-                        final it = items[i];
-                        // Start a fresh log for this loaded item
-                        content.clearLog();
-                        // Mark this item as active in the main view
-                        content.setActiveHistory(it.id);
-                        // Load into main view with correct mode
-                        if ((it.mode == OutputMode.summary.name) ||
-                            (it.summary != null)) {
-                          content
-                              .setCurrentTranscript(it.transcript ?? it.text);
-                          content.setCurrentSummary(it.summary ?? it.text);
-                          content.setOutputMode(OutputMode.summary);
-                        } else {
-                          content
-                              .setCurrentTranscript(it.transcript ?? it.text);
-                          content.setCurrentSummary('');
-                          content.setOutputMode(OutputMode.transcription);
-                        }
+                        loadHistoryItemForProvider(
+                          content: content,
+                          settings: settings,
+                          item: items[i],
+                        );
                         Navigator.of(context).pop();
                       },
                     ),

@@ -46,7 +46,6 @@ class _SettingsPageState extends State<SettingsPage>
   late bool _debugMode;
   late bool _openAiPro;
   late bool _openAiRealtime;
-  late bool _elevenLabsRealtime;
   late bool _geminiPro;
   late bool _anthropicPro;
   late bool _xaiPro;
@@ -80,7 +79,6 @@ class _SettingsPageState extends State<SettingsPage>
     _debugMode = widget.settings.debugMode;
     _openAiPro = widget.settings.openAiPro;
     _openAiRealtime = widget.settings.openAiRealtime;
-    _elevenLabsRealtime = widget.settings.elevenLabsRealtime;
     _geminiPro = widget.settings.geminiPro;
     _anthropicPro = widget.settings.anthropicPro;
     _xaiPro = widget.settings.xaiPro;
@@ -362,8 +360,8 @@ class _SettingsPageState extends State<SettingsPage>
     final enabled = widget.settings.floatingDictationEnabled;
     final providerLabel = !enabled
         ? 'Disabled'
-        : !widget.settings.provider.supportsAudio
-            ? '${widget.settings.provider.brandName}: speech input unsupported'
+        : !widget.settings.provider.supportsFloatingDictation
+            ? '${widget.settings.provider.brandName}: floating dictation unsupported'
             : '${widget.settings.provider.brandName}: ready after permissions';
 
     return Card(
@@ -389,7 +387,8 @@ class _SettingsPageState extends State<SettingsPage>
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               value: enabled,
-              onChanged: FloatingDictationService.isAndroid
+              onChanged: FloatingDictationService.isAndroid &&
+                      widget.settings.provider.supportsFloatingDictation
                   ? (val) async {
                       widget.settings.setFloatingDictationEnabled(val);
                       await _storage.saveFloatingDictationEnabled(val);
@@ -516,6 +515,10 @@ class _SettingsPageState extends State<SettingsPage>
                   onProviderSelected: (provider) async {
                     widget.settings.setProvider(provider);
                     await _storage.saveProvider(provider);
+                    if (!provider.supportsTranslation) {
+                      widget.settings.setTargetLanguageCode('auto');
+                      await _storage.saveTargetLanguageCode('auto');
+                    }
                     if (provider.mustExtractUrl) {
                       widget.settings.setAppFetchUrl(true);
                       await _storage.saveAppFetchUrl(true);
@@ -544,15 +547,9 @@ class _SettingsPageState extends State<SettingsPage>
                       await _syncAndRefreshFloatingStatus();
                     },
                     onRealtimeChanged: (val) async {
-                      setState(() {
-                        _openAiRealtime = val;
-                        if (val) _elevenLabsRealtime = false;
-                      });
+                      setState(() => _openAiRealtime = val);
                       widget.settings.setOpenAiRealtime(val);
                       await _storage.saveOpenAiRealtime(val);
-                      if (val) {
-                        await _storage.saveElevenLabsRealtime(false);
-                      }
                     },
                     onDelete: () async {
                       await _storage.deleteOpenAiKey();
@@ -562,31 +559,31 @@ class _SettingsPageState extends State<SettingsPage>
                     },
                     formKey: _openAiFormKey,
                   ),
-                _ApiKeyCard(
-                  labelText: 'ElevenLabs API Key',
-                  hintText: 'xi-...',
-                  controller: _elevenLabsCtrl,
-                  obscure: _obscureElevenLabs,
-                  realtimeValue: _elevenLabsRealtime,
-                  onObscureToggle: () =>
-                      setState(() => _obscureElevenLabs = !_obscureElevenLabs),
-                  onChanged: (_) => _scheduleAutoSaveImmediate(),
-                  onRealtimeChanged: (val) async {
-                    setState(() {
-                      _elevenLabsRealtime = val;
-                      if (val) _openAiRealtime = false;
-                    });
-                    widget.settings.setElevenLabsRealtime(val);
-                    await _storage.saveElevenLabsRealtime(val);
-                    if (val) await _storage.saveOpenAiRealtime(false);
-                  },
-                  onDelete: () async {
-                    await _storage.deleteElevenLabsKey();
-                    widget.settings.setElevenLabsKey('');
-                    _elevenLabsCtrl.clear();
-                  },
-                  formKey: _elevenLabsFormKey,
-                ),
+                if (widget.settings.provider == AiProviderType.elevenLabs)
+                  _ApiKeyCard(
+                    labelText: 'ElevenLabs API Key (Live STT + TTS)',
+                    hintText: 'xi-...',
+                    controller: _elevenLabsCtrl,
+                    obscure: _obscureElevenLabs,
+                    onObscureToggle: () => setState(
+                      () => _obscureElevenLabs = !_obscureElevenLabs,
+                    ),
+                    onChanged: (_) => _scheduleAutoSaveImmediate(),
+                    onDelete: () async {
+                      await _storage.deleteElevenLabsKey();
+                      widget.settings.setElevenLabsKey('');
+                      _elevenLabsCtrl.clear();
+                    },
+                    formKey: _elevenLabsFormKey,
+                  ),
+                if (widget.settings.provider == AiProviderType.elevenLabs)
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(12, 8, 12, 0),
+                    child: Text(
+                      'Live transcription and text-to-speech only. Summary, image generation, translation, shared audio, and Floating Dictation are unavailable.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
                 if (widget.settings.provider == AiProviderType.gemini)
                   _ApiKeyCard(
                     labelText: 'Gemini API Key',
@@ -839,8 +836,8 @@ class _SettingsPageState extends State<SettingsPage>
     if (!FloatingDictationService.isAndroid) {
       return 'Floating Dictation is Android only in v1';
     }
-    if (!widget.settings.provider.supportsAudio) {
-      return '${widget.settings.provider.brandName} does not support speech input, so Floating Dictation is unavailable with this provider.';
+    if (!widget.settings.provider.supportsFloatingDictation) {
+      return '${widget.settings.provider.brandName} does not support Floating Dictation.';
     }
     if (status.configReady) return 'Provider settings are ready';
     if (widget.settings.provider == AiProviderType.localAi) {
@@ -1201,6 +1198,14 @@ class ProviderSelectorCard extends StatelessWidget {
             value: AiProviderType.localAi,
             label: 'Local AI',
             iconData: Icons.storage_outlined,
+            selectedProvider: selectedProvider,
+            onSelected: onProviderSelected,
+          ),
+          const Divider(height: 1, indent: 56),
+          _ProviderOptionTile(
+            value: AiProviderType.elevenLabs,
+            label: 'ElevenLabs (Live STT + TTS)',
+            iconData: Icons.record_voice_over_outlined,
             selectedProvider: selectedProvider,
             onSelected: onProviderSelected,
           ),
