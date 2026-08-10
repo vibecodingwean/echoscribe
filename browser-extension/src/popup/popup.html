@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>EchoScribe Summary</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <strong>EchoScribe</strong>
+    <div class="header-tools">
+      <span id="provider-model" class="provider-model"></span>
+      <button id="settings" class="header-button" type="button" title="Settings" aria-label="Open settings">Settings</button>
+    </div>
+  </header>
+  <main>
+    <div class="controls">
+      <button id="summarize" class="primary" type="button">Summarize</button>
+      <select id="language" title="Summary language" aria-label="Summary language">
+        <option value="auto">🌐 Auto</option>
+        <option value="de">🇩🇪 DE</option>
+        <option value="en">🇬🇧 EN</option>
+        <option value="es">🇪🇸 ES</option>
+        <option value="fr">🇫🇷 FR</option>
+        <option value="it">🇮🇹 IT</option>
+        <option value="pt">🇵🇹 PT</option>
+        <option value="nl">🇳🇱 NL</option>
+        <option value="tr">🇹🇷 TR</option>
+        <option value="ja">🇯🇵 JA</option>
+        <option value="ko">🇰🇷 KO</option>
+        <option value="zh">🇨🇳 ZH</option>
+      </select>
+      <button id="copy" type="button">Copy</button>
+    </div>
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+    <article id="summary" class="summary" aria-label="Summary"></article>
+    <footer>
+      <button id="retry" type="button" hidden>Retry</button>
+      <p class="disclosure">On request, content goes directly to your AI provider.</p>
+    </footer>
+  </main>
+
+  <dialog id="pdf-confirm" aria-labelledby="pdf-confirm-title">
+    <h2 id="pdf-confirm-title">EchoScribe</h2>
+    <p>The text of this PDF will be sent to your selected AI provider. Continue?</p>
+    <div class="dialog-actions">
+      <button id="pdf-cancel" type="button">Cancel</button>
+      <button id="pdf-ok" class="primary" type="button">Continue</button>
+    </div>
+  </dialog>
+  <script src="popup.js"></script>
+</body>
+</html>

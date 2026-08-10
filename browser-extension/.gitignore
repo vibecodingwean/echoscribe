@@ -1,0 +1,7 @@
+node_modules/
+dist/
+artifacts/
+coverage/
+_dev_tools/
+*.log
+.DS_Store

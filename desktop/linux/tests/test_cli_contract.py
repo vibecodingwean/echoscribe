@@ -61,6 +61,27 @@ class CliContractTests(unittest.TestCase):
             self.assertNotEqual(key_read.returncode, 0)
             self.assertNotIn(secret, key_read.stdout + key_read.stderr)
 
+    def test_removed_summary_configuration_commands_are_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            env = {
+                **os.environ,
+                "PYTHONPATH": str(LINUX_ROOT),
+                "ECHOSCRIBE_CONFIG": str(Path(raw) / "missing.toml"),
+            }
+            commands = (
+                ("config-get", "summary-provider"),
+                ("config-get", "summary-model", "openai"),
+                ("config-get", "local-ai-llm-url"),
+                ("config-set", "summary-provider", "openai"),
+                ("config-set", "summary-model", "openai", "unused"),
+                ("config-set", "local-ai-llm-url", "http://127.0.0.1:11434/api/chat"),
+                ("config-set", "api-key", "anthropic"),
+            )
+            for command in commands:
+                with self.subTest(command=command):
+                    result = self.run_cli(*command, env=env)
+                    self.assertNotEqual(result.returncode, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -32,8 +32,6 @@ validate_tree() {
     "linux/echoscribe/gnome_worker.py"
     "linux/gnome-extension/echoscribe@wean.de/metadata.json"
     "linux/gnome-extension/echoscribe@wean.de/extension.js"
-    "browser-extension/manifest.json"
-    "firefox-extension/manifest.json"
   )
   for item in "${required[@]}"; do
     [ -f "$root/$item" ] || { echo "Incomplete EchoScribe package: missing $item" >&2; return 1; }
@@ -153,14 +151,13 @@ install_phase="integrating"
 printf '%s\n' "$install_phase" >"$install_state_file"
 
 "$installed_linux/scripts/cleanup_legacy.sh"
+"$installed_linux/scripts/cleanup_legacy_browser_integration.sh"
 "$installed_linux/scripts/install_gnome_extension.sh"
 rm -f "$install_state_file"
 
 echo "EchoScribe installed successfully."
 echo "App: $install_root"
 echo "Config and secrets were preserved in: $config_dir"
-echo "Optional browser hosts: $installed_linux/scripts/register_chrome_host.sh"
 echo
-echo "Local AI setup or model change:"
-echo "  $installed_linux/scripts/install-local-ai.sh --recommend-models"
-echo "  $installed_linux/scripts/install-local-ai.sh --pull-ollama"
+echo "Optional Local Whisper setup or model change:"
+echo "  $installed_linux/scripts/install-local-ai.sh --whisper"
