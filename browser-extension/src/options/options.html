@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>EchoScribe Settings</title>
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main class="shell">
+    <header><strong>EchoScribe</strong><span>Web Summary Settings</span></header>
+    <div class="workspace">
+      <p class="intro">Configure your provider, model, API key, and summary prompt.</p>
+
+      <section class="card" aria-labelledby="provider-title">
+        <h2 id="provider-title">AI provider and API keys</h2>
+        <div class="grid two">
+          <label>Provider<select id="provider"></select></label>
+          <label>Model<select id="model" aria-label="Summary model"></select></label>
+        </div>
+        <label><span>API key</span><input id="api-key" type="password" autocomplete="new-password" spellcheck="false"></label>
+        <div class="inline"><span id="key-status" class="muted"></span><button id="clear-key" class="danger" type="button">Remove key</button></div>
+        <p class="notice"><strong>BYOK notice:</strong> the key is stored in browser-managed local extension storage, not an operating-system credential vault. Use a dedicated restricted key with a low spending limit. Clearing it here does not revoke it at the provider.</p>
+        <button id="fetch-models" type="button">Refresh model list</button>
+      </section>
+
+      <section class="card" aria-labelledby="prompt-title">
+        <div class="section-heading"><h2 id="prompt-title">Summary prompt</h2><button id="reset-prompt" type="button">Restore default</button></div>
+        <textarea id="prompt" rows="18" maxlength="20000" spellcheck="true"></textarea>
+        <p class="muted">The prompt changes how the summary is written. It cannot change provider endpoints, permissions, or execute tools.</p>
+      </section>
+
+      <section class="card privacy" aria-labelledby="privacy-title">
+        <h2 id="privacy-title">Privacy</h2>
+        <ul><li>Network access occurs only when you summarize or explicitly refresh the model list.</li><li>A summary sends content, page title, meta description, and the selected provider key. Refreshing models sends the key but no page content.</li><li>Authenticated web PDFs may be re-fetched with that website's browser cookies; neither URLs nor cookies are sent to the AI provider.</li><li>EchoScribe Web Summary has no developer backend, analytics, telemetry, native host, or local-LLM connection.</li><li>Results and settings remain local until cleared.</li></ul>
+      </section>
+
+      <div class="footer-actions"><button id="clear-data" class="danger" type="button">Clear all local data</button><button id="save" class="primary" type="button">Save settings</button></div>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+    </div>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>

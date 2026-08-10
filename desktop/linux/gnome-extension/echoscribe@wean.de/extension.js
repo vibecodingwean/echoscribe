@@ -113,13 +113,6 @@ class EchoScribeQuickToggle extends QuickSettings.QuickMenuToggle {
         this._toggleItem = this.menu.addAction('Start Dictation', () => this._extensionObject.primaryAction());
         this._cancelItem = this.menu.addAction('Cancel', () => this._extensionObject.cancelDictation());
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        this._browserItem = this.menu.addAction('Register Browser Native Host', () => {
-            this._extensionObject.installBrowserExtensions();
-        });
-        this._extensionsItem = this.menu.addAction('Open Browser Extension Folder', () => {
-            this._extensionObject.openBrowserExtensionSetup();
-        });
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this._quitItem = this.menu.addAction('Disable EchoScribe', () => this._extensionObject.quitEchoScribe());
         const settingsItem = this.menu.addAction('Open Preferences…', () => {
             try {
@@ -144,8 +137,6 @@ class EchoScribeQuickToggle extends QuickSettings.QuickMenuToggle {
         this.checked = enabled && [PHASE.STARTING, PHASE.RECORDING, PHASE.PROCESSING].includes(state);
         this._toggleItem.label.text = enabled && state !== PHASE.IDLE ? 'Stop Dictation' : 'Start Dictation';
         this._cancelItem.visible = enabled && state !== PHASE.IDLE;
-        this._browserItem.visible = enabled;
-        this._extensionsItem.visible = enabled;
         this._quitItem.visible = enabled;
         this.menu.setHeader(icon, 'EchoScribe', title);
     }
@@ -288,23 +279,6 @@ export default class EchoScribeExtension extends Extension {
         this._settings?.set_boolean('enabled', false);
     }
 
-    installBrowserExtensions() {
-        this._runProjectScript(['./scripts/register_chrome_host.sh', '--no-open'], 'Browser native host registered');
-    }
-
-    openBrowserExtensionSetup() {
-        const installPath = this._settings?.get_string('install-path').trim();
-        if (!installPath) {
-            Main.notify('EchoScribe', 'Installation path is not configured');
-            return;
-        }
-        const folder = GLib.build_filenamev([installPath, '..', 'browser-extension']);
-        try {
-            Gio.AppInfo.launch_default_for_uri(Gio.File.new_for_path(folder).get_uri(), null);
-        } catch (error) {
-            this._showError(error);
-        }
-    }
 
     _bindShortcut() {
         if (!this._settings?.get_boolean('enabled'))

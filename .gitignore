@@ -58,6 +58,10 @@ Podfile.lock
 *.app
 *.ipa
 release/
+/browser-extension/node_modules/
+/browser-extension/dist/
+/browser-extension/artifacts/
+/browser-extension/coverage/
 
 # Symbolication related
 *.pdb

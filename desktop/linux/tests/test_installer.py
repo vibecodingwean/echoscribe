@@ -25,6 +25,10 @@ class InstallerTests(unittest.TestCase):
         )
         self._write_command("gsettings", "#!/bin/sh\nexit 0\n")
         self._write_command("systemctl", "#!/bin/sh\nexit 0\n")
+        self._write_command(
+            "glib-compile-schemas",
+            "#!/bin/sh\nfor last; do :; done\nprintf compiled >\"$last/gschemas.compiled\"\n",
+        )
         self.env = {
             **os.environ,
             "HOME": str(self.home),
@@ -54,25 +58,42 @@ class InstallerTests(unittest.TestCase):
             check=False,
         )
 
-    def test_first_install_and_update_preserve_config_secrets_and_browser_opt_in(self) -> None:
+    def test_first_install_and_update_preserve_config_and_secrets(self) -> None:
         first = self.install()
         self.assertEqual(first.returncode, 0, first.stderr)
         self.assertIn("installed successfully", first.stdout)
         config = self.home / ".config/echoscribe/config.toml"
         secrets = self.home / ".config/echoscribe/secrets.env"
-        config.write_text('[providers]\ntranscription = "localai"\nsummary = "localai"\n', encoding="utf-8")
+        config.write_text('[providers]\ntranscription = "localai"\n', encoding="utf-8")
         secrets.write_text("OPENAI_API_KEY=preserve-me\n", encoding="utf-8")
 
         second = self.install()
         self.assertEqual(second.returncode, 0, second.stderr)
         self.assertIn('transcription = "localai"', config.read_text(encoding="utf-8"))
         self.assertEqual(secrets.read_text(encoding="utf-8"), "OPENAI_API_KEY=preserve-me\n")
-        chrome_host = self.home / ".config/google-chrome/NativeMessagingHosts/de.echoscribe.nativehost.json"
-        self.assertFalse(chrome_host.exists())
         self.assertTrue((self.root / "app/linux/echoscribe/gnome_worker.py").is_file())
         self.assertTrue(
             (self.home / ".local/share/gnome-shell/extensions/echoscribe@wean.de/schemas/gschemas.compiled").is_file()
         )
+
+    def test_install_removes_legacy_browser_native_host_manifests(self) -> None:
+        relative_paths = (
+            ".config/google-chrome/NativeMessagingHosts/de.echoscribe.nativehost.json",
+            ".config/chromium/NativeMessagingHosts/de.echoscribe.nativehost.json",
+            ".config/BraveSoftware/Brave-Browser/NativeMessagingHosts/de.echoscribe.nativehost.json",
+            ".config/microsoft-edge/NativeMessagingHosts/de.echoscribe.nativehost.json",
+            ".mozilla/native-messaging-hosts/de.echoscribe.nativehost.json",
+            ".librewolf/native-messaging-hosts/de.echoscribe.nativehost.json",
+        )
+        legacy_paths = [self.home / relative for relative in relative_paths]
+        for path in legacy_paths:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("legacy host manifest\n", encoding="utf-8")
+
+        result = self.install()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(all(not path.exists() for path in legacy_paths))
 
     def test_reconfigure_backs_up_config_before_noninteractive_run(self) -> None:
         self.assertEqual(self.install().returncode, 0)
@@ -94,21 +115,6 @@ class InstallerTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(marker.read_text(encoding="utf-8"), "old")
 
-    def test_optional_browser_registration_writes_chromium_and_firefox_hosts(self) -> None:
-        self.assertEqual(self.install().returncode, 0)
-        result = subprocess.run(
-            ["bash", str(self.root / "app/linux/scripts/register_chrome_host.sh"), "--no-open"],
-            env=self.env,
-            stdin=subprocess.DEVNULL,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertTrue(
-            (self.home / ".config/google-chrome/NativeMessagingHosts/de.echoscribe.nativehost.json").is_file()
-        )
-        self.assertTrue((self.home / ".mozilla/native-messaging-hosts/de.echoscribe.nativehost.json").is_file())
 
     def test_active_extension_code_update_requires_new_shell_session(self) -> None:
         self.assertEqual(self.install().returncode, 0)

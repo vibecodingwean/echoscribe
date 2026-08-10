@@ -14,19 +14,10 @@ const TRANSCRIPTION_PROVIDERS = [
     {id: 'localai', label: 'Local AI Whisper'},
 ];
 
-const SUMMARY_PROVIDERS = [
-    {id: 'openai', label: 'OpenAI'},
-    {id: 'gemini', label: 'Gemini'},
-    {id: 'anthropic', label: 'Anthropic'},
-    {id: 'xai', label: 'xAI'},
-    {id: 'localai', label: 'Local AI', summaryModelTitle: 'Local AI LLM model'},
-];
-
 const API_PROVIDERS = [
     {id: 'openai', label: 'OpenAI'},
     {id: 'elevenlabs', label: 'ElevenLabs'},
     {id: 'gemini', label: 'Gemini'},
-    {id: 'anthropic', label: 'Anthropic'},
     {id: 'xai', label: 'xAI'},
 ];
 
@@ -89,25 +80,11 @@ export default class EchoScribePreferences extends ExtensionPreferences {
         audio.add(transcriptionModelRow(settings, {id: 'localai', label: 'Local AI Whisper'}));
         audio.add(localAiUrlRow(settings, 'local-ai-whisper-url', 'Local AI Whisper URL'));
 
-        const webSummary = new Adw.PreferencesGroup({title: 'Web Summary'});
-        page.add(webSummary);
-        const summaryProvider = providerRow(
-            settings,
-            'summary-provider',
-            SUMMARY_PROVIDERS,
-            'Summary Provider'
-        );
-        webSummary.add(summaryProvider.row);
-        for (const provider of SUMMARY_PROVIDERS)
-            webSummary.add(summaryModelRow(settings, provider));
-        webSummary.add(localAiUrlRow(settings, 'local-ai-llm-url', 'Local AI LLM URL'));
-
         const apiKeys = new Adw.PreferencesGroup({title: 'API Keys'});
         page.add(apiKeys);
         for (const provider of API_PROVIDERS)
             apiKeys.add(apiKeyRow(settings, provider, () => {
                 transcriptionProvider.refresh();
-                summaryProvider.refresh();
             }));
         const runtime = new Adw.PreferencesGroup({title: 'Runtime'});
         page.add(runtime);
@@ -246,47 +223,6 @@ function apiKeyStatus(settings, provider) {
 }
 
 
-function summaryModelRow(settings, provider) {
-    const row = new Adw.ActionRow({
-        title: provider.summaryModelTitle || `${provider.label} summary model`,
-    });
-    const entry = new Gtk.Entry({
-        text: summaryModelValue(settings, provider),
-        hexpand: true,
-        valign: Gtk.Align.CENTER,
-    });
-    const button = new Gtk.Button({
-        label: 'Save',
-        valign: Gtk.Align.CENTER,
-    });
-    button.connect('clicked', () => {
-        const value = entry.text.trim();
-        if (!value)
-            return;
-        try {
-            runEchoScribe(settings, ['config-set', 'summary-model', provider.id, value]);
-            row.subtitle = 'Saved';
-        } catch (error) {
-            logError(error);
-            row.subtitle = 'Could not save model';
-        }
-    });
-    row.add_suffix(entry);
-    row.add_suffix(button);
-    row.activatable_widget = entry;
-    return row;
-}
-
-
-function summaryModelValue(settings, provider) {
-    try {
-        return runEchoScribe(settings, ['config-get', 'summary-model', provider.id]).trim();
-    } catch (error) {
-        logError(error);
-        return '';
-    }
-}
-
 
 function transcriptionModelRow(settings, provider) {
     const row = new Adw.ActionRow({
@@ -413,8 +349,6 @@ function providerSubtitle(configKey, provider, status) {
     if (status === 'Optional') {
         if (provider.id === 'localai' && configKey === 'transcription-provider')
             return 'Local AI Whisper endpoint configured';
-        if (provider.id === 'localai' && configKey === 'summary-provider')
-            return 'Local AI LLM endpoint configured';
         return `${provider.label} token optional`;
     }
     return status === 'Stored in configured secret env file'

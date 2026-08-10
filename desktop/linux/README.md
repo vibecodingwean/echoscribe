@@ -8,8 +8,7 @@ The runtime has two deliberately separate parts:
 
 - GNOME Shell owns the global start/stop shortcut, state machine, status UI,
   clipboard, terminal detection, and virtual-keyboard paste.
-- Short-lived Python workers own audio recording, transcription providers, and
-  browser summaries.
+- Short-lived Python workers own audio recording and transcription providers.
 
 There is no background Python process while EchoScribe is idle. EchoScribe does
 not read `/dev/input`, use `/dev/uinput`, or require `ydotool`, `wtype`,
@@ -30,6 +29,11 @@ The installer validates a complete staged application before replacing
 Python for the core. Existing config, secrets, and GSettings values are not
 replaced on update.
 
+As a one-time migration from the former desktop-linked browser extension,
+install and uninstall remove only EchoScribe's obsolete
+`de.echoscribe.nativehost.json` manifests. Browser profiles, installed store
+extensions, desktop configuration, and provider keys are not modified.
+
 Supported options:
 
 ```bash
@@ -43,23 +47,21 @@ reported by GNOME. If the current Shell process cannot discover a newly copied
 extension, installation stops with the exact logout/login command instead of
 reporting success.
 
-Browser Native Messaging and Local AI are optional, separate steps:
+Local Whisper remains an optional, separate step:
 
 ```bash
-./scripts/register_chrome_host.sh
 ./scripts/install-local-ai.sh --help
 ```
 
+The standalone EchoScribe Web Summary extension is maintained independently in
+the repository's `browser-extension/` directory. It communicates directly with
+the user's selected provider and does not use this desktop installation or a
+Native Messaging host.
+
 Local Whisper keeps its own isolated venv under
 `${XDG_DATA_HOME:-~/.local/share}/echoscribe/local-ai`; this venv is not used by
-the core application. Ollama setup remains optional. The Local AI installer
-detects CPU, RAM, GPU, and dedicated or estimated shared VRAM. It offers three
-offline choices (`gemma4:e2b-it-qat`, `qwen3.5:9b`, and
-`qwen3.6:35b-a3b-mtp-q4_K_M`) plus up to three unique CanIRun.ai API
-suggestions. Before the optional API request it displays every transmitted
-hardware value and explains that shared/unified VRAM is an estimate. Use
-`--no-canirun` to keep model selection fully offline or `--recommend-models`
-to inspect the choices without installing anything.
+the core application. Run `./scripts/install-local-ai.sh --whisper` to install
+or update the Faster-Whisper server and selected speech-to-text model.
 
 ## Configuration
 
@@ -75,8 +77,8 @@ The GNOME Extension Preferences contain:
 - application installation path;
 - Python path.
 
-Provider/model/endpoint configuration and browser-summary settings are backed
-by the normal EchoScribe config. Preferences show API keys only as set or
+Provider/model/endpoint configuration is backed by the normal EchoScribe
+config. Preferences show API keys only as set or
 missing; stored keys are never printed back into the UI.
 
 The shell-status feedback remains visible for the full recording. After 90
@@ -101,7 +103,6 @@ python3 -m echoscribe gnome-worker status --json
 python3 -m echoscribe gnome-worker start --json
 python3 -m echoscribe gnome-worker stop --recording-id ID --json
 python3 -m echoscribe gnome-worker cancel --recording-id ID --json
-python3 -m echoscribe native-host
 ```
 
 Worker JSON always includes `ok`, `state`, `message`, `recording_id`, recorder
@@ -135,8 +136,8 @@ An isolated extension copy check that does not touch the running Shell:
 ./uninstall.sh
 ```
 
-Core uninstall removes the extension, installed application, Native Messaging
-manifests, and EchoScribe-owned runtime state. Config, secrets, Local Whisper
-models/venv, Ollama, and Ollama models are retained unless their explicit
-removal options are selected. Existing packages, group memberships, and shared
-`ydotool` configuration are not removed.
+Core uninstall removes the GNOME extension, installed application, and
+EchoScribe-owned runtime state. Config, secrets, Local Whisper
+models/venv are retained unless their explicit removal options are selected.
+Existing packages, group memberships, and shared `ydotool` configuration are
+not removed.

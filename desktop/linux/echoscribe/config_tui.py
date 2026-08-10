@@ -15,11 +15,10 @@ def run_config_tui(config: Config) -> int:
         print()
         print("EchoScribe Config")
         print("1) Transcription provider")
-        print("2) Summary provider")
-        print("3) Paste shortcut")
-        print("4) Paste delay")
-        print("5) Recording reminder")
-        print("6) Show config path")
+        print("2) Paste shortcut")
+        print("3) Paste delay")
+        print("4) Recording reminder")
+        print("5) Show config path")
         print("q) Quit")
         choice = input("> ").strip().lower()
         if choice == "1":
@@ -31,14 +30,6 @@ def run_config_tui(config: Config) -> int:
             set_value(path, "providers", "transcription", provider)
             config.data["providers"]["transcription"] = provider
         elif choice == "2":
-            provider = choose(
-                "Summary provider",
-                ["openai", "gemini", "anthropic", "xai", "localai"],
-                str(config.data["providers"].get("summary", "openai")),
-            )
-            set_value(path, "providers", "summary", provider)
-            config.data["providers"]["summary"] = provider
-        elif choice == "3":
             shortcut = choose(
                 "Paste shortcut",
                 ["auto", "ctrl+v", "ctrl+shift+v"],
@@ -46,7 +37,7 @@ def run_config_tui(config: Config) -> int:
             )
             set_value(path, "paste", "shortcut", shortcut)
             config.data["paste"]["shortcut"] = shortcut
-        elif choice == "4":
+        elif choice == "3":
             current = str(config.data["paste"].get("paste_delay_ms", 120))
             value = prompt("Paste delay in milliseconds", current)
             try:
@@ -56,7 +47,7 @@ def run_config_tui(config: Config) -> int:
                 continue
             set_value(path, "paste", "paste_delay_ms", delay)
             config.data["paste"]["paste_delay_ms"] = delay
-        elif choice == "5":
+        elif choice == "4":
             current = str(config.data["recorder"].get("reminder_seconds", 90))
             value = prompt("Reminder after seconds (0 disables it; recording continues)", current)
             try:
@@ -66,7 +57,7 @@ def run_config_tui(config: Config) -> int:
                 continue
             set_value(path, "recorder", "reminder_seconds", seconds)
             config.data["recorder"]["reminder_seconds"] = seconds
-        elif choice == "6":
+        elif choice == "5":
             print(path)
         elif choice in {"q", "quit", "exit"}:
             return 0

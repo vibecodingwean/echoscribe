@@ -15,17 +15,8 @@ except ModuleNotFoundError:  # pragma: no cover - used on Python 3.9/3.10.
 
 
 TRANSCRIPTION_PROVIDERS = {"openai", "gemini", "xai", "elevenlabs", "localai"}
-SUMMARY_PROVIDERS = {"openai", "gemini", "anthropic", "xai", "localai"}
-ALL_PROVIDERS = TRANSCRIPTION_PROVIDERS | SUMMARY_PROVIDERS
-DEFAULT_LOCAL_AI_LLM_URL = "http://127.0.0.1:11434/api/chat"
+ALL_PROVIDERS = TRANSCRIPTION_PROVIDERS
 DEFAULT_LOCAL_AI_WHISPER_URL = "http://127.0.0.1:8000/v1/audio/transcriptions"
-DEFAULT_SUMMARY_MODELS = {
-    "openai": "gpt-5.6-terra",
-    "gemini": "gemini-3.6-flash",
-    "anthropic": "claude-sonnet-5",
-    "xai": "grok-4.3",
-    "localai": "qwen2.5:7b",
-}
 
 DEPRECATED_MODEL_DEFAULTS = {
     "gemini-3.1-flash-lite": "gemini-3.6-flash",  # model-migration-ok
@@ -35,40 +26,25 @@ DEPRECATED_MODEL_DEFAULTS = {
 DEFAULTS: dict[str, Any] = {
     "providers": {
         "transcription": "openai",
-        "summary": "openai",
-    },
-    "summary": {
-        "target_language": "auto",
-        "url_summary_prompt": "",
-        "app_fetch_url": True,
-        "xai_reasoning_effort": "none",
     },
     "openai": {
         "api_key": "",
         "api_key_env": "OPENAI_API_KEY",
         "transcription_model": "gpt-4o-mini-transcribe",
-        "summary_model": "gpt-5.6-terra",
         "target_language": "auto",
     },
     "gemini": {
         "api_key": "",
         "api_key_env": "GEMINI_API_KEY",
         "transcription_model": "gemini-3.6-flash",
-        "summary_model": "gemini-3.6-flash",
         "target_language": "auto",
     },
     "xai": {
         "api_key": "",
         "api_key_env": "XAI_API_KEY",
         "transcription_model": "xai-stt",
-        "summary_model": "grok-4.3",
         "target_language": "auto",
         "stt_format": False,
-    },
-    "anthropic": {
-        "api_key": "",
-        "api_key_env": "ANTHROPIC_API_KEY",
-        "summary_model": "claude-sonnet-5",
     },
     "elevenlabs": {
         "api_key": "",
@@ -78,10 +54,8 @@ DEFAULTS: dict[str, Any] = {
         "tag_audio_events": False,
     },
     "localai": {
-        "llm_url": DEFAULT_LOCAL_AI_LLM_URL,
         "whisper_url": DEFAULT_LOCAL_AI_WHISPER_URL,
         "transcription_model": "whisper-1",
-        "summary_model": "qwen2.5:7b",
         "target_language": "auto",
     },
     "recorder": {
@@ -127,24 +101,13 @@ class Config:
         return os.environ.get(env_name, "").strip() or read_env_file(self.env_file).get(env_name, "")
 
     def active_provider(self, stage: str) -> str:
+        if stage != "transcription":
+            raise ValueError(f"Unsupported provider stage: {stage}")
         providers = self.data["providers"]
         provider = normalize_provider(str(providers.get(stage, "openai")))
-        if stage == "transcription" and provider not in TRANSCRIPTION_PROVIDERS:
+        if provider not in TRANSCRIPTION_PROVIDERS:
             raise ValueError(f"Provider '{provider}' does not support speech-to-text in EchoScribe")
-        if stage == "summary" and provider not in SUMMARY_PROVIDERS:
-            raise ValueError(f"Provider '{provider}' does not support web summaries in EchoScribe")
         return provider
-
-    def summary_model(self, provider: str) -> str:
-        provider = normalize_provider(provider)
-        if provider not in SUMMARY_PROVIDERS:
-            raise ValueError(f"Provider '{provider}' does not support web summaries in EchoScribe")
-        section = self.data.get(provider, {})
-        if isinstance(section, dict):
-            configured = str(section.get("summary_model", "")).strip()
-            if configured:
-                return configured
-        return DEFAULT_SUMMARY_MODELS[provider]
 
     def configured_secret(self, section: str, key: str, env_key: str) -> str:
         section_data = self.data.get(section, {})
@@ -181,7 +144,6 @@ def default_api_key_env(provider: str) -> str:
         "openai": "OPENAI_API_KEY",
         "gemini": "GEMINI_API_KEY",
         "xai": "XAI_API_KEY",
-        "anthropic": "ANTHROPIC_API_KEY",
         "elevenlabs": "ELEVENLABS_API_KEY",
     }[normalize_provider(provider)]
 
@@ -193,8 +155,6 @@ def normalize_provider(provider: str) -> str:
         "chatgpt": "openai",
         "google": "gemini",
         "grok": "xai",
-        "claude": "anthropic",
-        "anthropic": "anthropic",
         "eleven": "elevenlabs",
         "elevenlabs": "elevenlabs",
         "11labs": "elevenlabs",
@@ -373,8 +333,7 @@ def migrate_loaded_config(data: dict[str, Any]) -> None:
         section = data.get(section_name)
         if not isinstance(section, dict):
             continue
-        for key in ("transcription_model", "summary_model"):
-            value = str(section.get(key, "")).strip()
-            replacement = DEPRECATED_MODEL_DEFAULTS.get(value)
-            if replacement:
-                section[key] = replacement
+        value = str(section.get("transcription_model", "")).strip()
+        replacement = DEPRECATED_MODEL_DEFAULTS.get(value)
+        if replacement:
+            section["transcription_model"] = replacement

@@ -7,7 +7,7 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 ---
 
 ## 🔒 Privacy & Security (BYOK)
-- **No Backend:** Processing happens directly between your device and the AI provider. Your data is never stored on any third-party servers.
+- **No EchoScribe Backend:** Processing happens directly between your device and the selected AI provider. Provider-side processing and retention follow that provider's terms and privacy policy.
 - **Secure Storage:** API keys are stored using hardware-backed encryption (Android Keystore).
 - **Transparency:** Built for privacy-focused needs. No ads, no tracking, no hidden costs.
 
@@ -21,7 +21,7 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 - **Note:** Claude 🦀 is text-only for app-side speech input.
 
 ### 🖥️ Desktop Companions
-- **Linux:** GNOME Shell integration for start/stop toggle dictation plus local browser summary extensions.
+- **Linux:** GNOME Shell integration for start/stop toggle dictation.
 - **Same BYOK/local model:** Desktop requests go directly from your computer to the selected AI provider or your own Local AI endpoints.
 
 ### ✍️ Floating Dictation on Android
@@ -32,7 +32,7 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 ### ✍️ Smart Summarization
 - **Audio • Text • URL:** Summarize everything in one tap.
 - **Local URL Extraction:** A privacy-first mechanism extracts web content directly on your device, bypassing paywalls and bot-detection while keeping your browsing private. Mandatory for Claude 🦀 and Grok 𝕏.
-- **Local AI Provider:** Use an Ollama-compatible `/api/chat` endpoint for summaries/translations and an OpenAI-compatible Whisper endpoint. Local model names remain editable. The Linux installer can recommend models from detected CPU, RAM, GPU, and VRAM; the Linux installer can optionally add CanIRun.ai suggestions after showing the exact hardware values that would be transmitted.
+- **Local AI Provider:** The Flutter app can use an Ollama-compatible `/api/chat` endpoint for summaries/translations. Desktop companions can use an OpenAI-compatible Whisper endpoint for local speech-to-text; they do not install or configure summary models.
 - **Custom Prompts:** Fine-tune how your summaries look and feel in the settings.
 
 ### 🚀 Pro Mode & Models
@@ -59,7 +59,7 @@ To use EchoScribe, you'll need at least one API key:
 - **Anthropic Claude:** [Get API Key](https://console.anthropic.com/settings/keys)
 - **xAI Grok:** [Get API Key](https://console.x.ai/)
 - **ElevenLabs Realtime STT:** [Get API Key](https://elevenlabs.io/app/settings/api-keys)
-- **Local AI:** Configure your own Ollama endpoint such as `http://host:11434/api/chat` and a Whisper-compatible endpoint such as `http://host:8000/v1/audio/transcriptions`. Hardware-aware installer choices include compact Gemma models, `qwen3.5:9b`, and larger Qwen options where memory permits.
+- **Local AI:** In the Flutter app, configure your own Ollama endpoint such as `http://host:11434/api/chat`. Desktop companions accept a Whisper-compatible endpoint such as `http://host:8000/v1/audio/transcriptions`.
 
 *Tip: Set a usage limit in your AI provider's dashboard to keep full control over your costs. For Local AI PoC use, keep endpoints on a trusted local network or VPN; EchoScribe does not add authentication to Local AI requests.*
 
@@ -96,18 +96,29 @@ short-lived system-Python workers record and transcribe. A notification after
 90 seconds is only a reminder: recording continues until the next shortcut
 press, subject to the selected provider's upload/API limits. Updates preserve
 config, secrets, and GSettings.
-Browser Native Messaging, Local Whisper, and Ollama remain separate optional
-setup steps. The core does not need a general venv, `/dev/input`, `uinput`,
+Local Whisper remains a separate optional setup step. The core does
+not need a general venv, `/dev/input`, `uinput`,
 `ydotool`, or a background user service.
-
-Browser extensions are loaded manually:
-
-1. Chrome, Edge, Brave, or Chromium: enable developer mode and load `~/.local/share/echoscribe/app/browser-extension`.
-2. Firefox: open `about:debugging#/runtime/this-firefox` and load `~/.local/share/echoscribe/app/firefox-extension/manifest.json`.
 
 More details: [`desktop/linux/README.md`](desktop/linux/README.md).
 
 To uninstall the Linux/GNOME integration, run `~/.local/share/echoscribe/app/linux/uninstall.sh`.
+
+### Browser Extension
+
+[EchoScribe Web Summary](browser-extension/README.md) is the single browser
+extension for Chrome. It uses one shared source
+tree, communicates directly with the cloud AI provider selected by the user,
+and does not require the Linux desktop app, Native Messaging, or a
+local bridge process.
+
+For development and release packaging:
+
+```bash
+cd browser-extension
+npm ci
+npm run verify
+```
 
 ---
 
@@ -125,7 +136,7 @@ To uninstall the Linux/GNOME integration, run `~/.local/share/echoscribe/app/lin
 
 ### Desktop Setup
 - Linux: see `desktop/linux/README.md`.
-- Browser summaries use manually loaded Chromium-based or Firefox extensions plus a local Native Messaging host. The native host is registered by the installer but only runs when an extension sends a summary request.
+- Browser extension: see [`browser-extension/README.md`](browser-extension/README.md).
 
 ---
 

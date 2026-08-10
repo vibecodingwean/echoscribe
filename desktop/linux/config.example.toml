@@ -1,46 +1,30 @@
 # Copy to ~/.config/echoscribe/config.toml or ./config.toml.
 # Secrets can stay in the shell environment; OPENAI_API_KEY, GEMINI_API_KEY,
-# ANTHROPIC_API_KEY, XAI_API_KEY, and ELEVENLABS_API_KEY are read by default.
+# XAI_API_KEY, and ELEVENLABS_API_KEY are read by default.
 
 [providers]
 # Supported values: "openai", "gemini", "xai", "elevenlabs", "localai".
 transcription = "openai"
-# Supported values: "openai", "gemini", "anthropic", "xai", "localai".
-summary = "openai"
-
-[summary]
-target_language = "auto"
-app_fetch_url = true
-url_summary_prompt = ""
-xai_reasoning_effort = "none"
 
 [openai]
 api_key = ""
 api_key_env = "OPENAI_API_KEY"
 transcription_model = "gpt-4o-mini-transcribe"
-summary_model = "gpt-5.6-terra"
 target_language = "auto"
 
 [gemini]
 api_key = ""
 api_key_env = "GEMINI_API_KEY"
 transcription_model = "gemini-3.6-flash"
-summary_model = "gemini-3.6-flash"
 target_language = "auto"
 
 [xai]
 api_key = ""
 api_key_env = "XAI_API_KEY"
 transcription_model = "xai-stt"
-summary_model = "grok-4.3"
 target_language = "auto"
 # If true, xAI STT applies inverse text normalization; language should then be set.
 stt_format = false
-
-[anthropic]
-api_key = ""
-api_key_env = "ANTHROPIC_API_KEY"
-summary_model = "claude-sonnet-5"
 
 [elevenlabs]
 api_key = ""
@@ -51,9 +35,6 @@ target_language = "auto"
 tag_audio_events = false
 
 [localai]
-# Ollama-compatible chat endpoint for summaries and translation.
-llm_url = "http://127.0.0.1:11434/api/chat"
-summary_model = "qwen2.5:7b"
 # OpenAI-compatible Whisper transcription endpoint.
 whisper_url = "http://127.0.0.1:8000/v1/audio/transcriptions"
 transcription_model = "whisper-1"

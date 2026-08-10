@@ -7,13 +7,22 @@ from copy import deepcopy
 from pathlib import Path
 from unittest.mock import patch
 
-from echoscribe.config import Config, DEFAULTS, load_config, write_env_value
+from echoscribe.config import Config, DEFAULTS, load_config, normalize_provider, write_env_value
 
 
 class ConfigTests(unittest.TestCase):
     def test_defaults_exclude_linux_legacy_sections(self) -> None:
         self.assertNotIn("hotkeys", DEFAULTS)
         self.assertNotIn("overlay", DEFAULTS)
+        self.assertNotIn("summary", DEFAULTS)
+        self.assertNotIn("summary", DEFAULTS["providers"])
+        self.assertNotIn("anthropic", DEFAULTS)
+        self.assertNotIn("llm_url", DEFAULTS["localai"])
+        for provider in DEFAULTS["providers"].values():
+            self.assertNotEqual(provider, "anthropic")
+        for section in DEFAULTS.values():
+            if isinstance(section, dict):
+                self.assertNotIn("summary_model", section)
         self.assertNotIn("method", DEFAULTS["paste"])
         self.assertEqual(DEFAULTS["paste"]["shortcut"], "auto")
         self.assertEqual(DEFAULTS["recorder"]["reminder_seconds"], 90)
@@ -56,13 +65,13 @@ class ConfigTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
             config = Config(data, None, root, root / "secrets.env")
-            data["providers"]["transcription"] = "anthropic"
-            with self.assertRaisesRegex(ValueError, "does not support speech-to-text"):
+            data["providers"]["transcription"] = "unsupported"
+            with self.assertRaisesRegex(ValueError, "Unsupported API provider"):
                 config.active_provider("transcription")
-            data["providers"]["transcription"] = "openai"
-            data["providers"]["summary"] = "elevenlabs"
-            with self.assertRaisesRegex(ValueError, "does not support web summaries"):
-                config.active_provider("summary")
+
+    def test_summary_only_provider_is_no_longer_supported(self) -> None:
+        with self.assertRaisesRegex(ValueError, "Unsupported API provider"):
+            normalize_provider("anthropic")
 
 
 if __name__ == "__main__":

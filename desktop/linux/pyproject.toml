@@ -1,7 +1,7 @@
 [project]
 name = "echoscribe-linux"
 version = "0.1.0"
-description = "Linux GNOME companion for toggle-to-record transcription and browser summaries."
+description = "Linux GNOME companion for toggle-to-record transcription."
 requires-python = ">=3.9"
 dependencies = [
 ]

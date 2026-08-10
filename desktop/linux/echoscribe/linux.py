@@ -35,18 +35,16 @@ def doctor(config: Config) -> list[str]:
 
 def provider_findings(config: Config) -> list[str]:
     findings: list[str] = []
-    for stage in ("transcription", "summary"):
-        try:
-            provider = config.active_provider(stage)
-            suffix = ""
-            if provider != "localai":
-                suffix = f", key {'set' if config.provider_api_key(provider) else 'missing'}"
-            findings.append(f"{stage} provider: {provider}{suffix}")
-        except (KeyError, TypeError, ValueError) as exc:
-            findings.append(f"{stage} provider: invalid ({exc})")
+    try:
+        provider = config.active_provider("transcription")
+        suffix = ""
+        if provider != "localai":
+            suffix = f", key {'set' if config.provider_api_key(provider) else 'missing'}"
+        findings.append(f"transcription provider: {provider}{suffix}")
+    except (KeyError, TypeError, ValueError) as exc:
+        findings.append(f"transcription provider: invalid ({exc})")
     local = config.data.get("localai", {})
     if isinstance(local, dict):
-        findings.append(f"local AI LLM endpoint: {str(local.get('llm_url', '')).strip() or 'missing'}")
         findings.append(f"local AI STT endpoint: {str(local.get('whisper_url', '')).strip() or 'missing'}")
     return findings
 
