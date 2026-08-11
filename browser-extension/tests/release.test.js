@@ -4,6 +4,17 @@ import { describe, expect, it } from 'vitest';
 
 const root = resolve(import.meta.dirname, '..');
 const path = (relative) => resolve(root, relative);
+const canonicalMitLicense = `MIT License
+
+Copyright (c) 2026 vibecodingwean
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+`;
+
 describe('release source contract', () => {
   it('uses package.json as the single release version source', () => {
     const config = readFileSync(path('scripts/config.mjs'), 'utf8');
@@ -22,12 +33,31 @@ describe('release source contract', () => {
     }
   });
 
-  it('uses EchoScribe branding throughout public source and package metadata', () => {
-    for (const file of ['package.json', 'README.md', 'LICENSE', 'store/PRIVACY_POLICY.md', 'store/STORE_LISTING.md', 'store/REVIEW_NOTES.md']) {
+  it('uses EchoScribe branding in public product metadata and a standard MIT license', () => {
+    for (const file of ['package.json', 'README.md', 'store/PRIVACY_POLICY.md', 'store/STORE_LISTING.md', 'store/REVIEW_NOTES.md']) {
       const source = readFileSync(path(file), 'utf8');
       expect(source).toMatch(/EchoScribe/);
     }
+
+    const license = readFileSync(path('LICENSE'), 'utf8');
+    const rootLicense = readFileSync(path('../LICENSE'), 'utf8');
+    expect(license).toBe(canonicalMitLicense);
+    expect(rootLicense).toBe(canonicalMitLicense);
+    expect(license).toBe(rootLicense);
+
+    expect(existsSync(path('TRADEMARKS.md'))).toBe(true);
+    const trademarks = readFileSync(path('TRADEMARKS.md'), 'utf8');
+    expect(trademarks).toBe(readFileSync(path('../TRADEMARKS.md'), 'utf8'));
+    expect(trademarks).toMatch(/does not reduce, replace, or add conditions to those software-license rights/i);
+    expect(trademarks).toMatch(/intended for public distribution must be renamed and rebranded/i);
+    expect(trademarks).toMatch(/may not be published under the name “EchoScribe” or with the EchoScribe logo/i);
+    expect(trademarks).toMatch(/must not state or imply that their version is official, approved, sponsored, endorsed, or otherwise affiliated/i);
+    expect(trademarks).toMatch(/“derived from the EchoScribe source code” are permitted/i);
+
     const packageScript = readFileSync(path('scripts/package.py'), 'utf8');
+    expect(packageScript).toContain('ROOT / "TRADEMARKS.md"');
+    const validationScript = readFileSync(path('scripts/validate.py'), 'utf8');
+    expect(validationScript).toContain('ROOT / "TRADEMARKS.md"');
     expect(packageScript).toContain('echoscribe-web-summary-');
     expect(packageScript).toContain('ARTIFACTS.glob("*.zip")');
     expect(packageScript).toContain('(ARTIFACTS / "SHA256SUMS.json").write_text');

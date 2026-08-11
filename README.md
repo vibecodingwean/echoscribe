@@ -145,4 +145,20 @@ Built by a developer for developers and privacy enthusiasts.
 Feedback or Bugs? Reach out at: **app@wean.de**
 
 ---
-*MIT License - Use it, fork it, make it yours.*
+
+## License and trademarks
+
+Source code in this repository is licensed under the [MIT License](LICENSE),
+except where a file or bundled third-party component states otherwise.
+
+The EchoScribe name and brand assets are subject to the separate
+[trademark and branding policy](TRADEMARKS.md). The MIT License permits use,
+modification, and distribution of the covered code, but does not grant the
+right to present a fork as the official EchoScribe application.
+
+Forks intended for public distribution must use a distinct product name,
+package or bundle identifier, signing identity, icons, and store presentation.
+Only vibecodingwean, through the original
+[EchoScribe repository](https://github.com/vibecodingwean/echoscribe) and its
+controlled store records, publishes the official EchoScribe application unless
+prior written permission states otherwise.

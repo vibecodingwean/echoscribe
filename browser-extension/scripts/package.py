@@ -43,7 +43,7 @@ def main() -> None:
     version = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["version"]
     source_output = ARTIFACTS / f"echoscribe-web-summary-source-v{version}.zip"
     source_files = [
-        ROOT / ".gitignore", ROOT / "LICENSE", ROOT / "README.md",
+        ROOT / ".gitignore", ROOT / "LICENSE", ROOT / "README.md", ROOT / "TRADEMARKS.md",
         ROOT / "eslint.config.js", ROOT / "package.json", ROOT / "package-lock.json",
     ]
     for directory in ("src", "scripts", "tests", "store", "assets/icons"):
