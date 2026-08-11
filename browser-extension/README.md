@@ -52,6 +52,8 @@ Verified listing media lives in `store/screenshots/`; the rendered 1400 × 560 p
 - Some authenticated or cross-origin redirected PDFs can be blocked by browser permissions.
 - Provider API behavior, pricing, retention, and model availability are governed by the selected provider.
 
-## License
+## License and trademarks
 
-MIT. PDF text extraction uses bundled PDF.js under the Apache License 2.0; the release package includes its notice.
+The source code is licensed under the [MIT License](LICENSE). The EchoScribe name and brand assets remain subject to the [trademark and branding policy](TRADEMARKS.md). Publicly distributed forks must use distinct branding and identifiers and must not imply an official connection.
+
+PDF text extraction uses bundled PDF.js under the Apache License 2.0; the release package includes its notice.

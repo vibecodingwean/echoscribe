@@ -120,7 +120,7 @@ def inspect_archive(target: str, archive_path: Path) -> None:
 
 def source_inventory() -> list[Path]:
     files = [
-        ROOT / ".gitignore", ROOT / "LICENSE", ROOT / "README.md",
+        ROOT / ".gitignore", ROOT / "LICENSE", ROOT / "README.md", ROOT / "TRADEMARKS.md",
         ROOT / "eslint.config.js", ROOT / "package.json", ROOT / "package-lock.json",
     ]
     for directory in ("src", "scripts", "tests", "store", "assets/icons"):

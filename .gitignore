@@ -6,8 +6,20 @@
 *.pyc
 *.swp
 .DS_Store
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!.env.*.example
+!**/.env.example
+!**/.env.*.example
 .atom/
 .buildlog/
+.cache/
+**/.cache/
+.pytest_cache/
+**/.pytest_cache/
 .history
 .svn/
 .vscode/
@@ -29,6 +41,13 @@
 **/android/key.properties
 **/android/app/upload-keystore.jks
 **/android/app/google-services.json
+**/.kotlin/
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
 .gradle/
 build/
 
