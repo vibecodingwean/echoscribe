@@ -6,7 +6,7 @@ import { bindOptions } from '../../src/options/options.js';
 function optionsDocument() {
   return new JSDOM(`<body>
     <select id="provider"></select><input id="api-key" type="password"><span id="key-status"></span><button id="clear-key"></button><select id="model"></select>
-    <button id="fetch-models"></button><textarea id="prompt"></textarea><button id="reset-prompt"></button>
+    <button id="fetch-models"></button><p id="model-refresh-help"></p><textarea id="prompt"></textarea><button id="reset-prompt"></button>
     <button id="save"></button><button id="clear-data"></button><div id="status"></div>
   </body>`).window.document;
 }
@@ -60,6 +60,46 @@ describe('options', () => {
       { value: 'gemini-3.1-pro-preview', label: 'Pro — gemini-3.1-pro-preview' },
       { value: 'gemini-api-extra', label: 'API — gemini-api-extra' }
     ]);
+    expect(document.querySelector('#fetch-models').textContent).toBe('Model list updated');
+    expect(document.querySelector('#model-refresh-help').textContent).toContain('Model list updated. 2 models are available');
+  });
+
+  it('explains that a key is required and never contacts a provider without one', async () => {
+    const { document, api, controller } = setup();
+    await controller.ready;
+    const provider = document.querySelector('#provider');
+    provider.value = 'openai';
+    provider.dispatchEvent(new document.defaultView.Event('change'));
+
+    await controller.fetchModels();
+
+    expect(document.querySelector('#model-refresh-help').textContent).toContain('Add an API key for OpenAI');
+    expect(document.querySelector('#status').textContent).toContain('Add an API key for OpenAI');
+    expect(document.querySelector('#fetch-models').textContent).toBe('API key required');
+    expect(document.querySelector('#model-refresh-help').textContent).toContain('API key required');
+    expect(api.runtime.sendMessage).not.toHaveBeenCalledWith({ type: 'listModels', provider: 'openai' });
+  });
+
+  it('shows provider-request and completion progress in the refresh button', async () => {
+    const { document, api, controller } = setup();
+    await controller.ready;
+    let completeRequest;
+    api.runtime.sendMessage.mockImplementation(async (message) => {
+      if (message.type === 'listModels') return new Promise((resolve) => { completeRequest = resolve; });
+      if (message.type === 'getSettings') return { ok: true, settings: {
+        provider: 'gemini', models: {}, configuredProviders: { gemini: true }, targetLanguage: 'auto', customPrompt: ''
+      } };
+      return { ok: true };
+    });
+
+    const refresh = controller.fetchModels();
+    await vi.waitFor(() => expect(document.querySelector('#fetch-models').textContent).toBe('Contacting Google Gemini…'));
+    expect(document.querySelector('#model-refresh-help').textContent).toContain('Contacting Google Gemini');
+    completeRequest({ ok: true, models: ['gemini-new'] });
+    await refresh;
+
+    expect(document.querySelector('#fetch-models').textContent).toBe('Model list updated');
+    expect(document.querySelector('#status').textContent).toContain('1 models loaded');
   });
 
   it('preserves each provider model when switching providers', async () => {

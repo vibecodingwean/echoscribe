@@ -83,6 +83,14 @@ describe('background event wiring', () => {
     expect(listModels).toHaveBeenCalledWith({ provider: 'openai', apiKey: 'key' });
   });
 
+  it('checks whether the selected provider has a local API key before summarizing', async () => {
+    const { onMessage, listModels } = setup();
+    await expect(onMessage.fire({ type: 'getSummaryReadiness' })).resolves.toEqual({
+      ok: true, provider: 'openai', configured: true
+    });
+    expect(listModels).not.toHaveBeenCalled();
+  });
+
   it('returns settings metadata without exposing stored API keys', async () => {
     const { onMessage } = setup();
     const response = await onMessage.fire({ type: 'getSettings' });

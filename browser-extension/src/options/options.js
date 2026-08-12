@@ -17,11 +17,12 @@ function normalizePublicSettings(value = {}) {
 export function bindOptions(document, api, confirmAction = (message) => window.confirm(message)) {
   const ids = [
     'provider', 'api-key', 'key-status', 'clear-key', 'model',
-    'fetch-models', 'prompt', 'reset-prompt', 'save', 'clear-data', 'status'
+    'fetch-models', 'model-refresh-help', 'prompt', 'reset-prompt', 'save', 'clear-data', 'status'
   ];
   const elements = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
   let settings = normalizePublicSettings(defaultSettings());
   let renderedProvider = settings.provider;
+  let restoreRefreshLabelTimer = 0;
 
   for (const [id, provider] of Object.entries(PROVIDERS)) {
     const option = document.createElement('option');
@@ -47,6 +48,9 @@ export function bindOptions(document, api, confirmAction = (message) => window.c
       ? 'API key configured locally'
       : 'No API key configured';
     elements['clear-key'].disabled = !settings.configuredProviders[provider];
+    elements['model-refresh-help'].textContent = settings.configuredProviders[provider]
+      ? 'Refreshes the live model list for this provider. It sends the key but no page content.'
+      : `An API key for ${PROVIDERS[provider].label} is required to refresh its live model list.`;
     const selectedModel = settings.models[provider] || PROVIDERS[provider].defaultModel;
     elements.model.replaceChildren();
     for (const model of PROVIDERS[provider].models) {
@@ -93,25 +97,57 @@ export function bindOptions(document, api, confirmAction = (message) => window.c
   }
 
   async function fetchModels() {
-    await save();
     const provider = elements.provider.value;
-    const response = await api.runtime.sendMessage({ type: 'listModels', provider });
-    if (!response?.ok) {
-      elements.status.textContent = response?.error || 'Models could not be loaded.';
+    const label = PROVIDERS[provider].label;
+    const replacement = elements['api-key'].value.trim();
+    if (!settings.configuredProviders[provider] && !replacement) {
+      elements.status.textContent = `Add an API key for ${label} before refreshing the model list.`;
+      showRefreshProgress('API key required', `API key required. Add an API key for ${label} before refreshing.`);
+      restoreRefreshButton();
       return;
     }
-    const selectedModel = elements.model.value;
-    const existing = new Set([...elements.model.options].map((option) => option.value));
-    for (const model of response.models) {
-      if (existing.has(model)) continue;
-      const option = document.createElement('option');
-      option.value = model;
-      option.textContent = `API — ${model}`;
-      elements.model.append(option);
-      existing.add(model);
+
+    try {
+      showRefreshProgress('Saving API key…', `Saving the ${label} API key locally…`);
+      await save();
+      showRefreshProgress(`Contacting ${label}…`, `Contacting ${label} to retrieve its live model list…`);
+      const response = await api.runtime.sendMessage({ type: 'listModels', provider });
+      if (!response?.ok) throw new Error(response?.error || 'Models could not be loaded.');
+
+      const selectedModel = elements.model.value;
+      const existing = new Set([...elements.model.options].map((option) => option.value));
+      for (const model of response.models) {
+        if (existing.has(model)) continue;
+        const option = document.createElement('option');
+        option.value = model;
+        option.textContent = `API — ${model}`;
+        elements.model.append(option);
+        existing.add(model);
+      }
+      elements.model.value = selectedModel;
+      elements.status.textContent = `${response.models.length} models loaded.`;
+      showRefreshProgress('Model list updated', `Model list updated. ${response.models.length} models are available.`);
+    } catch (error) {
+      elements.status.textContent = error?.message || 'Models could not be loaded.';
+      showRefreshProgress('Refresh failed', `Refresh failed. ${elements.status.textContent}`);
+    } finally {
+      restoreRefreshButton();
     }
-    elements.model.value = selectedModel;
-    elements.status.textContent = `${response.models.length} models loaded.`;
+  }
+
+  function showRefreshProgress(label, detail) {
+    elements['fetch-models'].textContent = label;
+    elements['fetch-models'].disabled = true;
+    elements['model-refresh-help'].textContent = detail;
+  }
+
+  function restoreRefreshButton() {
+    if (restoreRefreshLabelTimer) clearTimeout(restoreRefreshLabelTimer);
+    restoreRefreshLabelTimer = setTimeout(() => {
+      elements['fetch-models'].textContent = 'Refresh model list';
+      elements['fetch-models'].disabled = false;
+      restoreRefreshLabelTimer = 0;
+    }, 1600);
   }
 
   function resetPrompt() {

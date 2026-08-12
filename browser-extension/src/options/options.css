@@ -56,6 +56,15 @@ textarea { min-height: 250px; resize: vertical; line-height: 1.45; }
   color: #334e68;
   background: #f0f4f8;
 }
+.model-refresh {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.model-refresh .muted {
+  margin: 0;
+  font-size: 13px;
+}
 .privacy li { margin: 6px 0; }
 .footer-actions { margin-top: 14px; }
 .footer-actions .primary { min-width: 150px; }
@@ -66,4 +75,5 @@ textarea { min-height: 250px; resize: vertical; line-height: 1.45; }
   .shell { width: 100%; min-height: 100vh; border: 0; border-radius: 0; box-shadow: none; }
   .grid.two { grid-template-columns: 1fr; }
   .section-heading { align-items: flex-start; flex-direction: column; }
+  .model-refresh { align-items: flex-start; flex-direction: column; }
 }

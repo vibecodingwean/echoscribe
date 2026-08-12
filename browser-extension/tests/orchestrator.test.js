@@ -80,7 +80,10 @@ describe('background orchestrator', () => {
   it('never stores or returns API keys in errors', async () => {
     const summarizeProvider = vi.fn(async () => { throw new Error('Rejected private-key'); });
     const { orchestrator, stored } = setup({ summarizeProvider });
-    await expect(orchestrator.summarizeActiveTab()).rejects.not.toThrow('private-key');
+    const result = await orchestrator.summarizeActiveTab();
+    expect(result).toMatchObject({ ok: false });
+    expect(result.error).not.toContain('private-key');
+    expect(result.error).toContain('[redacted]');
     expect(stored.latestError).not.toContain('private-key');
     expect(stored.latestError).toContain('[redacted]');
   });
