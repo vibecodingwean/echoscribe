@@ -42,7 +42,7 @@ export function createOrchestrator({
     } catch (error) {
       const message = safeMessage(error?.message || error, [apiKey]);
       await api.storage.local.set({ latestSummary: '', latestError: message, latestUpdatedAt: now() });
-      throw new Error(message);
+      return { ok: false, error: message };
     }
   }
 

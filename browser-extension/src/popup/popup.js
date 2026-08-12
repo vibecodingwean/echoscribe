@@ -74,6 +74,17 @@ export function bindPopup(document, api, clipboard = navigator.clipboard, {
 
   async function summarize() {
     const targetLanguage = elements.language.value || 'auto';
+    const readiness = await api.runtime.sendMessage({ type: 'getSummaryReadiness' });
+    if (!readiness?.ok) {
+      elements.status.textContent = readiness?.error || 'Summary settings could not be checked.';
+      elements.retry.hidden = true;
+      return;
+    }
+    if (!readiness.configured) {
+      elements.status.textContent = 'An API key is required for the selected provider.';
+      elements.retry.hidden = true;
+      return;
+    }
     const [tab] = await api.tabs.query({ active: true, currentWindow: true });
     if (isWebPdfTab(tab)) {
       if (!await requestPdfConfirmation('The PDF text will be sent to your selected AI provider. Continue?')) {

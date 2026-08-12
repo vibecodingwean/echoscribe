@@ -39,6 +39,11 @@ export function installBackground({ api, orchestrator, listModels = listProvider
         const models = await listModels({ provider, apiKey: settings.apiKeys[provider] });
         return { ok: true, models };
       }
+      if (message?.type === 'getSummaryReadiness') {
+        const settings = await orchestrator.readSettings();
+        const provider = settings.provider;
+        return { ok: true, provider, configured: Boolean(settings.apiKeys[provider]) };
+      }
       if (message?.type === 'getSettings') return { ok: true, settings: publicSettings(await orchestrator.readSettings()) };
       if (message?.type === 'saveSettings') {
         const current = await orchestrator.readSettings();
