@@ -15,13 +15,20 @@ class ExtensionStructureTests(unittest.TestCase):
         cls.source = EXTENSION.read_text(encoding="utf-8")
 
     def test_native_keybinding_and_dynamic_rebind_are_present(self) -> None:
-        self.assertIn("Main.wm.addKeybinding", self.source)
-        self.assertNotIn("display.add_keybinding", self.source)
+        self.assertIn("global.display.add_keybinding", self.source)
+        self.assertNotIn("Main.wm.addKeybinding", self.source)
         self.assertIn("changed::toggle-shortcut", self.source)
         self.assertIn("this._rebindShortcut()", self.source)
-        self.assertIn("Main.wm.removeKeybinding", self.source)
+        self.assertIn("global.display.remove_keybinding", self.source)
+        self.assertIn("Main.wm.allowKeybinding", self.source)
         self.assertIn("const KEYBINDING_SETTING = 'echoscribe-toggle-shortcut'", self.source)
         self.assertIn("this._syncKeybindingSetting()", self.source)
+
+    def test_startup_clears_historical_error_state_without_a_notification(self) -> None:
+        status = self.source[self.source.index("    _handleStartupStatus(payload) {"):]
+        status = status[:status.index("    _resetToIdle() {")]
+        self.assertIn("this._runWorker('cancel', this._recordingId", status)
+        self.assertNotIn("this._showError(payload.message)", status)
 
     def test_shortcut_is_an_explicit_start_stop_toggle(self) -> None:
         self.assertNotIn("Meta.KeyBindingFlags.TRIGGER_RELEASE", self.source)

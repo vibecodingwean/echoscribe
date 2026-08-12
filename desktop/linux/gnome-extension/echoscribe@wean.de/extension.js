@@ -286,15 +286,19 @@ export default class EchoScribeExtension extends Extension {
         try {
             const handler = () => this._onShortcutTriggered();
             const modes = Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW;
-            const action = Main.wm.addKeybinding(
+            // Some GNOME 50 distributions expose the window manager helper
+            // with Mutter's four-argument signature. Register against the
+            // stable Mutter API directly and preserve Shell action modes.
+            const action = global.display.add_keybinding(
                 KEYBINDING_SETTING,
                 this._settings,
                 Meta.KeyBindingFlags.IGNORE_AUTOREPEAT,
-                modes,
                 handler
             );
-            if (action === Meta.KeyBindingAction.NONE)
+            if (action === Meta.KeyBindingAction.NONE) {
                 throw new Error(`Could not register shortcut ${this._primaryShortcut()}`);
+            }
+            Main.wm.allowKeybinding(KEYBINDING_SETTING, modes);
             this._shortcutBound = true;
         } catch (error) {
             this._shortcutBound = false;
@@ -306,7 +310,8 @@ export default class EchoScribeExtension extends Extension {
         if (!this._shortcutBound)
             return;
         try {
-            Main.wm.removeKeybinding(KEYBINDING_SETTING);
+            if (global.display.remove_keybinding(KEYBINDING_SETTING))
+                Main.wm.allowKeybinding(KEYBINDING_SETTING, Shell.ActionMode.NONE);
         } catch (error) {
             console.debug(`EchoScribe keybinding cleanup: ${error}`);
         }
@@ -531,7 +536,11 @@ export default class EchoScribeExtension extends Extension {
 
     _handleStartupStatus(payload) {
         if (!payload?.ok && payload?.state === 'error') {
-            this._showError(payload.message);
+            // Error states are persisted so an interrupted recording can be
+            // diagnosed. On a later login they are historical, though: show no
+            // stale failure toast and reset the worker for the next dictation.
+            this._recordingId = String(payload.recording_id || '');
+            this._runWorker('cancel', this._recordingId, () => this._resetToIdle(), error => this._showError(error));
             return;
         }
         if (payload?.state === PHASE.RECORDING || payload?.state === PHASE.PROCESSING) {
