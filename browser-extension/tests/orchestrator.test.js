@@ -38,8 +38,16 @@ describe('background orchestrator', () => {
       provider: 'anthropic', model: 'claude-user', apiKey: 'private-key',
       prompt: expect.stringContaining('language code "de"')
     }));
+    expect(summarizeProvider.mock.calls[0][0].prompt).not.toContain('same language as the main page content');
     expect(stored).toMatchObject({ latestSummary: 'Short summary', latestProvider: 'anthropic', latestModel: 'claude-user', latestUpdatedAt: 12345, latestError: '' });
     expect(stored).not.toHaveProperty('latestUrl');
+  });
+
+  it('asks auto summaries to follow the page language', async () => {
+    const { orchestrator, summarizeProvider } = setup();
+    await orchestrator.summarizeActiveTab('auto');
+    expect(summarizeProvider.mock.calls[0][0].prompt).toContain('same language as the main page content');
+    expect(summarizeProvider.mock.calls[0][0].prompt).toContain('If the content is German, write German');
   });
 
   it('uses context-menu selection instead of full page text', async () => {
