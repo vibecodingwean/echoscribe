@@ -12,7 +12,7 @@ describe('extractPagePayload', () => {
     const result = extractPagePayload('  selected\n text  ', dom.window.document, dom.window.location, dom.window);
     expect(result).toEqual({
       url: 'https://example.com/story', title: 'Title', description: 'Description',
-      selection: 'selected text', text: 'selected text'
+      language: '', selection: 'selected text', text: 'selected text'
     });
   });
 
@@ -38,6 +38,20 @@ describe('extractPagePayload', () => {
     expect(result.text.length).toBeLessThanOrEqual(120_000);
     expect(result.title.length).toBeLessThanOrEqual(512);
     expect(result.description.length).toBeLessThanOrEqual(2_000);
+  });
+
+  it('reads a sanitized page language from html lang or locale metadata', () => {
+    const htmlLang = page('<html lang="de-DE"><title>Titel</title><article>Artikel</article></html>');
+    expect(extractPagePayload('', htmlLang.window.document, htmlLang.window.location, htmlLang.window).language).toBe('de');
+
+    const ogLocale = page('<html><head><meta property="og:locale" content="de_AT"></head><article>Artikel</article></html>');
+    expect(extractPagePayload('', ogLocale.window.document, ogLocale.window.location, ogLocale.window).language).toBe('de');
+
+    const contentLanguage = page('<html><head><meta http-equiv="content-language" content="fr, en"></head><article>Texte</article></html>');
+    expect(extractPagePayload('', contentLanguage.window.document, contentLanguage.window.location, contentLanguage.window).language).toBe('fr');
+
+    const hostile = page('<html lang="en; DROP TABLE"><article>Body</article></html>');
+    expect(extractPagePayload('', hostile.window.document, hostile.window.location, hostile.window).language).toBe('');
   });
 
   it('returns plain metadata rather than page markup', () => {
