@@ -37,7 +37,7 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 
 ### 🚀 Pro Mode & Models
 Access the world's most powerful AI models with a single toggle:
-- **Standard (Fast):** GPT-5.6 Terra, Gemini 3.6 Flash, Claude Sonnet 5, Grok 4.3, or local `qwen2.5:7b`.
+- **Standard (Fast):** GPT-5.6 Terra, Gemini 3.7 Flash, Claude Sonnet 5, Grok 4.3, or local `qwen2.5:7b`.
 - **Pro Mode (Premium):** GPT-5.6 Sol, Gemini 3.1 Pro Preview, Claude Opus 5, Grok 4.5.
 - **Speech Models:** OpenAI Pro file transcription uses GPT Transcribe; OpenAI Realtime uses GPT Live Transcribe; optional ElevenLabs Realtime uses Scribe v2 Realtime.
 
