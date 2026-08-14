@@ -27,7 +27,12 @@ void main() {
     });
 
     test('Gemini and Anthropic preserve fast and pro roles', () {
-      expect(AiModelConfig.geminiSummary(pro: false), 'gemini-3.6-flash');
+      expect(AiModelConfig.geminiSummary(pro: false), 'gemini-3.7-flash');
+      expect(AiModelConfig.geminiTranslation(pro: false), 'gemini-3.7-flash');
+      expect(
+        AiModelConfig.geminiTranscription(pro: false),
+        'gemini-3.7-flash',
+      );
       expect(AiModelConfig.anthropicSummary(pro: false), 'claude-sonnet-5');
       expect(AiModelConfig.anthropicSummary(pro: true), 'claude-opus-5');
       expect(

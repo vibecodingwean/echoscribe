@@ -1,6 +1,10 @@
 import { PROVIDERS } from './constants.js';
 
 const LANGUAGE_CODE = /^(auto|[a-z]{2,3}(?:-[a-z0-9]{2,8})?)$/i;
+const DEPRECATED_MODELS = Object.freeze({
+  'gemini-3.1-flash-lite': 'gemini-3.7-flash',
+  'gemini-3.6-flash': 'gemini-3.7-flash'
+});
 
 export function defaultSettings() {
   return {
@@ -20,7 +24,7 @@ export function normalizeSettings(value = {}) {
 
   for (const id of Object.keys(PROVIDERS)) {
     const model = String(value.models?.[id] ?? '').trim();
-    if (model) models[id] = model.slice(0, 200);
+    if (model) models[id] = (DEPRECATED_MODELS[model] || model).slice(0, 200);
     apiKeys[id] = String(value.apiKeys?.[id] ?? '').trim().slice(0, 10_000);
   }
 

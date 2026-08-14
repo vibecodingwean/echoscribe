@@ -4,7 +4,7 @@ import { PROVIDERS } from '../src/shared/constants.js';
 const expected = {
   openai: ['gpt-5.6-terra', 'gpt-5.6-sol'],
   anthropic: ['claude-sonnet-5', 'claude-opus-5'],
-  gemini: ['gemini-3.6-flash', 'gemini-3.1-pro-preview'],
+  gemini: ['gemini-3.7-flash', 'gemini-3.1-pro-preview'],
   xai: ['grok-4.3', 'grok-4.5']
 };
 

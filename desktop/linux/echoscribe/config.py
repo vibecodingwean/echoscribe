@@ -19,7 +19,8 @@ ALL_PROVIDERS = TRANSCRIPTION_PROVIDERS
 DEFAULT_LOCAL_AI_WHISPER_URL = "http://127.0.0.1:8000/v1/audio/transcriptions"
 
 DEPRECATED_MODEL_DEFAULTS = {
-    "gemini-3.1-flash-lite": "gemini-3.6-flash",  # model-migration-ok
+    "gemini-3.1-flash-lite": "gemini-3.7-flash",  # model-migration-ok
+    "gemini-3.6-flash": "gemini-3.7-flash",  # model-migration-ok
 }
 
 
@@ -36,7 +37,7 @@ DEFAULTS: dict[str, Any] = {
     "gemini": {
         "api_key": "",
         "api_key_env": "GEMINI_API_KEY",
-        "transcription_model": "gemini-3.6-flash",
+        "transcription_model": "gemini-3.7-flash",
         "target_language": "auto",
     },
     "xai": {

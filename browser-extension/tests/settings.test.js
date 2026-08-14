@@ -31,6 +31,14 @@ describe('normalizeSettings', () => {
     });
   });
 
+  it('migrates retained Gemini Fast defaults to 3.7 Flash', () => {
+    const settings = normalizeSettings({
+      provider: 'gemini',
+      models: { gemini: 'gemini-3.6-flash' }
+    });
+    expect(settings.models.gemini).toBe('gemini-3.7-flash');
+  });
+
   it('trims free-entry model names and bounds custom prompts', () => {
     const settings = normalizeSettings({
       models: { xai: '  grok-user-choice  ' },

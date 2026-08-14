@@ -69,6 +69,18 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Unsupported API provider"):
                 config.active_provider("transcription")
 
+    def test_legacy_gemini_fast_defaults_migrate_to_3_7_flash(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            config = root / "config.toml"
+            config.write_text(
+                '[gemini]\ntranscription_model = "gemini-3.6-flash"\n',
+                encoding="utf-8",
+            )
+            with patch.dict(os.environ, {"ECHOSCRIBE_CONFIG": str(config)}, clear=False):
+                loaded = load_config(root)
+            self.assertEqual(loaded.data["gemini"]["transcription_model"], "gemini-3.7-flash")
+
     def test_summary_only_provider_is_no_longer_supported(self) -> None:
         with self.assertRaisesRegex(ValueError, "Unsupported API provider"):
             normalize_provider("anthropic")

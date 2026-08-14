@@ -8,8 +8,8 @@ export const PROVIDERS = Object.freeze({
     models: [{ id: 'claude-sonnet-5', tier: 'Fast' }, { id: 'claude-opus-5', tier: 'Pro' }]
   },
   gemini: {
-    label: 'Google Gemini', defaultModel: 'gemini-3.6-flash',
-    models: [{ id: 'gemini-3.6-flash', tier: 'Fast' }, { id: 'gemini-3.1-pro-preview', tier: 'Pro' }]
+    label: 'Google Gemini', defaultModel: 'gemini-3.7-flash',
+    models: [{ id: 'gemini-3.7-flash', tier: 'Fast' }, { id: 'gemini-3.1-pro-preview', tier: 'Pro' }]
   },
   xai: {
     label: 'xAI', defaultModel: 'grok-4.3',
