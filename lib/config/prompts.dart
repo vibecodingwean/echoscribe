@@ -110,10 +110,10 @@ class AiModelConfig {
       pro ? anthropicTranslationPro : anthropicTranslationFast;
 
   // ---------- xAI (Grok) ----------
-  static const String xaiSummaryPro = 'grok-4.5';
-  static const String xaiTranslationPro = 'grok-4.5';
+  static const String xaiSummaryPro = 'grok-4.6';
+  static const String xaiTranslationPro = 'grok-4.6';
   static const String xaiTranscriptionPro = 'xai-stt';
-  static const String xaiImagePro = 'grok-imagine-image-quality';
+  static const String xaiImagePro = 'grok-imagine-image-2.0';
   static const String xaiReasoningEffortPro = 'medium';
 
   static const String xaiSummaryFast = 'grok-4.3';

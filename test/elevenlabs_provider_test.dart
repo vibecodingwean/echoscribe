@@ -15,6 +15,7 @@ void main() {
       expect(provider.supportsSummary, isFalse);
       expect(provider.supportsTranslation, isFalse);
       expect(provider.supportsImage, isFalse);
+      expect(provider.supportsKeyboardDictation, isFalse);
       expect(provider.supportsFloatingDictation, isFalse);
       expect(AiProviderType.fromString('elevenlabs'), provider);
       expect(AiProviderType.fromString('elevenLabs'), provider);

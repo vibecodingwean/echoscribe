@@ -44,7 +44,9 @@ void main() {
 
     test('xAI keeps distinct fast and pro tiers', () {
       expect(AiModelConfig.xaiSummary(pro: false), 'grok-4.3');
-      expect(AiModelConfig.xaiSummary(pro: true), 'grok-4.5');
+      expect(AiModelConfig.xaiSummary(pro: true), 'grok-4.6');
+      expect(AiModelConfig.xaiImage(pro: false), 'grok-imagine-image');
+      expect(AiModelConfig.xaiImage(pro: true), 'grok-imagine-image-2.0');
       expect(AiModelConfig.xaiReasoningEffort(pro: false), 'none');
       expect(AiModelConfig.xaiReasoningEffort(pro: true), 'medium');
     });

@@ -4,6 +4,7 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
     <application
@@ -62,6 +63,18 @@
             </intent-filter>
         </activity>
         <service
+            android:name=".ime.EchoScribeImeService"
+            android:label="@string/ime_name"
+            android:exported="true"
+            android:permission="android.permission.BIND_INPUT_METHOD">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data
+                android:name="android.view.im"
+                android:resource="@xml/method" />
+        </service>
+        <service
             android:name=".FloatingDictationAccessibilityService"
             android:exported="true"
             android:foregroundServiceType="microphone"
@@ -81,5 +94,9 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <intent>
+            <action android:name="android.view.InputMethod" />
+        </intent>
+        <package android:name="com.google.android.googlequicksearchbox" />
     </queries>
 </manifest>

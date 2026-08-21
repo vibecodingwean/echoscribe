@@ -74,11 +74,13 @@ enum AiProviderType {
 
   bool get supportsTranslation => this != AiProviderType.elevenLabs;
 
-  bool get supportsFloatingDictation =>
+  bool get supportsKeyboardDictation =>
       this == AiProviderType.openai ||
       this == AiProviderType.gemini ||
       this == AiProviderType.xai ||
       this == AiProviderType.localAi;
+
+  bool get supportsFloatingDictation => supportsKeyboardDictation;
 
   /// Whether this provider REQUIRES local URL content extraction.
   bool get mustExtractUrl {

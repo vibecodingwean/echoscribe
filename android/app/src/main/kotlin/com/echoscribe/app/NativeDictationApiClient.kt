@@ -31,21 +31,50 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
     fun format(rawText: String): String {
         val raw = rawText.trim()
         if (raw.isBlank()) return raw
-        return when (config.provider) {
-            "openai" -> formatChat(
-                endpoint = "https://api.openai.com/v1/chat/completions",
-                includeReasoning = true,
-                rawText = raw,
-            )
-            "gemini" -> formatGemini(raw)
-            "xai" -> formatChat(
-                endpoint = "https://api.x.ai/v1/chat/completions",
-                includeReasoning = true,
-                rawText = raw,
-            )
-            "localAi" -> formatLocalAi(raw)
-            else -> throw IllegalStateException("Speech input not supported for ${config.brandName.ifBlank { "this provider" }}")
+        return rewrite(
+            systemPrompt = "You format dictated speech transcripts into final text input. Output only the final text.",
+            userPrompt = "${config.dictationPrompt}\n\nRaw text:\n$raw",
+        )
+    }
+
+    /**
+     * Generic chat/rewrite helper for IME AI sheets (grammar, tone, assist, translate).
+     * Uses formattingModel and the same provider keys as dictation formatting.
+     */
+    fun rewrite(systemPrompt: String, userPrompt: String, variantCount: Int = 1): List<String> {
+        val system = systemPrompt.trim().ifBlank {
+            "You rewrite user text. Output only the rewritten text."
         }
+        val user = userPrompt.trim()
+        if (user.isBlank()) return emptyList()
+        val count = variantCount.coerceIn(1, 3)
+        return when (config.provider) {
+            "openai" -> List(count) {
+                chatCompletions(
+                    endpoint = "https://api.openai.com/v1/chat/completions",
+                    includeReasoning = true,
+                    systemPrompt = system,
+                    userPrompt = user,
+                )
+            }
+            "xai" -> List(count) {
+                chatCompletions(
+                    endpoint = "https://api.x.ai/v1/chat/completions",
+                    includeReasoning = true,
+                    systemPrompt = system,
+                    userPrompt = user,
+                )
+            }
+            "gemini" -> List(count) { chatGemini(system, user) }
+            "localAi" -> List(count) { chatLocalAi(system, user) }
+            else -> throw IllegalStateException(
+                "AI rewrite not supported for ${config.brandName.ifBlank { "this provider" }}",
+            )
+        }.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+    }
+
+    fun rewrite(systemPrompt: String, userPrompt: String): String {
+        return rewrite(systemPrompt, userPrompt, variantCount = 1).firstOrNull().orEmpty()
     }
 
     private fun transcribeOpenAi(file: File): String {
@@ -169,6 +198,13 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
                         .put("parts", parts),
                 ),
             )
+            .put(
+                "generationConfig",
+                JSONObject().put(
+                    "thinkingConfig",
+                    JSONObject().put("thinkingBudget", 0),
+                ),
+            )
         val json = postJson(
             endpoint = "https://generativelanguage.googleapis.com/v1beta/models/${config.transcriptionModel.ifBlank { "gemini-3.7-flash" }}:generateContent?key=${config.apiKey}",
             headers = mapOf("Content-Type" to "application/json"),
@@ -179,18 +215,15 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
         }
     }
 
-    private fun formatChat(endpoint: String, includeReasoning: Boolean, rawText: String): String {
+    private fun chatCompletions(
+        endpoint: String,
+        includeReasoning: Boolean,
+        systemPrompt: String,
+        userPrompt: String,
+    ): String {
         val messages = JSONArray()
-            .put(
-                JSONObject()
-                    .put("role", "system")
-                    .put("content", "You format dictated speech transcripts into final text input. Output only the final text."),
-            )
-            .put(
-                JSONObject()
-                    .put("role", "user")
-                    .put("content", "${config.dictationPrompt}\n\nRaw text:\n$rawText"),
-            )
+            .put(JSONObject().put("role", "system").put("content", systemPrompt))
+            .put(JSONObject().put("role", "user").put("content", userPrompt))
         val body = JSONObject()
             .put("model", config.formattingModel)
             .put("messages", messages)
@@ -212,22 +245,14 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
             ?.optString("content")
             .orEmpty()
             .trim()
-        if (content.isBlank()) throw IllegalStateException("Formatting returned empty text")
+        if (content.isBlank()) throw IllegalStateException("AI rewrite returned empty text")
         return content
     }
 
-    private fun formatLocalAi(rawText: String): String {
+    private fun chatLocalAi(systemPrompt: String, userPrompt: String): String {
         val messages = JSONArray()
-            .put(
-                JSONObject()
-                    .put("role", "system")
-                    .put("content", "You format dictated speech transcripts into final text input. Output only the final text."),
-            )
-            .put(
-                JSONObject()
-                    .put("role", "user")
-                    .put("content", "${config.dictationPrompt}\n\nRaw text:\n$rawText"),
-            )
+            .put(JSONObject().put("role", "system").put("content", systemPrompt))
+            .put(JSONObject().put("role", "user").put("content", userPrompt))
         val body = JSONObject()
             .put("model", config.formattingModel.ifBlank { DEFAULT_LOCAL_AI_FORMATTING_MODEL })
             .put("stream", false)
@@ -244,35 +269,32 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
             ?.optString("content")
             .orEmpty()
             .trim()
-        if (content.isBlank()) throw IllegalStateException("Formatting returned empty text")
+        if (content.isBlank()) throw IllegalStateException("AI rewrite returned empty text")
         return content
     }
 
-    private fun formatGemini(rawText: String): String {
+    private fun chatGemini(systemPrompt: String, userPrompt: String): String {
         val body = JSONObject()
+            .put(
+                "systemInstruction",
+                JSONObject().put("parts", JSONArray().put(JSONObject().put("text", systemPrompt))),
+            )
             .put(
                 "contents",
                 JSONArray().put(
                     JSONObject()
                         .put("role", "user")
-                        .put(
-                            "parts",
-                            JSONArray().put(
-                                JSONObject().put(
-                                    "text",
-                                    "${config.dictationPrompt}\n\nRaw text:\n$rawText",
-                                ),
-                            ),
-                        ),
+                        .put("parts", JSONArray().put(JSONObject().put("text", userPrompt))),
                 ),
             )
+        val model = config.formattingModel.ifBlank { "gemini-3.7-flash" }
         val json = postJson(
-            endpoint = "https://generativelanguage.googleapis.com/v1beta/models/${config.formattingModel}:generateContent?key=${config.apiKey}",
+            endpoint = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=${config.apiKey}",
             headers = mapOf("Content-Type" to "application/json"),
             body = body,
         )
         val text = extractGeminiText(json).trim()
-        if (text.isBlank()) throw IllegalStateException("Formatting returned empty text")
+        if (text.isBlank()) throw IllegalStateException("AI rewrite returned empty text")
         return text
     }
 
@@ -409,7 +431,13 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
         val candidates = json.optJSONArray("candidates") ?: return ""
         val content = candidates.optJSONObject(0)?.optJSONObject("content") ?: return ""
         val parts = content.optJSONArray("parts") ?: return ""
-        return parts.optJSONObject(0)?.optString("text").orEmpty()
+        for (i in 0 until parts.length()) {
+            val part = parts.optJSONObject(i) ?: continue
+            if (part.has("thought") && part.optBoolean("thought")) continue
+            val text = part.optString("text").trim()
+            if (text.isNotEmpty()) return text
+        }
+        return ""
     }
 
     private fun mimeType(file: File): String {

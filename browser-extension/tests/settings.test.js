@@ -39,6 +39,14 @@ describe('normalizeSettings', () => {
     expect(settings.models.gemini).toBe('gemini-3.7-flash');
   });
 
+  it('migrates retained xAI Pro defaults to Grok 4.6', () => {
+    const settings = normalizeSettings({
+      provider: 'xai',
+      models: { xai: 'grok-4.5' }
+    });
+    expect(settings.models.xai).toBe('grok-4.6');
+  });
+
   it('trims free-entry model names and bounds custom prompts', () => {
     const settings = normalizeSettings({
       models: { xai: '  grok-user-choice  ' },

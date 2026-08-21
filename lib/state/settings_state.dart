@@ -22,6 +22,16 @@ class SettingsState extends ChangeNotifier {
   bool _xaiPro = false;
   bool _appFetchUrl = true;
   bool _floatingDictationEnabled = true;
+  String _voiceMode = "google";
+  String _keyboardLayout = "qwertz";
+  bool _autocorrectEnabled = true;
+  bool _autoCapitalizeEnabled = true;
+  bool _hapticFeedbackEnabled = true;
+  bool _soundFeedbackEnabled = true;
+  bool _opticalFeedbackEnabled = true;
+  List<Map<String, String>> _customTones = const [];
+  List<Map<String, String>> _customGrammar = const [];
+  List<Map<String, String>> _customAssistants = const [];
   String _targetLanguageCode = "auto";
   String _summaryPrompt = kDefaultSummaryPrompt;
   String _urlSummaryPrompt = kDefaultUrlSummaryPrompt;
@@ -177,6 +187,77 @@ class SettingsState extends ChangeNotifier {
   bool get floatingDictationEnabled => _floatingDictationEnabled;
   void setFloatingDictationEnabled(bool enabled) {
     _floatingDictationEnabled = enabled;
+    notifyListeners();
+  }
+
+  String get voiceMode => _voiceMode;
+  void setVoiceMode(String mode) {
+    final normalized = mode.trim().toLowerCase();
+    _voiceMode = normalized == 'echoscribe' ? 'echoscribe' : 'google';
+    notifyListeners();
+  }
+
+  String get keyboardLayout => _keyboardLayout;
+  void setKeyboardLayout(String layout) {
+    final normalized = layout.trim().toLowerCase();
+    _keyboardLayout = normalized == 'qwerty' ? 'qwerty' : 'qwertz';
+    notifyListeners();
+  }
+
+  bool get autocorrectEnabled => _autocorrectEnabled;
+  void setAutocorrectEnabled(bool enabled) {
+    _autocorrectEnabled = enabled;
+    notifyListeners();
+  }
+
+  bool get autoCapitalizeEnabled => _autoCapitalizeEnabled;
+  void setAutoCapitalizeEnabled(bool enabled) {
+    _autoCapitalizeEnabled = enabled;
+    notifyListeners();
+  }
+
+  bool get hapticFeedbackEnabled => _hapticFeedbackEnabled;
+  void setHapticFeedbackEnabled(bool enabled) {
+    _hapticFeedbackEnabled = enabled;
+    notifyListeners();
+  }
+
+  bool get soundFeedbackEnabled => _soundFeedbackEnabled;
+  void setSoundFeedbackEnabled(bool enabled) {
+    _soundFeedbackEnabled = enabled;
+    notifyListeners();
+  }
+
+  bool get opticalFeedbackEnabled => _opticalFeedbackEnabled;
+  void setOpticalFeedbackEnabled(bool enabled) {
+    _opticalFeedbackEnabled = enabled;
+    notifyListeners();
+  }
+
+  List<Map<String, String>> get customTones =>
+      List<Map<String, String>>.unmodifiable(
+        _customTones.map(Map<String, String>.from),
+      );
+  void setCustomTones(List<Map<String, String>> tones) {
+    _customTones = tones.map(Map<String, String>.from).toList();
+    notifyListeners();
+  }
+
+  List<Map<String, String>> get customGrammar =>
+      List<Map<String, String>>.unmodifiable(
+        _customGrammar.map(Map<String, String>.from),
+      );
+  void setCustomGrammar(List<Map<String, String>> grammar) {
+    _customGrammar = grammar.map(Map<String, String>.from).toList();
+    notifyListeners();
+  }
+
+  List<Map<String, String>> get customAssistants =>
+      List<Map<String, String>>.unmodifiable(
+        _customAssistants.map(Map<String, String>.from),
+      );
+  void setCustomAssistants(List<Map<String, String>> assistants) {
+    _customAssistants = assistants.map(Map<String, String>.from).toList();
     notifyListeners();
   }
 

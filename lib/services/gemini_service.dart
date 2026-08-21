@@ -48,7 +48,12 @@ class GeminiService {
             }
           ]
         }
-      ]
+      ],
+      'generationConfig': {
+        'thinkingConfig': {
+          'thinkingBudget': 0,
+        },
+      },
     });
 
     final sw = Stopwatch()..start();
@@ -66,7 +71,11 @@ class GeminiService {
         throw const EmptyResultException('No transcription candidates');
       }
       final parts = (candidates.first['content']?['parts'] as List<dynamic>?) ?? const [];
-      final text = parts.isNotEmpty ? (parts.first['text'] ?? '').toString() : '';
+      final text = parts
+          .whereType<Map>()
+          .where((part) => part['thought'] != true)
+          .map((part) => (part['text'] ?? '').toString())
+          .firstWhere((value) => value.trim().isNotEmpty, orElse: () => '');
       if (text.trim().isEmpty) {
         throw const EmptyResultException('Empty transcription result');
       }

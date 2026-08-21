@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:echoscribe/models/enums.dart';
@@ -31,6 +32,16 @@ class SecureStorageService {
   static const _keyAnthropicPro = 'anthropic_pro_enabled';
   static const _keyAppFetchUrl = 'app_fetch_url_enabled';
   static const _keyFloatingDictation = 'floating_dictation_enabled';
+  static const _keyVoiceMode = 'keyboard_voice_mode';
+  static const _keyKeyboardLayout = 'keyboard_layout';
+  static const _keyAutocorrectEnabled = 'keyboard_autocorrect_enabled';
+  static const _keyAutoCapitalizeEnabled = 'keyboard_auto_capitalize_enabled';
+  static const _keyHapticFeedbackEnabled = 'keyboard_haptic_feedback_enabled';
+  static const _keySoundFeedbackEnabled = 'keyboard_sound_feedback_enabled';
+  static const _keyOpticalFeedbackEnabled = 'keyboard_optical_feedback_enabled';
+  static const _keyCustomTones = 'keyboard_custom_tones';
+  static const _keyCustomGrammar = 'keyboard_custom_grammar';
+  static const _keyCustomAssistants = 'keyboard_custom_assistants';
   static const _keyAnthropic = 'anthropic_api_key';
   static const _keyXai = 'xai_api_key';
   static const _keyXaiPro = 'xai_pro_enabled';
@@ -204,6 +215,84 @@ class SecureStorageService {
       _safeWrite(_keyFloatingDictation, enabled ? '1' : '0');
   Future<bool> readFloatingDictationEnabled() async =>
       (await _safeRead(_keyFloatingDictation, fallback: '1')) == '1';
+
+  Future<void> saveVoiceMode(String mode) => _safeWrite(_keyVoiceMode, mode);
+  Future<String> readVoiceMode() async {
+    final value = await _safeRead(_keyVoiceMode, fallback: 'google');
+    return value == 'echoscribe' ? 'echoscribe' : 'google';
+  }
+
+  Future<void> saveKeyboardLayout(String layout) =>
+      _safeWrite(_keyKeyboardLayout, layout);
+  Future<String> readKeyboardLayout() async {
+    final value = (await _safeRead(_keyKeyboardLayout)).trim().toLowerCase();
+    if (value == 'qwerty' || value == 'qwertz') return value;
+    return '';
+  }
+
+  Future<void> saveAutocorrectEnabled(bool enabled) =>
+      _safeWrite(_keyAutocorrectEnabled, enabled ? '1' : '0');
+  Future<bool> readAutocorrectEnabled() async =>
+      (await _safeRead(_keyAutocorrectEnabled, fallback: '1')) == '1';
+
+  Future<void> saveAutoCapitalizeEnabled(bool enabled) =>
+      _safeWrite(_keyAutoCapitalizeEnabled, enabled ? '1' : '0');
+  Future<bool> readAutoCapitalizeEnabled() async =>
+      (await _safeRead(_keyAutoCapitalizeEnabled, fallback: '1')) == '1';
+
+  Future<void> saveHapticFeedbackEnabled(bool enabled) =>
+      _safeWrite(_keyHapticFeedbackEnabled, enabled ? '1' : '0');
+  Future<bool> readHapticFeedbackEnabled() async =>
+      (await _safeRead(_keyHapticFeedbackEnabled, fallback: '1')) == '1';
+
+  Future<void> saveSoundFeedbackEnabled(bool enabled) =>
+      _safeWrite(_keySoundFeedbackEnabled, enabled ? '1' : '0');
+  Future<bool> readSoundFeedbackEnabled() async =>
+      (await _safeRead(_keySoundFeedbackEnabled, fallback: '1')) == '1';
+
+  Future<void> saveOpticalFeedbackEnabled(bool enabled) =>
+      _safeWrite(_keyOpticalFeedbackEnabled, enabled ? '1' : '0');
+  Future<bool> readOpticalFeedbackEnabled() async =>
+      (await _safeRead(_keyOpticalFeedbackEnabled, fallback: '1')) == '1';
+
+  Future<void> saveCustomTones(List<Map<String, String>> tones) =>
+      _safeWrite(_keyCustomTones, jsonEncode(tones));
+  Future<List<Map<String, String>>> readCustomTones() async {
+    final raw = await _safeRead(_keyCustomTones, fallback: '[]');
+    return _decodeStringMapList(raw);
+  }
+
+  Future<void> saveCustomGrammar(List<Map<String, String>> grammar) =>
+      _safeWrite(_keyCustomGrammar, jsonEncode(grammar));
+  Future<List<Map<String, String>>> readCustomGrammar() async {
+    final raw = await _safeRead(_keyCustomGrammar, fallback: '[]');
+    return _decodeStringMapList(raw);
+  }
+
+  Future<void> saveCustomAssistants(List<Map<String, String>> assistants) =>
+      _safeWrite(_keyCustomAssistants, jsonEncode(assistants));
+  Future<List<Map<String, String>>> readCustomAssistants() async {
+    final raw = await _safeRead(_keyCustomAssistants, fallback: '[]');
+    return _decodeStringMapList(raw);
+  }
+
+  List<Map<String, String>> _decodeStringMapList(String raw) {
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return const [];
+      return decoded
+          .whereType<Map>()
+          .map(
+            (item) => item.map(
+              (key, value) => MapEntry(key.toString(), value?.toString() ?? ''),
+            ),
+          )
+          .map((item) => Map<String, String>.from(item))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
 
   // xAI Key
   Future<void> saveXaiKey(String key) => _safeWrite(_keyXai, key);
