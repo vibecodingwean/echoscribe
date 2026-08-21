@@ -7,6 +7,7 @@ import "package:share_handler/share_handler.dart";
 
 import "package:echoscribe/services/service_locator.dart";
 import "package:echoscribe/services/debug_console.dart";
+import "package:echoscribe/services/keyboard_ime_service.dart";
 import "package:echoscribe/services/floating_dictation_service.dart";
 import "package:echoscribe/services/url_handler.dart";
 
@@ -90,6 +91,8 @@ class _HomePageState extends State<HomePage> {
         _isLoading = false;
       });
     }
+    unawaited(KeyboardImeService.syncSettings(_settings));
+    unawaited(FloatingDictationService.syncSettings(_settings));
   }
 
   Future<void> _initializeFromStorage() async {
@@ -119,6 +122,16 @@ class _HomePageState extends State<HomePage> {
       final appFetchUrl = await secure.readAppFetchUrl();
       final floatingDictationEnabled =
           await secure.readFloatingDictationEnabled();
+      final voiceMode = await secure.readVoiceMode();
+      final storedLayout = await secure.readKeyboardLayout();
+      final autocorrectEnabled = await secure.readAutocorrectEnabled();
+      final autoCapitalizeEnabled = await secure.readAutoCapitalizeEnabled();
+      final hapticFeedbackEnabled = await secure.readHapticFeedbackEnabled();
+      final soundFeedbackEnabled = await secure.readSoundFeedbackEnabled();
+      final opticalFeedbackEnabled = await secure.readOpticalFeedbackEnabled();
+      final customTones = await secure.readCustomTones();
+      final customGrammar = await secure.readCustomGrammar();
+      final customAssistants = await secure.readCustomAssistants();
       final lastIntent = await secure.readLastSharedIntentId();
 
       if (legacyElevenLabsRealtime) {
@@ -156,8 +169,35 @@ class _HomePageState extends State<HomePage> {
       _settings.setXaiPro(xaiPro);
       _settings.setAppFetchUrl(appFetchUrl);
       _settings.setFloatingDictationEnabled(floatingDictationEnabled);
+      _settings.setVoiceMode(voiceMode);
+      _settings.setKeyboardLayout(
+        KeyboardImeService.resolveLayout(
+          storedLayout,
+          languageCode:
+              WidgetsBinding.instance.platformDispatcher.locale.languageCode,
+        ),
+      );
+      _settings.setAutocorrectEnabled(autocorrectEnabled);
+      _settings.setAutoCapitalizeEnabled(autoCapitalizeEnabled);
+      _settings.setHapticFeedbackEnabled(hapticFeedbackEnabled);
+      _settings.setSoundFeedbackEnabled(soundFeedbackEnabled);
+      _settings.setOpticalFeedbackEnabled(opticalFeedbackEnabled);
+      final mergedTones = KeyboardImeService.mergeCustomTones(
+        tones: customTones,
+        grammar: customGrammar,
+        assistants: customAssistants,
+      );
+      _settings.setCustomTones(mergedTones);
+      _settings.setCustomGrammar(const []);
+      _settings.setCustomAssistants(const []);
+      if (customGrammar.isNotEmpty ||
+          customAssistants.isNotEmpty ||
+          mergedTones.length != customTones.length) {
+        unawaited(secure.saveCustomTones(mergedTones));
+        unawaited(secure.saveCustomGrammar(const []));
+        unawaited(secure.saveCustomAssistants(const []));
+      }
       _settings.setLastSharedIntentId(lastIntent);
-      await FloatingDictationService.syncSettings(_settings);
     } catch (_) {}
   }
 
@@ -287,6 +327,7 @@ class _HomePageState extends State<HomePage> {
                   final oldLang = _settings.targetLanguageCode;
                   _settings.setTargetLanguageCode(value);
                   await _sl.secureStorage.saveTargetLanguageCode(value);
+                  await KeyboardImeService.syncSettings(_settings);
                   await FloatingDictationService.syncSettings(_settings);
                   if (!context.mounted) return;
                   navigator.pop();

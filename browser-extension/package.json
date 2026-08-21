@@ -1,6 +1,6 @@
 {
   "name": "echoscribe-web-summary-extension",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "description": "EchoScribe standalone cross-browser webpage and PDF summarizer",
   "type": "module",

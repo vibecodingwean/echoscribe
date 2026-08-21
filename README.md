@@ -24,8 +24,14 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 - **Linux:** GNOME Shell integration for start/stop toggle dictation.
 - **Same BYOK/local model:** Desktop requests go directly from your computer to the selected AI provider or your own Local AI endpoints.
 
+### ⌨️ System Keyboard (IME) on Android
+- **Enable EchoScribe Keyboard:** Turn on the EchoScribe input method in Android system input settings, then select it as your keyboard.
+- **QWERTY or QWERTZ + AI Toolbar + Voice:** Switch QWERTY English and QWERTZ Deutsch, use the AI toolbar, and dictate with Google Voice or EchoScribe BYOK STT (OpenAI, Gemini, xAI, or Local AI).
+- **Safety Guards:** AI actions and the microphone are hidden in password, PIN, and payment fields.
+
 ### ✍️ Floating Dictation on Android
-- **System-Wide Voice Input:** Enable the Android accessibility service and overlay permission to use a movable EchoScribe dictation button in editable text fields.
+- **Optional hover button:** In **Settings → Keyboard**, enable Floating Dictation and grant overlay plus accessibility permission to show a movable dictation button in editable text fields.
+- **Use both:** The system keyboard and the floating button can be enabled together. Each is optional.
 - **Explicit Insert:** EchoScribe records only after you tap the floating button, shows a preview, and inserts text only after you tap Insert.
 - **Safety Guards:** The floating button hides in password, PIN, credit-card, phone-pad, banking, and payment fields.
 
@@ -38,7 +44,7 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 ### 🚀 Pro Mode & Models
 Access the world's most powerful AI models with a single toggle:
 - **Standard (Fast):** GPT-5.6 Terra, Gemini 3.7 Flash, Claude Sonnet 5, Grok 4.3, or local `qwen2.5:7b`.
-- **Pro Mode (Premium):** GPT-5.6 Sol, Gemini 3.1 Pro Preview, Claude Opus 5, Grok 4.5.
+- **Pro Mode (Premium):** GPT-5.6 Sol, Gemini 3.1 Pro Preview, Claude Opus 5, Grok 4.6.
 - **Speech Models:** OpenAI Pro file transcription uses GPT Transcribe; OpenAI Realtime uses GPT Live Transcribe; optional ElevenLabs Realtime uses Scribe v2 Realtime.
 
 ### 🌍 Intelligent Re-Translation
@@ -75,9 +81,9 @@ After installing:
 
 1. Open EchoScribe.
 2. Add at least one provider API key in settings.
-3. Optional: enable Floating Dictation by granting the Android accessibility service and overlay permission.
+3. Optional: open **Settings → Keyboard**, tap **Enable keyboard**, enable the EchoScribe keyboard in Android input settings, and switch to it when typing. Optionally enable Floating Dictation in the same tab to use the hover button.
 
-Floating Dictation only shows a dictation button in editable fields, records after an explicit tap, and inserts text only after confirmation. It hides in password, PIN, payment, banking, credit-card, and phone fields.
+The EchoScribe system keyboard provides QWERTZ typing, an AI toolbar, and voice input (Google Voice or EchoScribe BYOK STT). AI and microphone controls stay hidden in password, PIN, and payment fields. Floating Dictation shows a dictation button in editable fields, records after an explicit tap, and inserts text only after confirmation.
 
 
 ### Linux / GNOME

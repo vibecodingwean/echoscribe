@@ -1,4 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Echo Scribe</string>
+    <string name="ime_name">EchoScribe Keyboard</string>
+    <string name="ime_subtype_english">English (QWERTY)</string>
+    <string name="ime_subtype_german">German (QWERTZ)</string>
     <string name="floating_dictation_accessibility_description">Shows the Echo Scribe floating dictation button near editable text fields and inserts only the text you explicitly approve.</string>
 </resources>

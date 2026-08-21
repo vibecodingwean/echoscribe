@@ -1,4 +1,5 @@
 import 'package:echoscribe/services/secure_storage_service.dart';
+import 'package:echoscribe/services/keyboard_ime_service.dart';
 import 'package:echoscribe/services/floating_dictation_service.dart';
 import 'package:echoscribe/state/settings_state.dart';
 import 'package:echoscribe/models/enums.dart';
@@ -18,7 +19,7 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, TickerProviderStateMixin {
   final _openAiFormKey = GlobalKey<FormState>();
   final _geminiFormKey = GlobalKey<FormState>();
   final _anthropicFormKey = GlobalKey<FormState>();
@@ -33,9 +34,13 @@ class _SettingsPageState extends State<SettingsPage>
   late final TextEditingController _localAiLlmModelCtrl;
   late final TextEditingController _localAiWhisperUrlCtrl;
   late final TextEditingController _localAiWhisperModelCtrl;
-  final ScrollController _scrollController = ScrollController();
+  late final TextEditingController _toneNameCtrl;
+  late final TextEditingController _tonePromptCtrl;
+  final ScrollController _appScrollController = ScrollController();
+  final ScrollController _keyboardScrollController = ScrollController();
   final _xaiFormKey = GlobalKey<FormState>();
   final _storage = SecureStorageService();
+  late final TabController _tabController;
   bool _obscureOpenAi = true;
   bool _obscureGemini = true;
   bool _obscureAnthropic = true;
@@ -49,14 +54,19 @@ class _SettingsPageState extends State<SettingsPage>
   late bool _geminiPro;
   late bool _anthropicPro;
   late bool _xaiPro;
+  KeyboardImeStatus _keyboardStatus = KeyboardImeStatus.unavailable();
   FloatingDictationStatus _floatingStatus =
       FloatingDictationStatus.unavailable();
   Timer? _debounce;
+  Timer? _keyboardPersistDebounce;
+  Timer? _imeStatusPoll;
+  bool _snackShownOnExit = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _tabController = TabController(length: 2, vsync: this);
     _openAiCtrl = TextEditingController(text: widget.settings.openAiKey);
     _geminiCtrl = TextEditingController(text: widget.settings.geminiKey);
     _anthropicCtrl = TextEditingController(text: widget.settings.anthropicKey);
@@ -76,19 +86,30 @@ class _SettingsPageState extends State<SettingsPage>
     _localAiWhisperModelCtrl = TextEditingController(
       text: widget.settings.localAiWhisperModel,
     );
+    _toneNameCtrl = TextEditingController();
+    _tonePromptCtrl = TextEditingController();
     _debugMode = widget.settings.debugMode;
     _openAiPro = widget.settings.openAiPro;
     _openAiRealtime = widget.settings.openAiRealtime;
     _geminiPro = widget.settings.geminiPro;
     _anthropicPro = widget.settings.anthropicPro;
     _xaiPro = widget.settings.xaiPro;
-    _syncAndRefreshFloatingStatus();
+    _tabController.addListener(() {
+      if (_tabController.index == 1) {
+        _refreshImeStatusBurst();
+        _refreshFloatingStatusOnly();
+      }
+    });
+    unawaited(_refreshKeyboardStatusOnly());
+    unawaited(_refreshFloatingStatusOnly());
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _scrollController.dispose();
+    _tabController.dispose();
+    _appScrollController.dispose();
+    _keyboardScrollController.dispose();
     _openAiCtrl.dispose();
     _geminiCtrl.dispose();
     _anthropicCtrl.dispose();
@@ -98,14 +119,20 @@ class _SettingsPageState extends State<SettingsPage>
     _localAiLlmModelCtrl.dispose();
     _localAiWhisperUrlCtrl.dispose();
     _localAiWhisperModelCtrl.dispose();
+    _toneNameCtrl.dispose();
+    _tonePromptCtrl.dispose();
     _debounce?.cancel();
+    _keyboardPersistDebounce?.cancel();
+    _imeStatusPoll?.cancel();
+    unawaited(_persistKeyboardSettings());
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _syncAndRefreshFloatingStatus();
+      _refreshImeStatusBurst();
+      _refreshFloatingStatusOnly();
     }
   }
 
@@ -124,8 +151,23 @@ class _SettingsPageState extends State<SettingsPage>
     widget.settings.setDictationPrompt(defaultPrompt);
   }
 
+  Future<void> _syncAndRefreshKeyboardStatus() async {
+    await _syncNativeInput();
+  }
+
+  Future<void> _syncNativeInput() async {
+    await KeyboardImeService.syncSettings(widget.settings);
+    await FloatingDictationService.syncSettings(widget.settings);
+    await _refreshKeyboardStatusOnly();
+    await _refreshFloatingStatusOnly();
+  }
+
   Future<void> _syncAndRefreshFloatingStatus() async {
     await FloatingDictationService.syncSettings(widget.settings);
+    await _refreshFloatingStatusOnly();
+  }
+
+  Future<void> _refreshFloatingStatusOnly() async {
     final status = await FloatingDictationService.getStatus();
     if (mounted) {
       setState(() => _floatingStatus = status);
@@ -167,9 +209,63 @@ class _SettingsPageState extends State<SettingsPage>
         return;
       }
     }
-
     await FloatingDictationService.openAccessibilitySettings();
     await _syncAndRefreshFloatingStatus();
+  }
+
+  Future<void> _refreshKeyboardStatusOnly() async {
+    final status = await KeyboardImeService.getStatus();
+    if (!mounted) return;
+    final layout = status.keyboardLayout;
+    if (layout == 'qwerty' || layout == 'qwertz') {
+      if (widget.settings.keyboardLayout != layout) {
+        widget.settings.setKeyboardLayout(layout);
+      }
+    }
+    setState(() => _keyboardStatus = status);
+  }
+
+  void _refreshImeStatusBurst() {
+    _refreshKeyboardStatusOnly();
+    _imeStatusPoll?.cancel();
+    var ticks = 0;
+    _imeStatusPoll = Timer.periodic(const Duration(milliseconds: 700), (timer) {
+      _refreshKeyboardStatusOnly();
+      ticks += 1;
+      if (ticks >= 5) {
+        timer.cancel();
+      }
+    });
+  }
+
+  void _schedulePersistKeyboardSettings() {
+    _keyboardPersistDebounce?.cancel();
+    _keyboardPersistDebounce = Timer(const Duration(milliseconds: 250), () {
+      unawaited(_persistKeyboardSettings());
+    });
+  }
+
+  Future<void> _persistKeyboardSettings() async {
+    await Future.wait([
+      _storage.saveVoiceMode(widget.settings.voiceMode),
+      _storage.saveKeyboardLayout(widget.settings.keyboardLayout),
+      _storage.saveAutocorrectEnabled(widget.settings.autocorrectEnabled),
+      _storage.saveAutoCapitalizeEnabled(widget.settings.autoCapitalizeEnabled),
+      _storage.saveHapticFeedbackEnabled(widget.settings.hapticFeedbackEnabled),
+      _storage.saveSoundFeedbackEnabled(widget.settings.soundFeedbackEnabled),
+      _storage.saveOpticalFeedbackEnabled(widget.settings.opticalFeedbackEnabled),
+      _storage.saveCustomTones(widget.settings.customTones),
+      _storage.saveCustomGrammar(widget.settings.customGrammar),
+      _storage.saveCustomAssistants(widget.settings.customAssistants),
+    ]);
+    await KeyboardImeService.syncSettings(widget.settings);
+  }
+
+  Future<void> _flushSettingsOnExit() async {
+    _debounce?.cancel();
+    _keyboardPersistDebounce?.cancel();
+    await _persistKeyboardSettings();
+    await _autoSaveKeysIfValid();
   }
 
   Future<void> _openPromptDialog({
@@ -263,7 +359,8 @@ class _SettingsPageState extends State<SettingsPage>
     await _storage.saveLocalAiLlmModel(localLlmModel);
     await _storage.saveLocalAiWhisperUrl(localWhisperUrl);
     await _storage.saveLocalAiWhisperModel(localWhisperModel);
-    await _syncAndRefreshFloatingStatus();
+    await KeyboardImeService.syncSettings(widget.settings);
+    await FloatingDictationService.syncSettings(widget.settings);
   }
 
   Future<void> _testLocalAiLlm() async {
@@ -348,11 +445,418 @@ class _SettingsPageState extends State<SettingsPage>
       await _storage.saveLocalAiLlmModel(localLlmModel);
       await _storage.saveLocalAiWhisperUrl(localWhisperUrl);
       await _storage.saveLocalAiWhisperModel(localWhisperModel);
-      await _syncAndRefreshFloatingStatus();
+      await _syncAndRefreshKeyboardStatus();
     });
   }
 
-  bool _snackShownOnExit = false;
+  Future<void> _setVoiceMode(String mode) async {
+    widget.settings.setVoiceMode(mode);
+    if (mounted) setState(() {});
+    unawaited(KeyboardImeService.setVoiceMode(widget.settings.voiceMode));
+    _schedulePersistKeyboardSettings();
+  }
+
+  Future<void> _setKeyboardLayout(String layout) async {
+    widget.settings.setKeyboardLayout(layout);
+    if (mounted) setState(() {});
+    unawaited(
+      KeyboardImeService.setKeyboardLayout(widget.settings.keyboardLayout),
+    );
+    _schedulePersistKeyboardSettings();
+  }
+
+  Future<void> _addCustomTone() async {
+    final name = _toneNameCtrl.text.trim();
+    final prompt = _tonePromptCtrl.text.trim();
+    if (name.isEmpty || prompt.isEmpty) return;
+    final next = List<Map<String, String>>.from(
+      widget.settings.customTones.map(Map<String, String>.from),
+    )..add({'name': name, 'prompt': prompt});
+    widget.settings.setCustomTones(next);
+    _toneNameCtrl.clear();
+    _tonePromptCtrl.clear();
+    _schedulePersistKeyboardSettings();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _removeCustomTone(int index) async {
+    final next = List<Map<String, String>>.from(
+      widget.settings.customTones.map(Map<String, String>.from),
+    )..removeAt(index);
+    widget.settings.setCustomTones(next);
+    _schedulePersistKeyboardSettings();
+    if (mounted) setState(() {});
+  }
+
+  Widget _buildAppTab(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        controller: _appScrollController,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Choose Provider',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 6),
+            ProviderSelectorCard(
+              selectedProvider: widget.settings.provider,
+              onProviderSelected: (provider) async {
+                widget.settings.setProvider(provider);
+                await _storage.saveProvider(provider);
+                if (!provider.supportsTranslation) {
+                  widget.settings.setTargetLanguageCode('auto');
+                  await _storage.saveTargetLanguageCode('auto');
+                }
+                if (provider.mustExtractUrl) {
+                  widget.settings.setAppFetchUrl(true);
+                  await _storage.saveAppFetchUrl(true);
+                }
+                await _syncAndRefreshKeyboardStatus();
+                if (mounted) {
+                  setState(() {});
+                }
+              },
+            ),
+            if (widget.settings.provider == AiProviderType.openai)
+              _ApiKeyCard(
+                labelText: 'OpenAI API Key',
+                hintText: 'sk-...',
+                controller: _openAiCtrl,
+                obscure: _obscureOpenAi,
+                proValue: _openAiPro,
+                realtimeValue: _openAiRealtime,
+                onObscureToggle: () =>
+                    setState(() => _obscureOpenAi = !_obscureOpenAi),
+                onChanged: (_) => _scheduleAutoSaveImmediate(),
+                onProChanged: (val) async {
+                  setState(() => _openAiPro = val);
+                  widget.settings.setOpenAiPro(val);
+                  await _storage.saveOpenAiPro(val);
+                  await _syncAndRefreshKeyboardStatus();
+                },
+                onRealtimeChanged: (val) async {
+                  setState(() => _openAiRealtime = val);
+                  widget.settings.setOpenAiRealtime(val);
+                  await _storage.saveOpenAiRealtime(val);
+                },
+                onDelete: () async {
+                  await _storage.deleteOpenAiKey();
+                  widget.settings.setOpenAiKey('');
+                  _openAiCtrl.clear();
+                  await _syncAndRefreshKeyboardStatus();
+                },
+                formKey: _openAiFormKey,
+              ),
+            if (widget.settings.provider == AiProviderType.elevenLabs)
+              _ApiKeyCard(
+                labelText: 'ElevenLabs API Key (Live STT + TTS)',
+                hintText: 'xi-...',
+                controller: _elevenLabsCtrl,
+                obscure: _obscureElevenLabs,
+                onObscureToggle: () => setState(
+                  () => _obscureElevenLabs = !_obscureElevenLabs,
+                ),
+                onChanged: (_) => _scheduleAutoSaveImmediate(),
+                onDelete: () async {
+                  await _storage.deleteElevenLabsKey();
+                  widget.settings.setElevenLabsKey('');
+                  _elevenLabsCtrl.clear();
+                },
+                formKey: _elevenLabsFormKey,
+              ),
+            if (widget.settings.provider == AiProviderType.elevenLabs)
+              const Padding(
+                padding: EdgeInsets.fromLTRB(12, 8, 12, 0),
+                child: Text(
+                  'Live transcription and text-to-speech only. Summary, image generation, translation, shared audio, and Keyboard STT are unavailable.',
+                  style: TextStyle(fontSize: 12),
+                ),
+              ),
+            if (widget.settings.provider == AiProviderType.gemini)
+              _ApiKeyCard(
+                labelText: 'Gemini API Key',
+                hintText: 'AIza...',
+                controller: _geminiCtrl,
+                obscure: _obscureGemini,
+                proValue: _geminiPro,
+                onObscureToggle: () =>
+                    setState(() => _obscureGemini = !_obscureGemini),
+                onChanged: (_) => _scheduleAutoSaveImmediate(),
+                onProChanged: (val) async {
+                  setState(() => _geminiPro = val);
+                  widget.settings.setGeminiPro(val);
+                  await _storage.saveGeminiPro(val);
+                  await _syncAndRefreshKeyboardStatus();
+                },
+                onDelete: () async {
+                  await _storage.deleteGeminiKey();
+                  widget.settings.setGeminiKey('');
+                  _geminiCtrl.clear();
+                  await _syncAndRefreshKeyboardStatus();
+                },
+                formKey: _geminiFormKey,
+              ),
+            if (widget.settings.provider == AiProviderType.anthropic)
+              _ApiKeyCard(
+                labelText: 'Anthropic API Key',
+                hintText: 'sk-ant-...',
+                controller: _anthropicCtrl,
+                obscure: _obscureAnthropic,
+                proValue: _anthropicPro,
+                onObscureToggle: () =>
+                    setState(() => _obscureAnthropic = !_obscureAnthropic),
+                onChanged: (_) => _scheduleAutoSaveImmediate(),
+                onProChanged: (val) async {
+                  setState(() => _anthropicPro = val);
+                  widget.settings.setAnthropicPro(val);
+                  await _storage.saveAnthropicPro(val);
+                  await _syncAndRefreshKeyboardStatus();
+                },
+                onDelete: () async {
+                  await _storage.deleteAnthropicKey();
+                  widget.settings.setAnthropicKey('');
+                  _anthropicCtrl.clear();
+                  await _syncAndRefreshKeyboardStatus();
+                },
+                formKey: _anthropicFormKey,
+              ),
+            if (widget.settings.provider == AiProviderType.xai)
+              _ApiKeyCard(
+                labelText: 'xAI API Key',
+                hintText: 'xai-...',
+                controller: _xaiCtrl,
+                obscure: _obscureXai,
+                proValue: _xaiPro,
+                onObscureToggle: () =>
+                    setState(() => _obscureXai = !_obscureXai),
+                onChanged: (_) => _scheduleAutoSaveImmediate(),
+                onProChanged: (val) async {
+                  setState(() => _xaiPro = val);
+                  widget.settings.setXaiPro(val);
+                  await _storage.saveXaiPro(val);
+                  await _syncAndRefreshKeyboardStatus();
+                },
+                onDelete: () async {
+                  await _storage.deleteXaiKey();
+                  widget.settings.setXaiKey('');
+                  _xaiCtrl.clear();
+                  await _syncAndRefreshKeyboardStatus();
+                },
+                formKey: _xaiFormKey,
+              ),
+            if (widget.settings.provider == AiProviderType.localAi)
+              _LocalAiConfigCard(
+                formKey: _localAiFormKey,
+                llmUrlController: _localAiLlmUrlCtrl,
+                llmModelController: _localAiLlmModelCtrl,
+                whisperUrlController: _localAiWhisperUrlCtrl,
+                whisperModelController: _localAiWhisperModelCtrl,
+                testingLlm: _testingLocalAiLlm,
+                testingWhisper: _testingLocalAiWhisper,
+                onChanged: (_) => _scheduleAutoSaveImmediate(),
+                onTestLlm: _testingLocalAiLlm ? null : _testLocalAiLlm,
+                onTestWhisper:
+                    _testingLocalAiWhisper ? null : _testLocalAiWhisper,
+              ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                SizedBox(
+                  width: (MediaQuery.sizeOf(context).width - 48) / 2,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _openPromptDialog(
+                      labelText: 'Audio Prompt',
+                      initialText: widget.settings.summaryPrompt,
+                      onSave: (val) async {
+                        widget.settings.setSummaryPrompt(val);
+                        await _storage.saveSummaryPrompt(val);
+                      },
+                      onReset: () async {
+                        await _storage.deleteSummaryPrompt();
+                        _resetAudioPromptToDefault();
+                      },
+                    ),
+                    icon: const Icon(Icons.graphic_eq, size: 18),
+                    label: const Text(
+                      'Audio Prompt',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: (MediaQuery.sizeOf(context).width - 48) / 2,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _openPromptDialog(
+                      labelText: 'URL Prompt',
+                      initialText: widget.settings.urlSummaryPrompt,
+                      onSave: (val) async {
+                        widget.settings.setUrlSummaryPrompt(val);
+                        await _storage.saveUrlSummaryPrompt(val);
+                      },
+                      onReset: () async {
+                        await _storage.deleteUrlSummaryPrompt();
+                        _resetUrlPromptToDefault();
+                      },
+                    ),
+                    icon: const Icon(Icons.link, size: 18),
+                    label: const Text(
+                      'URL Prompt',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              margin: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  SwitchListTile.adaptive(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                    secondary: const Icon(
+                      Icons.cloud_download_outlined,
+                      size: 20,
+                    ),
+                    title: const Text(
+                      'App extracts URL content',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    subtitle: const Text(
+                      'App fetches content locally and sends text to AI',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    value: widget.settings.provider.mustExtractUrl
+                        ? true
+                        : widget.settings.appFetchUrl,
+                    onChanged: widget.settings.provider.mustExtractUrl
+                        ? null
+                        : (val) async {
+                            widget.settings.setAppFetchUrl(val);
+                            await _storage.saveAppFetchUrl(val);
+                            setState(() {});
+                          },
+                  ),
+                  const Divider(height: 1, indent: 12, endIndent: 12),
+                  SwitchListTile.adaptive(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                    secondary: const Icon(Icons.bug_report, size: 20),
+                    title: const Text(
+                      'Debug Mode',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    value: _debugMode,
+                    onChanged: (val) async {
+                      setState(() => _debugMode = val);
+                      widget.settings.setDebugMode(val);
+                      await _storage.saveDebugMode(val);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNamedPromptEditor({
+    required String title,
+    required String nameLabel,
+    required String valueLabel,
+    required TextEditingController nameController,
+    required TextEditingController valueController,
+    required List<Map<String, String>> items,
+    required String valueKey,
+    required Future<void> Function() onAdd,
+    required Future<void> Function(int index) onRemove,
+  }) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      margin: const EdgeInsets.only(top: 8),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            ...List.generate(items.length, (index) {
+              final item = items[index];
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                visualDensity: VisualDensity.compact,
+                title: Text(item['name'] ?? '', style: const TextStyle(fontSize: 13)),
+                subtitle: Text(
+                  item[valueKey] ?? '',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12),
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  onPressed: () => onRemove(index),
+                ),
+              );
+            }),
+            TextField(
+              controller: nameController,
+              style: const TextStyle(fontSize: 13),
+              decoration: InputDecoration(
+                isDense: true,
+                labelText: nameLabel,
+              ),
+            ),
+            TextField(
+              controller: valueController,
+              style: const TextStyle(fontSize: 13),
+              minLines: 2,
+              maxLines: 4,
+              decoration: InputDecoration(
+                isDense: true,
+                labelText: valueLabel,
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onAdd,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildFloatingDictationCard(BuildContext context) {
     final status = _floatingStatus;
@@ -366,7 +870,7 @@ class _SettingsPageState extends State<SettingsPage>
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      margin: const EdgeInsets.only(top: 8),
+      margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
         child: Column(
@@ -401,7 +905,7 @@ class _SettingsPageState extends State<SettingsPage>
               spacing: 8,
               runSpacing: 8,
               children: [
-                _FloatingStatusPill(
+                _StatusPill(
                   label: 'Microphone',
                   ok: status.microphoneGranted,
                   onPressed: FloatingDictationService.isAndroid
@@ -411,7 +915,7 @@ class _SettingsPageState extends State<SettingsPage>
                         }
                       : null,
                 ),
-                _FloatingStatusPill(
+                _StatusPill(
                   label: 'Overlay',
                   ok: status.overlayGranted,
                   onPressed: FloatingDictationService.isAndroid
@@ -421,7 +925,7 @@ class _SettingsPageState extends State<SettingsPage>
                         }
                       : null,
                 ),
-                _FloatingStatusPill(
+                _StatusPill(
                   label: 'Accessibility',
                   ok: status.accessibilityEnabled,
                   onPressed: FloatingDictationService.isAndroid
@@ -432,16 +936,11 @@ class _SettingsPageState extends State<SettingsPage>
                         }
                       : null,
                 ),
-                _FloatingStatusPill(
+                _StatusPill(
                   label: widget.settings.provider.brandName,
                   ok: status.configReady,
                   onPressed: FloatingDictationService.isAndroid
                       ? () async {
-                          await _scrollController.animateTo(
-                            0,
-                            duration: const Duration(milliseconds: 220),
-                            curve: Curves.easeOutCubic,
-                          );
                           if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -457,373 +956,6 @@ class _SettingsPageState extends State<SettingsPage>
               ],
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
-    return PopScope(
-      canPop: true,
-      onPopInvokedWithResult: (didPop, result) async {
-        await _autoSaveKeysIfValid();
-        if (!mounted) return;
-        if (didPop && !_snackShownOnExit) {
-          messenger.showSnackBar(
-            const SnackBar(
-              content: Text('Settings saved'),
-              duration: Duration(milliseconds: 1000),
-            ),
-          );
-        }
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('API Config'),
-          leading: BackButton(
-            onPressed: () async {
-              await _autoSaveKeysIfValid();
-              if (!mounted) return;
-              _snackShownOnExit = true;
-              messenger.showSnackBar(
-                const SnackBar(
-                  content: Text('Settings saved'),
-                  duration: Duration(milliseconds: 1000),
-                ),
-              );
-              navigator.pop();
-            },
-          ),
-        ),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            controller: _scrollController,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Choose Provider',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 6),
-                ProviderSelectorCard(
-                  selectedProvider: widget.settings.provider,
-                  onProviderSelected: (provider) async {
-                    widget.settings.setProvider(provider);
-                    await _storage.saveProvider(provider);
-                    if (!provider.supportsTranslation) {
-                      widget.settings.setTargetLanguageCode('auto');
-                      await _storage.saveTargetLanguageCode('auto');
-                    }
-                    if (provider.mustExtractUrl) {
-                      widget.settings.setAppFetchUrl(true);
-                      await _storage.saveAppFetchUrl(true);
-                    }
-                    await _syncAndRefreshFloatingStatus();
-                    if (mounted) {
-                      setState(() {});
-                    }
-                  },
-                ),
-                if (widget.settings.provider == AiProviderType.openai)
-                  _ApiKeyCard(
-                    labelText: 'OpenAI API Key',
-                    hintText: 'sk-...',
-                    controller: _openAiCtrl,
-                    obscure: _obscureOpenAi,
-                    proValue: _openAiPro,
-                    realtimeValue: _openAiRealtime,
-                    onObscureToggle: () =>
-                        setState(() => _obscureOpenAi = !_obscureOpenAi),
-                    onChanged: (_) => _scheduleAutoSaveImmediate(),
-                    onProChanged: (val) async {
-                      setState(() => _openAiPro = val);
-                      widget.settings.setOpenAiPro(val);
-                      await _storage.saveOpenAiPro(val);
-                      await _syncAndRefreshFloatingStatus();
-                    },
-                    onRealtimeChanged: (val) async {
-                      setState(() => _openAiRealtime = val);
-                      widget.settings.setOpenAiRealtime(val);
-                      await _storage.saveOpenAiRealtime(val);
-                    },
-                    onDelete: () async {
-                      await _storage.deleteOpenAiKey();
-                      widget.settings.setOpenAiKey('');
-                      _openAiCtrl.clear();
-                      await _syncAndRefreshFloatingStatus();
-                    },
-                    formKey: _openAiFormKey,
-                  ),
-                if (widget.settings.provider == AiProviderType.elevenLabs)
-                  _ApiKeyCard(
-                    labelText: 'ElevenLabs API Key (Live STT + TTS)',
-                    hintText: 'xi-...',
-                    controller: _elevenLabsCtrl,
-                    obscure: _obscureElevenLabs,
-                    onObscureToggle: () => setState(
-                      () => _obscureElevenLabs = !_obscureElevenLabs,
-                    ),
-                    onChanged: (_) => _scheduleAutoSaveImmediate(),
-                    onDelete: () async {
-                      await _storage.deleteElevenLabsKey();
-                      widget.settings.setElevenLabsKey('');
-                      _elevenLabsCtrl.clear();
-                    },
-                    formKey: _elevenLabsFormKey,
-                  ),
-                if (widget.settings.provider == AiProviderType.elevenLabs)
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(12, 8, 12, 0),
-                    child: Text(
-                      'Live transcription and text-to-speech only. Summary, image generation, translation, shared audio, and Floating Dictation are unavailable.',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ),
-                if (widget.settings.provider == AiProviderType.gemini)
-                  _ApiKeyCard(
-                    labelText: 'Gemini API Key',
-                    hintText: 'AIza...',
-                    controller: _geminiCtrl,
-                    obscure: _obscureGemini,
-                    proValue: _geminiPro,
-                    onObscureToggle: () =>
-                        setState(() => _obscureGemini = !_obscureGemini),
-                    onChanged: (_) => _scheduleAutoSaveImmediate(),
-                    onProChanged: (val) async {
-                      setState(() => _geminiPro = val);
-                      widget.settings.setGeminiPro(val);
-                      await _storage.saveGeminiPro(val);
-                      await _syncAndRefreshFloatingStatus();
-                    },
-                    onDelete: () async {
-                      await _storage.deleteGeminiKey();
-                      widget.settings.setGeminiKey('');
-                      _geminiCtrl.clear();
-                      await _syncAndRefreshFloatingStatus();
-                    },
-                    formKey: _geminiFormKey,
-                  ),
-                if (widget.settings.provider == AiProviderType.anthropic)
-                  _ApiKeyCard(
-                    labelText: 'Anthropic API Key',
-                    hintText: 'sk-ant-...',
-                    controller: _anthropicCtrl,
-                    obscure: _obscureAnthropic,
-                    proValue: _anthropicPro,
-                    onObscureToggle: () =>
-                        setState(() => _obscureAnthropic = !_obscureAnthropic),
-                    onChanged: (_) => _scheduleAutoSaveImmediate(),
-                    onProChanged: (val) async {
-                      setState(() => _anthropicPro = val);
-                      widget.settings.setAnthropicPro(val);
-                      await _storage.saveAnthropicPro(val);
-                      await _syncAndRefreshFloatingStatus();
-                    },
-                    onDelete: () async {
-                      await _storage.deleteAnthropicKey();
-                      widget.settings.setAnthropicKey('');
-                      _anthropicCtrl.clear();
-                      await _syncAndRefreshFloatingStatus();
-                    },
-                    formKey: _anthropicFormKey,
-                  ),
-                if (widget.settings.provider == AiProviderType.xai)
-                  _ApiKeyCard(
-                    labelText: 'xAI API Key',
-                    hintText: 'xai-...',
-                    controller: _xaiCtrl,
-                    obscure: _obscureXai,
-                    proValue: _xaiPro,
-                    onObscureToggle: () =>
-                        setState(() => _obscureXai = !_obscureXai),
-                    onChanged: (_) => _scheduleAutoSaveImmediate(),
-                    onProChanged: (val) async {
-                      setState(() => _xaiPro = val);
-                      widget.settings.setXaiPro(val);
-                      await _storage.saveXaiPro(val);
-                      await _syncAndRefreshFloatingStatus();
-                    },
-                    onDelete: () async {
-                      await _storage.deleteXaiKey();
-                      widget.settings.setXaiKey('');
-                      _xaiCtrl.clear();
-                      await _syncAndRefreshFloatingStatus();
-                    },
-                    formKey: _xaiFormKey,
-                  ),
-                if (widget.settings.provider == AiProviderType.localAi)
-                  _LocalAiConfigCard(
-                    formKey: _localAiFormKey,
-                    llmUrlController: _localAiLlmUrlCtrl,
-                    llmModelController: _localAiLlmModelCtrl,
-                    whisperUrlController: _localAiWhisperUrlCtrl,
-                    whisperModelController: _localAiWhisperModelCtrl,
-                    testingLlm: _testingLocalAiLlm,
-                    testingWhisper: _testingLocalAiWhisper,
-                    onChanged: (_) => _scheduleAutoSaveImmediate(),
-                    onTestLlm: _testingLocalAiLlm ? null : _testLocalAiLlm,
-                    onTestWhisper:
-                        _testingLocalAiWhisper ? null : _testLocalAiWhisper,
-                  ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    SizedBox(
-                      width: (MediaQuery.sizeOf(context).width - 48) / 2,
-                      child: OutlinedButton.icon(
-                        onPressed: () => _openPromptDialog(
-                          labelText: 'Audio Prompt',
-                          initialText: widget.settings.summaryPrompt,
-                          onSave: (val) async {
-                            widget.settings.setSummaryPrompt(val);
-                            await _storage.saveSummaryPrompt(val);
-                          },
-                          onReset: () async {
-                            await _storage.deleteSummaryPrompt();
-                            _resetAudioPromptToDefault();
-                          },
-                        ),
-                        icon: const Icon(Icons.graphic_eq, size: 18),
-                        label: const Text(
-                          'Audio Prompt',
-                          style: TextStyle(fontSize: 13),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: (MediaQuery.sizeOf(context).width - 48) / 2,
-                      child: OutlinedButton.icon(
-                        onPressed: () => _openPromptDialog(
-                          labelText: 'URL Prompt',
-                          initialText: widget.settings.urlSummaryPrompt,
-                          onSave: (val) async {
-                            widget.settings.setUrlSummaryPrompt(val);
-                            await _storage.saveUrlSummaryPrompt(val);
-                          },
-                          onReset: () async {
-                            await _storage.deleteUrlSummaryPrompt();
-                            _resetUrlPromptToDefault();
-                          },
-                        ),
-                        icon: const Icon(Icons.link, size: 18),
-                        label: const Text(
-                          'URL Prompt',
-                          style: TextStyle(fontSize: 13),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: MediaQuery.sizeOf(context).width - 32,
-                      child: OutlinedButton.icon(
-                        onPressed: () => _openPromptDialog(
-                          labelText: 'Floating Dictation Prompt',
-                          initialText: widget.settings.dictationPrompt,
-                          onSave: (val) async {
-                            widget.settings.setDictationPrompt(val);
-                            await _storage.saveDictationPrompt(val);
-                            await _syncAndRefreshFloatingStatus();
-                          },
-                          onReset: () async {
-                            await _storage.deleteDictationPrompt();
-                            _resetDictationPromptToDefault();
-                            await _syncAndRefreshFloatingStatus();
-                          },
-                        ),
-                        icon: const Icon(Icons.keyboard_voice, size: 18),
-                        label: const Text(
-                          'Dictation Prompt',
-                          style: TextStyle(fontSize: 13),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                _buildFloatingDictationCard(context),
-                const SizedBox(height: 8),
-                Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  margin: EdgeInsets.zero,
-                  child: Column(
-                    children: [
-                      SwitchListTile.adaptive(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                        ),
-                        visualDensity: VisualDensity.compact,
-                        secondary: const Icon(
-                          Icons.cloud_download_outlined,
-                          size: 20,
-                        ),
-                        title: const Text(
-                          'App extracts URL content',
-                          style: TextStyle(fontSize: 14),
-                        ),
-                        subtitle: const Text(
-                          'App fetches content locally and sends text to AI',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        value: widget.settings.provider.mustExtractUrl
-                            ? true
-                            : widget.settings.appFetchUrl,
-                        onChanged: widget.settings.provider.mustExtractUrl
-                            ? null
-                            : (val) async {
-                                widget.settings.setAppFetchUrl(val);
-                                await _storage.saveAppFetchUrl(val);
-                                setState(() {});
-                              },
-                      ),
-                      const Divider(height: 1, indent: 12, endIndent: 12),
-                      SwitchListTile.adaptive(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                        ),
-                        visualDensity: VisualDensity.compact,
-                        secondary: const Icon(Icons.bug_report, size: 20),
-                        title: const Text(
-                          'Debug Mode',
-                          style: TextStyle(fontSize: 14),
-                        ),
-                        value: _debugMode,
-                        onChanged: (val) async {
-                          setState(() => _debugMode = val);
-                          widget.settings.setDebugMode(val);
-                          await _storage.saveDebugMode(val);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );
@@ -845,14 +977,461 @@ class _SettingsPageState extends State<SettingsPage>
     }
     return 'Add the ${widget.settings.provider.brandName} API key above';
   }
+
+  Widget _buildKeyboardTab(BuildContext context) {
+    final status = _keyboardStatus;
+    final providerReady = status.configReady &&
+        widget.settings.provider.supportsKeyboardDictation;
+    final voiceMode = widget.settings.voiceMode;
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        controller: _keyboardScrollController,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              margin: EdgeInsets.zero,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Keyboard status',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _StatusPill(
+                          label: 'Microphone',
+                          ok: status.microphoneGranted,
+                          onPressed: KeyboardImeService.isAndroid
+                              ? () async {
+                                  await Permission.microphone.request();
+                                  await _syncAndRefreshKeyboardStatus();
+                                }
+                              : null,
+                        ),
+                        _StatusPill(
+                          label: 'Keyboard on',
+                          ok: status.imeEnabled,
+                          onPressed: KeyboardImeService.isAndroid
+                              ? () async {
+                                  await KeyboardImeService
+                                      .openInputMethodSettings();
+                                  _refreshImeStatusBurst();
+                                }
+                              : null,
+                        ),
+                        _StatusPill(
+                          label: 'Provider ready',
+                          ok: providerReady,
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  _keyboardStatusMessage(status),
+                                ),
+                                duration: const Duration(milliseconds: 1400),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: KeyboardImeService.isAndroid
+                            ? () async {
+                                await KeyboardImeService
+                                    .openInputMethodSettings();
+                                _refreshImeStatusBurst();
+                              }
+                            : null,
+                        icon: const Icon(Icons.keyboard_alt_outlined),
+                        label: const Text('Enable keyboard'),
+                      ),
+                    ),
+                    if (!KeyboardImeService.isAndroid)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          'Available on Android.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              margin: EdgeInsets.zero,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Keyboard layout',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: SegmentedButton<String>(
+                        showSelectedIcon: false,
+                        segments: const [
+                          ButtonSegment<String>(
+                            value: 'qwerty',
+                            label: Text('QWERTY English'),
+                          ),
+                          ButtonSegment<String>(
+                            value: 'qwertz',
+                            label: Text('QWERTZ Deutsch'),
+                          ),
+                        ],
+                        selected: {widget.settings.keyboardLayout},
+                        onSelectionChanged: (selected) {
+                          if (selected.isNotEmpty) {
+                            _setKeyboardLayout(selected.first);
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      widget.settings.keyboardLayout == 'qwertz'
+                          ? 'Spacebar shows Deutsch. Globe key switches to QWERTY English.'
+                          : 'Spacebar shows English. Globe key switches to QWERTZ Deutsch.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              margin: EdgeInsets.zero,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Test keyboard',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        hintText: 'Type here to test…',
+                        border: OutlineInputBorder(),
+                      ),
+                      minLines: 2,
+                      maxLines: 4,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildFloatingDictationCard(context),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _openPromptDialog(
+                  labelText: 'Floating Dictation Prompt',
+                  initialText: widget.settings.dictationPrompt,
+                  onSave: (val) async {
+                    widget.settings.setDictationPrompt(val);
+                    await _storage.saveDictationPrompt(val);
+                    await _syncNativeInput();
+                  },
+                  onReset: () async {
+                    await _storage.deleteDictationPrompt();
+                    _resetDictationPromptToDefault();
+                    await _syncNativeInput();
+                  },
+                ),
+                icon: const Icon(Icons.keyboard_voice, size: 18),
+                label: const Text(
+                  'Dictation Prompt',
+                  style: TextStyle(fontSize: 13),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              margin: EdgeInsets.zero,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Voice Mode',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: SegmentedButton<String>(
+                        segments: const [
+                          ButtonSegment<String>(
+                            value: 'google',
+                            label: Text('Google Voice'),
+                            icon: Icon(Icons.mic_none, size: 18),
+                          ),
+                          ButtonSegment<String>(
+                            value: 'echoscribe',
+                            label: Text('EchoScribe STT'),
+                            icon: Icon(Icons.record_voice_over, size: 18),
+                          ),
+                        ],
+                        selected: {voiceMode},
+                        onSelectionChanged: (selected) {
+                          if (selected.isNotEmpty) {
+                            _setVoiceMode(selected.first);
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      voiceMode == 'echoscribe'
+                          ? (widget.settings.provider.supportsKeyboardDictation
+                              ? 'Uses ${widget.settings.provider.brandName}'
+                              : '${widget.settings.provider.brandName} unsupported')
+                          : 'Uses the system Google Voice input',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              margin: const EdgeInsets.only(top: 8),
+              child: SwitchListTile.adaptive(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                visualDensity: VisualDensity.compact,
+                secondary: const Icon(Icons.text_fields, size: 20),
+                title: const Text(
+                  'Auto-capitalize',
+                  style: TextStyle(fontSize: 14),
+                ),
+                subtitle: const Text(
+                  'At the start of a sentence and when the field is empty',
+                  style: TextStyle(fontSize: 12),
+                ),
+                value: widget.settings.autoCapitalizeEnabled,
+                onChanged: (val) {
+                  widget.settings.setAutoCapitalizeEnabled(val);
+                  setState(() {});
+                  _schedulePersistKeyboardSettings();
+                },
+              ),
+            ),
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              margin: const EdgeInsets.only(top: 8),
+              child: SwitchListTile.adaptive(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                visualDensity: VisualDensity.compact,
+                secondary: const Icon(Icons.vibration, size: 20),
+                title: const Text(
+                  'Haptic feedback',
+                  style: TextStyle(fontSize: 14),
+                ),
+                value: widget.settings.hapticFeedbackEnabled,
+                onChanged: (val) {
+                  widget.settings.setHapticFeedbackEnabled(val);
+                  setState(() {});
+                  _schedulePersistKeyboardSettings();
+                },
+              ),
+            ),
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              margin: const EdgeInsets.only(top: 8),
+              child: SwitchListTile.adaptive(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                visualDensity: VisualDensity.compact,
+                secondary: const Icon(Icons.volume_up, size: 20),
+                title: const Text(
+                  'Sound feedback',
+                  style: TextStyle(fontSize: 14),
+                ),
+                value: widget.settings.soundFeedbackEnabled,
+                onChanged: (val) {
+                  widget.settings.setSoundFeedbackEnabled(val);
+                  setState(() {});
+                  _schedulePersistKeyboardSettings();
+                },
+              ),
+            ),
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              margin: const EdgeInsets.only(top: 8),
+              child: SwitchListTile.adaptive(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                visualDensity: VisualDensity.compact,
+                secondary: const Icon(Icons.highlight, size: 20),
+                title: const Text(
+                  'Visual feedback',
+                  style: TextStyle(fontSize: 14),
+                ),
+                subtitle: const Text(
+                  'Keys highlight when pressed',
+                  style: TextStyle(fontSize: 12),
+                ),
+                value: widget.settings.opticalFeedbackEnabled,
+                onChanged: (val) {
+                  widget.settings.setOpticalFeedbackEnabled(val);
+                  setState(() {});
+                  _schedulePersistKeyboardSettings();
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Customize AI',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            _buildNamedPromptEditor(
+              title: 'Custom tone',
+              nameLabel: 'Name',
+              valueLabel: 'Prompt',
+              nameController: _toneNameCtrl,
+              valueController: _tonePromptCtrl,
+              items: widget.settings.customTones,
+              valueKey: 'prompt',
+              onAdd: _addCustomTone,
+              onRemove: _removeCustomTone,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Clipboard history is local on the IME (last ~20 entries) and is not sent over the network.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _keyboardStatusMessage(KeyboardImeStatus status) {
+    if (!KeyboardImeService.isAndroid) {
+      return 'Keyboard IME is Android only in v1';
+    }
+    if (!widget.settings.provider.supportsKeyboardDictation) {
+      return '${widget.settings.provider.brandName} does not support Keyboard STT.';
+    }
+    if (status.configReady) return 'Provider settings are ready';
+    if (widget.settings.provider == AiProviderType.localAi) {
+      return 'Configure reachable Local AI LLM and Whisper endpoints first';
+    }
+    return 'Add the ${widget.settings.provider.brandName} API key above';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) return;
+        unawaited(_flushSettingsOnExit());
+        if (!_snackShownOnExit) {
+          messenger.showSnackBar(
+            const SnackBar(
+              content: Text('Settings saved'),
+              duration: Duration(milliseconds: 1000),
+            ),
+          );
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Settings'),
+          leading: BackButton(
+            onPressed: () {
+              _snackShownOnExit = true;
+              messenger.showSnackBar(
+                const SnackBar(
+                  content: Text('Settings saved'),
+                  duration: Duration(milliseconds: 1000),
+                ),
+              );
+              navigator.pop();
+              unawaited(_flushSettingsOnExit());
+            },
+          ),
+          bottom: TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(text: 'App'),
+              Tab(text: 'Keyboard'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildAppTab(context),
+            _buildKeyboardTab(context),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _FloatingStatusPill extends StatelessWidget {
+class _StatusPill extends StatelessWidget {
   final String label;
   final bool ok;
   final VoidCallback? onPressed;
 
-  const _FloatingStatusPill({
+  const _StatusPill({
     required this.label,
     required this.ok,
     required this.onPressed,

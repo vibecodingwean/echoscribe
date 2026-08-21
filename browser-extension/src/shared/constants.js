@@ -13,7 +13,7 @@ export const PROVIDERS = Object.freeze({
   },
   xai: {
     label: 'xAI', defaultModel: 'grok-4.3',
-    models: [{ id: 'grok-4.3', tier: 'Fast' }, { id: 'grok-4.5', tier: 'Pro' }]
+    models: [{ id: 'grok-4.3', tier: 'Fast' }, { id: 'grok-4.6', tier: 'Pro' }]
   }
 });
 

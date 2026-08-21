@@ -124,7 +124,7 @@ class FloatingDictationAccessibilityService : AccessibilityService() {
 
     private fun handleConfigChanged() {
         val config = NativeDictationConfigStore(this).load()
-        if (config?.enabled == false) {
+        if (config?.floatingEnabled == false) {
             stopRecordingSilently()
             previewText = ""
             messageText = ""
@@ -164,7 +164,7 @@ class FloatingDictationAccessibilityService : AccessibilityService() {
             return
         }
         val config = NativeDictationConfigStore(this).load()
-        if (config?.enabled == false) {
+        if (config?.floatingEnabled == false) {
             removeOverlay()
             return
         }
@@ -615,11 +615,11 @@ class FloatingDictationAccessibilityService : AccessibilityService() {
 
     private fun startRecording() {
         val config = NativeDictationConfigStore(this).load()
-        if (config?.enabled == false) {
+        if (config?.floatingEnabled == false) {
             removeOverlay()
             return
         }
-        if (config == null || !config.isReadyForDictation()) {
+        if (config == null || !config.isReadyForFloatingDictation()) {
             showMessage(if (config?.provider == "anthropic") "Speech input not supported for Claude" else "Open Echo Scribe settings")
             return
         }
@@ -691,7 +691,7 @@ class FloatingDictationAccessibilityService : AccessibilityService() {
             return
         }
         val config = NativeDictationConfigStore(this).load()
-        if (config == null || !config.isReadyForDictation()) {
+        if (config == null || !config.isReadyForFloatingDictation()) {
             showMessage("Open Echo Scribe settings")
             return
         }

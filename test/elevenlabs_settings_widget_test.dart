@@ -2,9 +2,53 @@ import 'package:echoscribe/models/enums.dart';
 import 'package:echoscribe/pages/settings_page.dart';
 import 'package:echoscribe/state/settings_state.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  const keyboardChannel = MethodChannel('com.echoscribe.app/keyboard_ime');
+  const floatingChannel = MethodChannel('com.echoscribe.app/floating_dictation');
+
+  setUp(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(keyboardChannel, (call) async {
+      if (call.method == 'getStatus') {
+        return <String, dynamic>{
+          'isAndroid': false,
+          'microphoneGranted': false,
+          'imeEnabled': false,
+          'voiceMode': 'google',
+          'keyboardLayout': 'qwertz',
+          'configReady': false,
+          'provider': '',
+        };
+      }
+      return null;
+    });
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(floatingChannel, (call) async {
+      if (call.method == 'getStatus') {
+        return <String, dynamic>{
+          'isAndroid': false,
+          'microphoneGranted': false,
+          'overlayGranted': false,
+          'accessibilityEnabled': false,
+          'configReady': false,
+          'enabled': true,
+          'provider': '',
+        };
+      }
+      return null;
+    });
+  });
+
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(keyboardChannel, null);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(floatingChannel, null);
+  });
+
   testWidgets('provider selector exposes ElevenLabs as a first-class option',
       (tester) async {
     await tester.pumpWidget(
@@ -50,5 +94,35 @@ void main() {
       find.textContaining('Live transcription and text-to-speech only.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('keyboard tab uses English labels', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(home: SettingsPage(settings: SettingsState())),
+    );
+    await tester.pump();
+
+    expect(find.text('Keyboard'), findsOneWidget);
+    expect(find.text('Tastatur'), findsNothing);
+
+    await tester.tap(find.widgetWithText(Tab, 'Keyboard'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Enable keyboard'), findsOneWidget);
+    expect(find.text('QWERTY English'), findsOneWidget);
+    expect(find.text('QWERTZ Deutsch'), findsOneWidget);
+    expect(find.text('Auto-capitalize'), findsOneWidget);
+    expect(find.text('Haptic feedback'), findsOneWidget);
+    expect(find.text('Custom tone'), findsOneWidget);
+    expect(find.text('Personal dictionary'), findsNothing);
+    expect(find.text('Custom grammar'), findsNothing);
+    expect(find.text('Custom assistant'), findsNothing);
+    expect(find.text('Custom assistants'), findsNothing);
+    expect(find.text('Tastatur aktivieren'), findsNothing);
+    expect(find.text('Automatisch großschreiben'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 4));
   });
 }
