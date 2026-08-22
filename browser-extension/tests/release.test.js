@@ -57,7 +57,7 @@ describe('release source contract', () => {
     const packageScript = readFileSync(path('scripts/package.py'), 'utf8');
     expect(packageScript).toContain('ROOT / "TRADEMARKS.md"');
     expect(packageScript).toContain('manifest.pop("key", None)');
-    expect(packageScript).toMatch(/target != "chrome"/);
+    expect(packageScript).toContain('if source.name != "manifest.json":');
     const validationScript = readFileSync(path('scripts/validate.py'), 'utf8');
     expect(validationScript).toContain('ROOT / "TRADEMARKS.md"');
     expect(validationScript).toContain('store ZIP must omit key');
