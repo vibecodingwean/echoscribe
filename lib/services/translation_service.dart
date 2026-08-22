@@ -3,66 +3,11 @@ import 'package:http/http.dart' as http;
 import 'package:echoscribe/services/debug_console.dart';
 import 'package:echoscribe/config/prompts.dart';
 import 'package:echoscribe/services/anthropic_service.dart';
-import 'package:echoscribe/models/enums.dart';
 import 'package:echoscribe/models/app_exception.dart';
 import 'package:echoscribe/services/local_ai_response_parser.dart';
 import 'package:echoscribe/services/local_ai_health_service.dart';
 
 class TranslationService {
-  // Master translate method that routes to the correct provider
-  Future<String> translate({
-    required AiProviderType provider,
-    required String apiKey,
-    required String text,
-    required String targetLanguageCode,
-    required bool pro,
-  }) async {
-    switch (provider) {
-      case AiProviderType.gemini:
-        return await translateGemini(
-          apiKey: apiKey,
-          text: text,
-          targetLanguageCode: targetLanguageCode,
-          model: AiModelConfig.geminiTranslation(pro: pro),
-        );
-      case AiProviderType.anthropic:
-        return await translateAnthropic(
-          apiKey: apiKey,
-          text: text,
-          targetLanguageCode: targetLanguageCode,
-          model: AiModelConfig.anthropicTranslation(pro: pro),
-        );
-      case AiProviderType.xai:
-        return await translateXai(
-          apiKey: apiKey,
-          text: text,
-          targetLanguageCode: targetLanguageCode,
-          model: AiModelConfig.xaiTranslation(pro: pro),
-          reasoningEffort: AiModelConfig.xaiReasoningEffort(pro: pro),
-        );
-      case AiProviderType.localAi:
-        return await translateOllama(
-          endpoint: AiModelConfig.localAiLlmUrl,
-          text: text,
-          targetLanguageCode: targetLanguageCode,
-          model: AiModelConfig.localAiLlmModel,
-        );
-      case AiProviderType.elevenLabs:
-        throw const AppException(
-          'ElevenLabs Realtime transcribes speech but does not translate it.',
-        );
-      case AiProviderType.openai:
-        return await translateOpenAI(
-          apiKey: apiKey,
-          text: text,
-          targetLanguageCode: targetLanguageCode,
-          model: AiModelConfig.openAiTranslation(pro: pro),
-          reasoningEffort: AiModelConfig.openAiReasoningEffort(pro: pro),
-        );
-    }
-  }
-
-  // Uses OpenAI Chat Completions to translate text to a target language.
   Future<String> translateOpenAI({
     required String apiKey,
     required String text,

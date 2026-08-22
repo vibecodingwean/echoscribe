@@ -91,53 +91,6 @@ class GeminiService {
     throw AppException.fromHttp(res.statusCode, apiMessage: apiMessage, fallback: 'Gemini transcription failed');
   }
 
-  // Simple text translation using Gemini when OpenAI is not selected.
-  Future<String> translateText({
-    required String apiKey,
-    required String text,
-    required String targetLanguageCode,
-    String model = AiModelConfig.geminiTranslationFast,
-  }) async {
-    if (text.trim().isEmpty) return text;
-    final uri = Uri.parse('$_modelsEndpoint/$model:generateContent?key=$apiKey');
-    final prompt = 'Translate the following text to $targetLanguageCode. Return only the translated text.\n\n$text';
-    final headers = {'Content-Type': 'application/json'};
-    final body = json.encode({
-      'contents': [
-        {
-          'role': 'user',
-          'parts': [
-            {'text': prompt}
-          ]
-        }
-      ]
-    });
-    final sw = Stopwatch()..start();
-    DebugConsole.logApiStart(method: 'POST', url: uri, requestBytes: utf8.encode(body).length, note: 'Gemini translate');
-    DebugConsole.logApiRequest(method: 'POST', url: uri, headers: headers, body: body);
-    final res = await http.post(uri, headers: headers, body: body);
-    sw.stop();
-    DebugConsole.logApiEnd(status: res.statusCode, elapsedMs: sw.elapsedMilliseconds, responseBytes: res.bodyBytes.length);
-    DebugConsole.logApiResponse(status: res.statusCode, headers: res.headers, body: res.body, title: 'API response (Gemini translate)');
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      final data = json.decode(res.body) as Map<String, dynamic>;
-      final candidates = data['candidates'] as List<dynamic>?;
-      final parts = (candidates != null && candidates.isNotEmpty)
-          ? (candidates.first['content']?['parts'] as List<dynamic>?)
-          : const [];
-      final out = (parts != null && parts.isNotEmpty) ? (parts.first['text'] ?? '').toString() : '';
-      if (out.trim().isEmpty) throw const EmptyResultException('Empty translation result');
-      return out.trim();
-    }
-    String? apiMessage;
-    try {
-      final err = json.decode(res.body) as Map<String, dynamic>;
-      final msg = err['error']?['message'];
-      if (msg is String && msg.isNotEmpty) apiMessage = msg;
-    } catch (_) {}
-    throw AppException.fromHttp(res.statusCode, apiMessage: apiMessage, fallback: 'Gemini translation failed');
-  }
-
   Future<Map<String, dynamic>> _uploadFileRaw({
     required String apiKey,
     required String fileName,
