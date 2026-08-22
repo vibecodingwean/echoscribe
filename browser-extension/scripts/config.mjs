@@ -5,8 +5,8 @@ export const CHROMIUM_EXTENSION_KEY = 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCA
 
 const icons = Object.fromEntries([16, 32, 48, 96, 128].map((size) => [String(size), `icons/icon-${size}.png`]));
 
-export function makeManifest(browser) {
-  const manifest = {
+export function makeManifest() {
+  return {
     manifest_version: 3,
     name: 'EchoScribe Web Summary',
     version: packageVersion,
@@ -25,20 +25,8 @@ export function makeManifest(browser) {
     },
     icons,
     options_ui: { page: 'options.html', open_in_tab: true },
-    content_security_policy: { extension_pages: "script-src 'self'; object-src 'none'; base-uri 'none'; worker-src 'self'" }
+    content_security_policy: { extension_pages: "script-src 'self'; object-src 'none'; base-uri 'none'; worker-src 'self'" },
+    key: CHROMIUM_EXTENSION_KEY,
+    background: { service_worker: 'background.js' }
   };
-  if (browser === 'firefox') {
-    manifest.background = { scripts: ['background.js'] };
-    manifest.browser_specific_settings = {
-      gecko: {
-        id: 'echoscribe@wean.de',
-        strict_min_version: '142.0',
-        data_collection_permissions: { required: ['authenticationInfo', 'websiteContent'] }
-      }
-    };
-  } else {
-    manifest.key = CHROMIUM_EXTENSION_KEY;
-    manifest.background = { service_worker: 'background.js' };
-  }
-  return manifest;
 }

@@ -143,7 +143,7 @@ class SettingsState extends ChangeNotifier {
   bool get openAiRealtime => _openAiRealtime;
   bool get elevenLabsRealtime =>
       _provider == AiProviderType.elevenLabs &&
-      providerSupportsRealtimeOnPlatform(_provider, isWeb: false);
+      _provider.supportsRealtimeTranscription;
   bool get realtimeEnabled =>
       (_provider == AiProviderType.openai && _openAiRealtime) ||
       elevenLabsRealtime;

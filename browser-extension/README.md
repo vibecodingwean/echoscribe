@@ -10,7 +10,7 @@ EchoScribe Web Summary is a standalone browser extension that summarizes the act
 - Editable summary prompt with one-click reset
 - Summary language selection
 - Popup and context-menu workflows
-- Chrome builds from one source tree
+- Chrome build (load unpacked from `dist/chrome`, or the Chrome Web Store ZIP)
 - No backend, analytics, telemetry, native host, remote executable code, or local-LLM connection
 
 ## Important privacy boundary
@@ -30,8 +30,6 @@ To support authenticated web PDFs, the browser may re-fetch the active HTTP(S) P
 3. Enable **Developer mode**.
 4. Choose **Load unpacked** and select `dist/chrome`.
 
-
-
 ## Development and verification
 
 Requirements: Node.js 22, npm 10, Python 3.
@@ -41,7 +39,7 @@ npm ci
 npm run verify
 ```
 
-`npm run verify` runs the full Vitest suite, ESLint, three builds, deterministic packaging, and exact-archive validation. Store ZIP files and SHA-256 hashes are written to `artifacts/`.
+`npm run verify` runs the full Vitest suite, ESLint, the Chrome build, deterministic packaging, and exact-archive validation. Store ZIP files and SHA-256 hashes are written to `artifacts/`. The Chrome store ZIP omits `manifest.key`; unpacked `dist/chrome` keeps it.
 
 Verified listing media lives in `store/screenshots/`; the rendered 1400 × 560 promotional image is `store/promo-1400x560.png`.
 

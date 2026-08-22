@@ -7,23 +7,22 @@ import { CHROMIUM_EXTENSION_KEY, makeManifest } from '../scripts/config.mjs';
 
 describe('generated manifests', () => {
   it('uses the EchoScribe identity and minimal cloud-only Chromium permissions', () => {
-    const manifest = makeManifest('chrome');
+    const manifest = makeManifest();
     expect(manifest.manifest_version).toBe(3);
     expect(manifest.name).toBe('EchoScribe Web Summary');
     expect(manifest.action.default_title).toBe('EchoScribe Summary');
     expect(manifest.description).toMatch(/^Summarize webpages/);
     expect(CHROMIUM_EXTENSION_KEY).toMatch(/^MIIB[A-Za-z0-9+/=]{300,}$/);
     expect(manifest.key).toBe(CHROMIUM_EXTENSION_KEY);
-    expect(makeManifest().key).toBe(CHROMIUM_EXTENSION_KEY);
     expect(manifest.permissions.sort()).toEqual(['activeTab', 'clipboardWrite', 'contextMenus', 'scripting', 'storage'].sort());
     expect(JSON.stringify(manifest)).not.toMatch(/nativeMessaging|localhost|127\.0\.0\.1|telemetry/i);
     expect(manifest.background).toEqual({ service_worker: 'background.js' });
+    expect(manifest).not.toHaveProperty('browser_specific_settings');
     expect(manifest.host_permissions).toEqual(expect.arrayContaining([
       'https://api.openai.com/*', 'https://api.anthropic.com/*',
       'https://generativelanguage.googleapis.com/*', 'https://api.x.ai/*'
     ]));
   });
-
 });
 
 describe('lazy PDF parser build boundary', () => {

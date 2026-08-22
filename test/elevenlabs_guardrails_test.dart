@@ -38,19 +38,9 @@ void main() {
     expect(payload['localAiWhisperUrl'], '');
   });
 
-  test('ElevenLabs realtime recording is unavailable in browser builds', () {
+  test('ElevenLabs realtime recording is available on Android', () {
     expect(
-      providerSupportsRealtimeOnPlatform(
-        AiProviderType.elevenLabs,
-        isWeb: true,
-      ),
-      isFalse,
-    );
-    expect(
-      providerSupportsRealtimeOnPlatform(
-        AiProviderType.elevenLabs,
-        isWeb: false,
-      ),
+      AiProviderType.elevenLabs.supportsRealtimeTranscription,
       isTrue,
     );
   });

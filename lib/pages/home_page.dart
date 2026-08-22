@@ -1,7 +1,6 @@
 import "dart:async";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
-import "package:flutter/foundation.dart";
 import "package:share_plus/share_plus.dart";
 import "package:share_handler/share_handler.dart";
 
