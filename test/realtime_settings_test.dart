@@ -47,7 +47,6 @@ void main() {
     expect(settings.realtimeEnabled, isFalse);
 
     settings.setProvider(AiProviderType.elevenLabs);
-    expect(settings.elevenLabsRealtime, isTrue);
     expect(settings.realtimeEnabled, isTrue);
 
     settings.setProvider(AiProviderType.openai);

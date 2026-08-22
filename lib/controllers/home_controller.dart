@@ -725,8 +725,8 @@ class HomeController extends ChangeNotifier {
       return;
     }
 
-    final isElevenLabsRealtime = initialProvider == AiProviderType.elevenLabs &&
-        settings.elevenLabsRealtime;
+    final isElevenLabsRealtime =
+        initialProvider == AiProviderType.elevenLabs;
     final isOpenAiRealtime =
         initialProvider == AiProviderType.openai && settings.openAiRealtime;
     final isRealtime = isOpenAiRealtime || isElevenLabsRealtime;
@@ -755,6 +755,14 @@ class HomeController extends ChangeNotifier {
     _activeRecordingSession = session;
     var nonRealtimeRecorderAcquired = false;
 
+    Future<void> cleanupFailedStart() async {
+      if (isRealtime) {
+        await _cleanupRealtime();
+      } else if (nonRealtimeRecorderAcquired) {
+        await _cleanupNonRealtimeRecording(stopRecorder: true);
+      }
+    }
+
     try {
       if (playback.isPlaying) {
         await playback.stopAudio();
@@ -771,11 +779,6 @@ class HomeController extends ChangeNotifier {
         final realtimeBrand = isElevenLabsRealtime ? 'ElevenLabs' : 'OpenAI';
         if (session.metadata.apiKey.trim().isEmpty) {
           throw AppException('Please add your $realtimeBrand API key first.');
-        }
-        if (isElevenLabsRealtime && targetLanguageCode != 'auto') {
-          throw const AppException(
-            'ElevenLabs Realtime transcribes speech but does not translate it. Choose Auto Detect as target language.',
-          );
         }
 
         final modelName = session.metadata.transcriptionModel;
@@ -933,17 +936,9 @@ class HomeController extends ChangeNotifier {
         content.appendLogLine('🎙️ Recording started...');
       }
     } on _RecordingStartCancelled {
-      if (isRealtime) {
-        await _cleanupRealtime();
-      } else if (nonRealtimeRecorderAcquired) {
-        await _cleanupNonRealtimeRecording(stopRecorder: true);
-      }
+      await cleanupFailedStart();
     } on AppException catch (e) {
-      if (isRealtime) {
-        await _cleanupRealtime();
-      } else if (nonRealtimeRecorderAcquired) {
-        await _cleanupNonRealtimeRecording(stopRecorder: true);
-      }
+      await cleanupFailedStart();
       if (identical(_activeRecordingSession, session)) {
         _activeRecordingSession = null;
       }
@@ -955,11 +950,7 @@ class HomeController extends ChangeNotifier {
         showError(e.userMessage);
       }
     } catch (e) {
-      if (isRealtime) {
-        await _cleanupRealtime();
-      } else if (nonRealtimeRecorderAcquired) {
-        await _cleanupNonRealtimeRecording(stopRecorder: true);
-      }
+      await cleanupFailedStart();
       if (identical(_activeRecordingSession, session)) {
         _activeRecordingSession = null;
       }
