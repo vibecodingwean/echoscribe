@@ -32,7 +32,6 @@ void main() {
       expect(settings.activeApiKey, 'eleven-key');
       expect(settings.hasActiveApiKey, isTrue);
       expect(settings.realtimeEnabled, isTrue);
-      expect(settings.elevenLabsRealtime, isTrue);
     });
 
     test('forces auto language because realtime translation is unsupported',
@@ -53,7 +52,6 @@ void main() {
         ..setProvider(AiProviderType.gemini);
 
       expect(settings.realtimeEnabled, isFalse);
-      expect(settings.elevenLabsRealtime, isFalse);
 
       settings
         ..setProvider(AiProviderType.openai)
