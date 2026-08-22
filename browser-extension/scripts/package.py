@@ -14,20 +14,20 @@ TARGETS = ("chrome",)
 FIXED_TIME = (2020, 1, 1, 0, 0, 0)
 
 
-def store_manifest_bytes(source: Path, target: str) -> bytes:
+def store_manifest_bytes(source: Path) -> bytes:
     data = source.read_bytes()
-    if source.name != "manifest.json" or target != "chrome":
+    if source.name != "manifest.json":
         return data
     manifest = json.loads(data.decode("utf-8"))
     manifest.pop("key", None)
     return (json.dumps(manifest, indent=2) + "\n").encode("utf-8")
 
 
-def add_file(archive: ZipFile, source: Path, name: str, target: str = "") -> None:
+def add_file(archive: ZipFile, source: Path, name: str) -> None:
     info = ZipInfo(name, FIXED_TIME)
     info.compress_type = ZIP_DEFLATED
     info.external_attr = (0o100644 & 0xFFFF) << 16
-    archive.writestr(info, store_manifest_bytes(source, target))
+    archive.writestr(info, store_manifest_bytes(source))
 
 
 def main() -> None:
@@ -44,7 +44,7 @@ def main() -> None:
             raise SystemExit(f"No files found for {target}")
         with ZipFile(output, "w") as archive:
             for path in files:
-                add_file(archive, path, path.relative_to(source).as_posix(), target)
+                add_file(archive, path, path.relative_to(source).as_posix())
         digest = hashlib.sha256(output.read_bytes()).hexdigest()
         hashes[output.name] = digest
         print(f"{output.name}  {digest}")

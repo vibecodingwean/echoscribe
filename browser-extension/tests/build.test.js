@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { createIconPng, createLogoSvg } from '../scripts/brand.mjs';
 import { CHROMIUM_EXTENSION_KEY, makeManifest } from '../scripts/config.mjs';
+import { getExtensionApi } from '../src/shared/browser-api.js';
 
 
 describe('generated manifests', () => {
@@ -22,6 +23,11 @@ describe('generated manifests', () => {
       'https://api.openai.com/*', 'https://api.anthropic.com/*',
       'https://generativelanguage.googleapis.com/*', 'https://api.x.ai/*'
     ]));
+  });
+
+  it('uses the Chrome extension API', () => {
+    const chrome = { runtime: {} };
+    expect(getExtensionApi({ chrome })).toBe(chrome);
   });
 });
 
