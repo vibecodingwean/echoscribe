@@ -1,6 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
+
 import 'package:http/http.dart' as http;
-import 'package:echoscribe/utils/cross_file_reader.dart';
 import 'package:echoscribe/services/debug_console.dart';
 import 'package:echoscribe/config/prompts.dart';
 import 'package:echoscribe/models/app_exception.dart';
@@ -10,7 +11,7 @@ class GeminiService {
   static const String _modelsEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models';
 
   // Upload audio bytes as raw media (no base64) using the official upload endpoint,
-  // then request transcription with Gemini. Works on web and mobile and supports >20MB.
+  // then request transcription with Gemini. Supports files larger than 20MB.
   Future<String> transcribe({
     required String apiKey,
     String? filePath,
@@ -23,8 +24,7 @@ class GeminiService {
       throw Exception('No audio file provided');
     }
 
-    // Obtain bytes cross-platform
-    final bytes = fileBytes ?? await readAllBytesCross(filePath!);
+    final bytes = fileBytes ?? await File(filePath!).readAsBytes();
 
     // 1) Upload the file as raw bytes (no multipart, no base64)
     final fileObj = await _uploadFileRaw(apiKey: apiKey, fileName: fileName, mimeType: mimeType, bytes: bytes);

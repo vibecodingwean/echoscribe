@@ -1,9 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:echoscribe/models/app_exception.dart';
 import 'package:echoscribe/services/debug_console.dart';
-import 'package:echoscribe/utils/cross_file_reader.dart';
 
 class XaiSpeechService {
   static const String endpoint = 'https://api.x.ai/v1/stt';
@@ -42,7 +42,7 @@ class XaiSpeechService {
       throw Exception('No audio file provided');
     }
 
-    final bytes = fileBytes ?? await readAllBytesCross(filePath!);
+    final bytes = fileBytes ?? await File(filePath!).readAsBytes();
     final patchedName = _patchFilename(fileName);
     final uri = Uri.parse(endpoint);
     final request = http.MultipartRequest('POST', uri);

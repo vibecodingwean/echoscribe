@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:echoscribe/models/app_exception.dart';
-import 'package:echoscribe/services/ai/elevenlabs_realtime_client_io.dart';
+import 'package:echoscribe/services/ai/elevenlabs_realtime_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -12,7 +12,7 @@ void main() {
       final connectorStarted = Completer<void>();
       final socketCompleter = Completer<WebSocket>();
       final socket = FakeWebSocket();
-      final client = ElevenLabsRealtimeClientImpl(
+      final client = ElevenLabsRealtimeClient(
         connector: (url, {headers}) {
           connectorStarted.complete();
           return socketCompleter.future;
@@ -62,7 +62,7 @@ void main() {
     final connectorStarted = Completer<void>();
     final socketCompleter = Completer<WebSocket>();
     final socket = FakeWebSocket();
-    final client = ElevenLabsRealtimeClientImpl(
+    final client = ElevenLabsRealtimeClient(
       connectionTimeout: const Duration(milliseconds: 1),
       connector: (url, {headers}) {
         connectorStarted.complete();
@@ -90,7 +90,7 @@ void main() {
     final firstSocket = FakeWebSocket();
     final secondSocket = FakeWebSocket();
     var connectorCalls = 0;
-    final client = ElevenLabsRealtimeClientImpl(
+    final client = ElevenLabsRealtimeClient(
       connector: (url, {headers}) {
         connectorCalls++;
         if (connectorCalls == 1) {
@@ -138,7 +138,7 @@ void main() {
     final firstSocket = FakeWebSocket(throwOnCancel: true);
     final secondSocket = FakeWebSocket();
     final sockets = <FakeWebSocket>[firstSocket, secondSocket];
-    final client = ElevenLabsRealtimeClientImpl(
+    final client = ElevenLabsRealtimeClient(
       connector: (url, {headers}) async => sockets.removeAt(0),
     );
 
@@ -180,7 +180,7 @@ void main() {
         listenError: StateError('original listen failure'),
         throwOnClose: true,
       );
-      final client = ElevenLabsRealtimeClientImpl(
+      final client = ElevenLabsRealtimeClient(
         connector: (url, {headers}) async => socket,
       );
       var disconnectedCalls = 0;
@@ -212,7 +212,7 @@ void main() {
 }
 
 Future<void> connectClient(
-  ElevenLabsRealtimeClientImpl client, {
+  ElevenLabsRealtimeClient client, {
   void Function()? onDisconnected,
 }) {
   return client.connect(
