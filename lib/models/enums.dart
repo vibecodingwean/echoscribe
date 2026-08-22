@@ -143,3 +143,28 @@ enum OutputMode {
     return OutputMode.transcription;
   }
 }
+
+const Map<String, String> kTargetLanguageNames = {
+  'en': 'English',
+  'zh': 'Chinese (Simplified)',
+  'hi': 'Hindi',
+  'es': 'Spanish',
+  'fr': 'French',
+  'ar': 'Arabic',
+  'bn': 'Bengali',
+  'pt': 'Portuguese',
+  'ru': 'Russian',
+  'ur': 'Urdu',
+  'id': 'Indonesian',
+  'de': 'German',
+  'ja': 'Japanese',
+  'sw': 'Swahili',
+  'mr': 'Marathi',
+  'te': 'Telugu',
+  'tr': 'Turkish',
+  'ta': 'Tamil',
+  'vi': 'Vietnamese',
+  'ko': 'Korean',
+};
+
+String targetLanguageName(String code) => kTargetLanguageNames[code] ?? code;

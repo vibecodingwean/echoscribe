@@ -5,6 +5,7 @@ import 'package:echoscribe/config/prompts.dart';
 import 'package:echoscribe/services/debug_console.dart';
 import 'package:echoscribe/services/anthropic_service.dart';
 import 'package:echoscribe/models/app_exception.dart';
+import 'package:echoscribe/models/enums.dart';
 import 'package:echoscribe/services/local_ai_response_parser.dart';
 
 class SummaryService {
@@ -29,36 +30,10 @@ class SummaryService {
   String _languageDirective(String code) {
     // If a manual target is set, instruct explicit language; otherwise mirror input language.
     if (code.isNotEmpty && code != 'auto') {
-      final name = _languageName(code);
+      final name = targetLanguageName(code);
       return 'Language rule: Output MUST be in $name ("$code"). Do not use any other language.';
     }
     return 'Language rule: Detect the input language and write the summary strictly in that same language. If the input is German, output German; if Spanish, output Spanish. Never switch languages.';
-  }
-
-  String _languageName(String code) {
-    const map = {
-      'en': 'English',
-      'zh': 'Chinese (Simplified)',
-      'hi': 'Hindi',
-      'es': 'Spanish',
-      'fr': 'French',
-      'ar': 'Arabic',
-      'bn': 'Bengali',
-      'pt': 'Portuguese',
-      'ru': 'Russian',
-      'ur': 'Urdu',
-      'id': 'Indonesian',
-      'de': 'German',
-      'ja': 'Japanese',
-      'sw': 'Swahili',
-      'mr': 'Marathi',
-      'te': 'Telugu',
-      'tr': 'Turkish',
-      'ta': 'Tamil',
-      'vi': 'Vietnamese',
-      'ko': 'Korean',
-    };
-    return map[code] ?? code;
   }
 
   String _buildPrompt({
