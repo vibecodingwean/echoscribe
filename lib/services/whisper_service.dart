@@ -1,7 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
-import 'package:echoscribe/utils/cross_file_reader.dart';
 import 'package:echoscribe/services/debug_console.dart';
 import 'package:echoscribe/config/prompts.dart';
 import 'package:echoscribe/models/app_exception.dart';
@@ -136,10 +136,8 @@ class WhisperService {
         http.MultipartFile.fromBytes('file', fileBytes, filename: patchedName),
       );
     } else if (filePath != null && filePath.isNotEmpty) {
-      // Read bytes cross-platform (IO and Web)
-      final bytes = await readAllBytesCross(filePath);
+      final bytes = await File(filePath).readAsBytes();
       audioBytesLen = bytes.length;
-      // Try to infer a filename from the path; blob: or content: URIs might not have an extension
       final rawName =
           filePath.split('/').isNotEmpty ? filePath.split('/').last : 'audio';
       final inferredName = _patchFilename(rawName);

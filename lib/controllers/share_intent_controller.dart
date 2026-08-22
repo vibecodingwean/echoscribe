@@ -1,11 +1,11 @@
 import "package:echoscribe/services/ai/ai_provider_factory.dart";
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:share_handler/share_handler.dart';
 import 'package:echoscribe/state/settings_state.dart';
 import 'package:echoscribe/state/content_state.dart';
-import 'package:echoscribe/utils/cross_file_reader.dart';
 import 'package:echoscribe/services/share_handler.dart'
     as share_handler_service;
 import 'package:echoscribe/services/secure_storage_service.dart';
@@ -86,7 +86,7 @@ class ShareIntentController {
           lower.endsWith('.md') ||
           lower.endsWith('.rtf')) {
         try {
-          final bytes = await readAllBytesCross(path);
+          final bytes = await File(path).readAsBytes();
           final content = utf8.decode(bytes, allowMalformed: true);
           handled = await onTextReceived(content);
         } catch (e) {
