@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'package:flutter/foundation.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -24,7 +23,6 @@ class RecorderService {
     });
   }
 
-  // Start recording using a platform-appropriate configuration.
   Future<String?> startRecording() async {
     if (!await hasPermission()) return null;
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -36,14 +34,10 @@ class RecorderService {
       numChannels: 1,
     );
 
-    final String path;
     final dir = await getApplicationDocumentsDirectory();
     final path = '${dir.path}/echoscribe_$now.m4a';
 
     await _record.start(cfg, path: path);
-
-    // We'll rely on stop() to return the actual persisted path (mobile/desktop)
-    //.
     return null;
   }
 

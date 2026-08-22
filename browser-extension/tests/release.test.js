@@ -57,7 +57,7 @@ describe('release source contract', () => {
     const packageScript = readFileSync(path('scripts/package.py'), 'utf8');
     expect(packageScript).toContain('ROOT / "TRADEMARKS.md"');
     expect(packageScript).toContain('manifest.pop("key", None)');
-    expect(packageScript).toMatch(/target not in \("chrome", "edge"\)/);
+    expect(packageScript).toMatch(/target != "chrome"/);
     const validationScript = readFileSync(path('scripts/validate.py'), 'utf8');
     expect(validationScript).toContain('ROOT / "TRADEMARKS.md"');
     expect(validationScript).toContain('store ZIP must omit key');
@@ -92,7 +92,6 @@ describe('release source contract', () => {
     for (const file of [
       'scripts/build.mjs', 'scripts/package.py', 'scripts/validate.py',
       'README.md', 'store/PRIVACY_POLICY.md', 'store/STORE_LISTING.md',
-      'store/CHROME_PUBLISHING.md', 'store/CHROME_PUBLISHING.md',
       'store/CHROME_PUBLISHING.md', 'store/REVIEW_NOTES.md'
     ]) expect(existsSync(path(file)), file).toBe(true);
   });

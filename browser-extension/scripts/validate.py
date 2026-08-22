@@ -59,22 +59,10 @@ def inspect_manifest(target: str, manifest: dict) -> None:
     csp = manifest.get("content_security_policy", {}).get("extension_pages", "")
     if "'unsafe-eval'" in csp or "'unsafe-inline'" in csp or "script-src 'self'" not in csp:
         fail(f"{target}: unsafe CSP")
-    if target == "firefox":
-        gecko = manifest.get("browser_specific_settings", {}).get("gecko", {})
-        if manifest.get("background") != {"scripts": ["background.js"]}:
-            fail("firefox: background.scripts missing")
-        if "key" in manifest:
-            fail("firefox: Chromium key present")
-        if gecko.get("id") != "echoscribe@wean.de" or int(gecko.get("strict_min_version", "0").split(".")[0]) < 142:
-            fail("firefox: Gecko identity/minimum version invalid")
-        required = gecko.get("data_collection_permissions", {}).get("required", [])
-        if set(required) != {"authenticationInfo", "websiteContent"}:
-            fail("firefox: data permission disclosure mismatch")
-    else:
-        if "key" in manifest:
-            fail(f"{target}: store ZIP must omit key; Chrome/Edge listings assign identity")
-        if manifest.get("background") != {"service_worker": "background.js"}:
-            fail(f"{target}: Chromium service worker missing")
+    if "key" in manifest:
+        fail(f"{target}: store ZIP must omit key; Chrome Web Store assigns listing identity")
+    if manifest.get("background") != {"service_worker": "background.js"}:
+        fail(f"{target}: Chromium service worker missing")
 
 
 def scan_text(scope: str, name: str, data: bytes, patterns: dict[str, re.Pattern]) -> None:

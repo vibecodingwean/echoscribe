@@ -20,9 +20,9 @@ The provider key is stored in browser-managed local extension storage and is nev
 
 ## Update identity and migration
 
-Firefox keeps the existing EchoScribe add-on ID `echoscribe@wean.de`. Chromium unpacked and enterprise-managed builds keep the previous public manifest key so those installations retain extension ID `jpenmjpoinmopahlkefpkeneokenecpf`. Store-uploaded Chrome/Edge ZIPs omit `key`; the Chrome Web Store item `pacpimdbfknllhacjkgeijkcdifnoglg` is the authority for store-distributed updates. This public key is not a credential and grants no publishing access.
+Unpacked Chromium builds keep the previous public manifest key so those installations retain extension ID `jpenmjpoinmopahlkefpkeneokenecpf`. Store-uploaded Chrome ZIPs omit `key`; the Chrome Web Store item `pacpimdbfknllhacjkgeijkcdifnoglg` is the authority for store-distributed updates. This public key is not a credential and grants no publishing access.
 
-The extension implementation is otherwise a complete replacement: Native Messaging, local-host permissions, and desktop browser-registration flows are removed. Updated desktop installers remove only obsolete EchoScribe Native Messaging manifests/registry keys; browser profiles and provider credentials are not changed.
+The extension implementation is otherwise a complete replacement: Native Messaging, local-host permissions, and desktop browser-registration flows are removed. The Linux installer removes only obsolete EchoScribe Native Messaging manifests; browser profiles and provider credentials are not changed.
 
 ## Bundled PDF.js review note
 

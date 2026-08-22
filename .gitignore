@@ -51,17 +51,7 @@
 .gradle/
 build/
 
-# iOS related
-**/ios/Flutter/AppFrameworkInfo.plist
-**/ios/Flutter/Generated.xcconfig
-**/ios/Flutter/flutter_export_environment.sh
-**/ios/Flutter/Flutter.podspec
-**/ios/Flutter/Generated.podspec
-**/ios/Pods/
-**/ios/.generated/
-Podfile.lock
-
-# Web related
+# Flutter tooling
 .dart_tool/
 .packages
 .pub-cache/

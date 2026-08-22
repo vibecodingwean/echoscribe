@@ -134,14 +134,6 @@ enum AiProviderType {
   }
 }
 
-bool providerSupportsRealtimeOnPlatform(
-  AiProviderType provider, {
-  required bool isWeb,
-}) {
-  if (!provider.supportsRealtimeTranscription) return false;
-  return provider != AiProviderType.elevenLabs || !isWeb;
-}
-
 enum OutputMode {
   transcription,
   summary;

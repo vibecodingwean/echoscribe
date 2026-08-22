@@ -99,7 +99,6 @@ mkdir -p "$stage"
   --exclude='*/__pycache__' \
   --exclude='*.pyc' \
   --exclude='./linux/.venv' \
-  --exclude='./windows' \
   -cf - .) | (cd "$stage" && tar -xf -)
 
 validate_tree "$stage"

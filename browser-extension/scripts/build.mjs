@@ -7,7 +7,7 @@ import { makeManifest } from './config.mjs';
 import { inlinePopupAssets } from './inline-popup.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const browsers = ['chrome', 'edge', 'firefox'];
+const browsers = ['chrome'];
 const distRoot = resolve(root, 'dist');
 
 async function bundle(entry, outfile, target, format = 'iife', external = []) {
@@ -36,7 +36,7 @@ await rm(distRoot, { recursive: true, force: true });
 
 for (const browser of browsers) {
   const out = resolve(distRoot, browser);
-  const target = browser === 'firefox' ? 'firefox140' : 'chrome120';
+  const target = 'chrome120';
   await mkdir(resolve(out, 'icons'), { recursive: true });
   await mkdir(resolve(out, 'vendor'), { recursive: true });
 
@@ -61,7 +61,7 @@ for (const browser of browsers) {
 
   const pdfLicense = await readFile(resolve(root, 'node_modules/pdfjs-dist/LICENSE'), 'utf8');
   await writeFile(resolve(out, 'THIRD_PARTY_NOTICES.txt'), `PDF.js\n${pdfLicense}`);
-  await writeFile(resolve(out, 'manifest.json'), `${JSON.stringify(makeManifest(browser), null, 2)}\n`);
+  await writeFile(resolve(out, 'manifest.json'), `${JSON.stringify(makeManifest(), null, 2)}\n`);
   await writeFile(resolve(out, 'logo.svg'), createLogoSvg());
   for (const size of [16, 32, 48, 96, 128]) {
     await writeFile(resolve(out, `icons/icon-${size}.png`), createIconPng(size));

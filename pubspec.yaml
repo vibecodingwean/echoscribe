@@ -24,7 +24,6 @@ dependencies:
   html: ^0.15.6
   flutter_svg: ^2.2.4
   brotli: ^0.6.0
-  web: ^1.1.1
 
 dev_dependencies:
   flutter_test:
@@ -39,6 +38,5 @@ flutter:
 
 flutter_launcher_icons:
   android: true
-  ios: true
+  ios: false
   image_path: assets/images/logo.png
-  remove_alpha_ios: true

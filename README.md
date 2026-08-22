@@ -16,12 +16,12 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 ### 🎙️ Audio & Transcription
 - **On-Device Recording:** Capture high-quality audio with live amplitude feedback.
 - **OpenAI, Gemini, xAI & Local AI Support:** Choose OpenAI, Google Gemini, xAI Grok, or a local Whisper-compatible endpoint for voice transcription.
-- **Realtime STT:** Stream live transcription through OpenAI GPT Live Transcribe or ElevenLabs Scribe v2 Realtime in the installed app. ElevenLabs uses its own securely stored API key and is unavailable in the browser build because browser WebSockets cannot attach the required authentication header.
+- **Realtime STT:** Stream live transcription through OpenAI GPT Live Transcribe or ElevenLabs Scribe v2 Realtime in the Android app. ElevenLabs uses its own securely stored API key.
 - **Voice Message Summary:** Share voice messages from WhatsApp or other apps directly to EchoScribe.
 - **Note:** Claude 🦀 is text-only for app-side speech input.
 
-### 🖥️ Desktop Companions
-- **Linux:** GNOME Shell integration for start/stop toggle dictation.
+### 🖥️ Desktop Companion
+- **Linux / GNOME:** GNOME Shell integration for start/stop toggle dictation and clipboard paste.
 - **Same BYOK/local model:** Desktop requests go directly from your computer to the selected AI provider or your own Local AI endpoints.
 
 ### ⌨️ System Keyboard (IME) on Android
@@ -38,7 +38,7 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 ### ✍️ Smart Summarization
 - **Audio • Text • URL:** Summarize everything in one tap.
 - **Local URL Extraction:** A privacy-first mechanism extracts web content directly on your device, bypassing paywalls and bot-detection while keeping your browsing private. Mandatory for Claude 🦀 and Grok 𝕏.
-- **Local AI Provider:** The Flutter app can use an Ollama-compatible `/api/chat` endpoint for summaries/translations. Desktop companions can use an OpenAI-compatible Whisper endpoint for local speech-to-text; they do not install or configure summary models.
+- **Local AI Provider:** The Flutter app can use an Ollama-compatible `/api/chat` endpoint for summaries/translations. The Linux companion can use an OpenAI-compatible Whisper endpoint for local speech-to-text; it does not install or configure summary models.
 - **Custom Prompts:** Fine-tune how your summaries look and feel in the settings.
 
 ### 🚀 Pro Mode & Models
@@ -65,7 +65,7 @@ To use EchoScribe, you'll need at least one API key:
 - **Anthropic Claude:** [Get API Key](https://console.anthropic.com/settings/keys)
 - **xAI Grok:** [Get API Key](https://console.x.ai/)
 - **ElevenLabs Realtime STT:** [Get API Key](https://elevenlabs.io/app/settings/api-keys)
-- **Local AI:** In the Flutter app, configure your own Ollama endpoint such as `http://host:11434/api/chat`. Desktop companions accept a Whisper-compatible endpoint such as `http://host:8000/v1/audio/transcriptions`.
+- **Local AI:** In the Flutter app, configure your own Ollama endpoint such as `http://host:11434/api/chat`. The Linux companion accepts a Whisper-compatible endpoint such as `http://host:8000/v1/audio/transcriptions`.
 
 *Tip: Set a usage limit in your AI provider's dashboard to keep full control over your costs. For Local AI PoC use, keep endpoints on a trusted local network or VPN; EchoScribe does not add authentication to Local AI requests.*
 
@@ -84,7 +84,6 @@ After installing:
 3. Optional: open **Settings → Keyboard**, tap **Enable keyboard**, enable the EchoScribe keyboard in Android input settings, and switch to it when typing. Optionally enable Floating Dictation in the same tab to use the hover button.
 
 The EchoScribe system keyboard provides QWERTZ typing, an AI toolbar, and voice input (Google Voice or EchoScribe BYOK STT). AI and microphone controls stay hidden in password, PIN, and payment fields. Floating Dictation shows a dictation button in editable fields, records after an explicit tap, and inserts text only after confirmation.
-
 
 ### Linux / GNOME
 
@@ -112,9 +111,8 @@ To uninstall the Linux/GNOME integration, run `~/.local/share/echoscribe/app/lin
 
 ### Browser Extension
 
-[EchoScribe Web Summary](browser-extension/README.md) is the single browser
-extension for Chrome. It uses one shared source
-tree, communicates directly with the cloud AI provider selected by the user,
+[EchoScribe Web Summary](browser-extension/README.md) is the Chrome extension.
+It communicates directly with the cloud AI provider selected by the user
 and does not require the Linux desktop app, Native Messaging, or a
 local bridge process.
 
@@ -142,7 +140,7 @@ npm run verify
 
 ### Desktop Setup
 - Linux: see `desktop/linux/README.md`.
-- Browser extension: see [`browser-extension/README.md`](browser-extension/README.md).
+- Chrome extension: see [`browser-extension/README.md`](browser-extension/README.md).
 
 ---
 

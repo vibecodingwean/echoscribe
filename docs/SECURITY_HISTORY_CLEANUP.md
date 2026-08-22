@@ -2,18 +2,7 @@
 
 ## Current status
 
-The current repository tree does not contain the previously used private LAN endpoint. A scan of all reachable Git objects found the masked value `192.168.x.x` in five historical commit snapshots and ten historical paths:
-
-- `config/ai_models.json`
-- `desktop/linux/README.md`
-- `desktop/linux/config.example.toml`
-- `desktop/linux/echoscribe/config.py`
-- `lib/config/prompts.dart`
-- `lib/pages/settings_page.dart`
-
-Commit `9639245c1be4c2f718c8e0bf7b9cd99f0740e512` introduced the value. Commit `fef0f58276836a3741b292fcf776638e9d6d2770` removed it from the current line of development; its resulting tree does not contain the value. The old blobs remain reachable through repository history.
-
-No history rewrite or force-push was performed as part of the repository-hygiene work.
+The current repository tree does not contain the previously used private LAN endpoint. EchoScribe is Android, GNOME, and Chrome only; Windows, iOS, Flutter web, Firefox, and Edge trees are no longer in the product. Historical blobs that named those paths were part of an earlier LAN-endpoint cleanup scan, not current product surfaces.
 
 ## Optional future history rewrite
 

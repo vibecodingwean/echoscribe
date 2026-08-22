@@ -1,8 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'realtime_transcription_client.dart';
-import 'openai_realtime_client_stub.dart'
-    if (dart.library.io) 'openai_realtime_client_io.dart'
-    if (dart.library.html) 'openai_realtime_client_web.dart';
+import 'openai_realtime_client_io.dart';
 
 abstract class OpenAiRealtimeClient implements RealtimeTranscriptionClient {
   factory OpenAiRealtimeClient() => getRealtimeClient();
