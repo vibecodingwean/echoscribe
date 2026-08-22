@@ -816,12 +816,6 @@ class HomeController extends ChangeNotifier {
       showError('${initialProvider.brandName} does not support audio files.');
       return;
     }
-    if (!settings.recordingSupportedOnCurrentPlatform) {
-      showError(
-        'ElevenLabs Realtime is available in the installed app, not the browser build.',
-      );
-      return;
-    }
 
     final isElevenLabsRealtime = initialProvider == AiProviderType.elevenLabs &&
         settings.elevenLabsRealtime;
