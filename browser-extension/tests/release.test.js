@@ -56,8 +56,12 @@ describe('release source contract', () => {
 
     const packageScript = readFileSync(path('scripts/package.py'), 'utf8');
     expect(packageScript).toContain('ROOT / "TRADEMARKS.md"');
+    expect(packageScript).toContain('manifest.pop("key", None)');
+    expect(packageScript).toMatch(/target not in \("chrome", "edge"\)/);
     const validationScript = readFileSync(path('scripts/validate.py'), 'utf8');
     expect(validationScript).toContain('ROOT / "TRADEMARKS.md"');
+    expect(validationScript).toContain('store ZIP must omit key');
+    expect(validationScript).toContain('unpacked dist must keep the Chromium public key');
     expect(packageScript).toContain('echoscribe-web-summary-');
     expect(packageScript).toContain('ARTIFACTS.glob("*.zip")');
     expect(packageScript).toContain('(ARTIFACTS / "SHA256SUMS.json").write_text');
