@@ -5,7 +5,6 @@ import 'package:share_handler/share_handler.dart';
 import 'package:echoscribe/state/settings_state.dart';
 import 'package:echoscribe/state/content_state.dart';
 import 'package:echoscribe/models/enums.dart';
-import 'package:echoscribe/config/prompts.dart';
 import 'package:echoscribe/services/url_resolver_service.dart';
 import 'package:echoscribe/services/url_content_service.dart';
 import 'package:echoscribe/models/transcription_item.dart';
@@ -144,24 +143,7 @@ class UrlHandler {
     content.appendLogLine('Processing shared URL');
 
     try {
-      String getModelForSummary() {
-        switch (settings.provider) {
-          case AiProviderType.gemini:
-            return AiModelConfig.geminiSummary(pro: settings.geminiPro);
-          case AiProviderType.anthropic:
-            return AiModelConfig.anthropicSummary(pro: settings.anthropicPro);
-          case AiProviderType.xai:
-            return AiModelConfig.xaiSummary(pro: settings.xaiPro);
-          case AiProviderType.localAi:
-            return settings.localAiLlmModel;
-          case AiProviderType.openai:
-            return AiModelConfig.openAiSummary(pro: settings.openAiPro);
-          case AiProviderType.elevenLabs:
-            return '';
-        }
-      }
-
-      final model = getModelForSummary();
+      final model = settings.summaryModel;
 
       if (settings.provider == AiProviderType.localAi) {
         content.appendLogLine('🔌 Checking Local AI LLM before URL summary...');
@@ -266,7 +248,7 @@ class UrlHandler {
       final ai = aiFactory.create(settings.provider, settings: settings);
 
       final reasoningEffort = settings.provider == AiProviderType.xai
-          ? AiModelConfig.xaiReasoningEffort(pro: settings.xaiPro)
+          ? settings.reasoningEffort
           : null;
       final providerName = '🤖 ${settings.provider.brandName}';
       content.appendLogLine('$providerName\n($model) is analyzing...');
