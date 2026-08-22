@@ -22,7 +22,7 @@ void main() {
     expect(settings.summaryModel, isEmpty);
     expect(
       settings.transcriptionModel,
-      AiModelConfig.elevenLabsRealtimeTranscription,
+      AiModelConfig.elevenLabsTranscription,
     );
     expect(settings.ttsVoice, AiModelConfig.elevenLabsTtsVoice);
 
@@ -47,6 +47,8 @@ void main() {
     expect(settings.realtimeEnabled, isFalse);
 
     settings.setProvider(AiProviderType.elevenLabs);
+    expect(settings.realtimeEnabled, isFalse);
+    settings.setElevenLabsRealtime(true);
     expect(settings.realtimeEnabled, isTrue);
 
     settings.setProvider(AiProviderType.openai);

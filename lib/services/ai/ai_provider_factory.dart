@@ -68,7 +68,7 @@ class AiProviderFactory {
               AiModelConfig.localAiWhisperUrl,
         );
       case AiProviderType.elevenLabs:
-        return const ElevenLabsProvider();
+        return ElevenLabsProvider();
       case AiProviderType.openai:
         return OpenAiProvider(
           whisper: whisper,

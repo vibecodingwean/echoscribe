@@ -97,6 +97,10 @@
         <intent>
             <action android:name="android.view.InputMethod" />
         </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
         <package android:name="com.google.android.googlequicksearchbox" />
     </queries>
 </manifest>

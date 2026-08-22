@@ -8,21 +8,22 @@ import 'package:echoscribe/state/settings_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('unsupported Keyboard STT provider exports no credential', () {
+  test('ElevenLabs Keyboard STT exports Scribe v2 and the API key', () {
     final settings = SettingsState()
       ..setProvider(AiProviderType.elevenLabs)
       ..setElevenLabsKey('unit-test-token');
 
     final payload = KeyboardImeService.buildConfigPayload(settings);
 
-    expect(payload['supportsDictation'], isFalse);
-    expect(payload['enabled'], isFalse);
-    expect(payload['apiKey'], '');
+    expect(payload['supportsDictation'], isTrue);
+    expect(payload['enabled'], isTrue);
+    expect(payload['apiKey'], 'unit-test-token');
+    expect(payload['transcriptionModel'], 'scribe_v2');
     expect(payload['localAiLlmUrl'], '');
     expect(payload['localAiWhisperUrl'], '');
   });
 
-  test('unsupported Floating Dictation provider exports no credential', () {
+  test('ElevenLabs Floating Dictation exports Scribe v2 and the API key', () {
     final settings = SettingsState()
       ..setProvider(AiProviderType.elevenLabs)
       ..setElevenLabsKey('unit-test-token')
@@ -30,10 +31,10 @@ void main() {
 
     final payload = FloatingDictationService.buildConfigPayload(settings);
 
-    expect(payload['supportsDictation'], isFalse);
-    expect(payload['floatingEnabled'], isFalse);
-    expect(payload.containsKey('enabled'), isFalse);
-    expect(payload['apiKey'], '');
+    expect(payload['supportsDictation'], isTrue);
+    expect(payload['floatingEnabled'], isTrue);
+    expect(payload['apiKey'], 'unit-test-token');
+    expect(payload['transcriptionModel'], 'scribe_v2');
     expect(payload['localAiLlmUrl'], '');
     expect(payload['localAiWhisperUrl'], '');
   });

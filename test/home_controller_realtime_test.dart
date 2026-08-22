@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:echoscribe/controllers/home_controller.dart';
 import 'package:echoscribe/models/enums.dart';
@@ -48,7 +49,8 @@ void main() {
       final controller = buildController(
         settings: SettingsState()
           ..setProvider(AiProviderType.elevenLabs)
-          ..setElevenLabsKey('session-key'),
+          ..setElevenLabsKey('session-key')
+          ..setElevenLabsRealtime(true),
         content: content,
         recorder: recorder,
         realtimeClient: client,
@@ -68,10 +70,70 @@ void main() {
     },
   );
 
+  test('ElevenLabs microphone uses Scribe v2 Realtime', () async {
+    final client = FakeRealtimeClient(transcript: 'hello');
+    final controller = buildController(
+      settings: elevenLabsSettings(),
+      content: ContentState(),
+      recorder: FakeRecorder(),
+      realtimeClient: client,
+    );
+
+    await controller.startRecording();
+    expect(client.lastModel, 'scribe_v2_realtime');
+    await controller.stopAndTranscribe();
+  });
+
+  test('ElevenLabs microphone uses file STT when realtime is off', () async {
+    final client = FakeRealtimeClient();
+    final controller = buildController(
+      settings: elevenLabsSettings(realtime: false),
+      content: ContentState(),
+      recorder: FakeRecorder(),
+      realtimeClient: client,
+    );
+
+    await controller.startRecording();
+    expect(client.connectCalls, 0);
+    expect(client.lastModel, isNull);
+    await controller.stopAndTranscribe();
+  });
+
+  test('ElevenLabs shared audio uses batch Scribe v2', () async {
+    final dir = await Directory.systemTemp.createTemp('el-share');
+    addTearDown(() => dir.delete(recursive: true));
+    final file = File('${dir.path}/audio.wav');
+    await file.writeAsBytes(const <int>[1, 2, 3, 4]);
+    final provider = TrackingAiProvider();
+    final content = ContentState();
+    final errors = <String>[];
+    final controller = buildController(
+      settings: elevenLabsSettings(),
+      content: content,
+      recorder: FakeRecorder(),
+      realtimeClient: FakeRealtimeClient(),
+      aiFactory: FixedAiProviderFactory(provider),
+      errors: errors,
+    );
+
+    final ok = await controller.processSharedAudio(
+      path: file.path,
+      filename: 'audio.wav',
+      mimeType: 'audio/wav',
+      mode: 'transcription',
+    );
+
+    expect(ok, isTrue);
+    expect(errors, isEmpty);
+    expect(provider.lastTranscribeModel, 'scribe_v2');
+    expect(content.currentTranscriptValue, contains('transcript'));
+  });
+
   test('provider change cannot bypass realtime finish and cleanup', () async {
     final settings = SettingsState()
       ..setProvider(AiProviderType.elevenLabs)
-      ..setElevenLabsKey('session-key');
+      ..setElevenLabsKey('session-key')
+      ..setElevenLabsRealtime(true);
     final recorder = FakeRecorder();
     final client = FakeRealtimeClient(transcript: 'hello world');
     final content = ContentState();
@@ -104,7 +166,8 @@ void main() {
     final controller = buildController(
       settings: SettingsState()
         ..setProvider(AiProviderType.elevenLabs)
-        ..setElevenLabsKey('session-key'),
+        ..setElevenLabsKey('session-key')
+        ..setElevenLabsRealtime(true),
       content: content,
       recorder: recorder,
       realtimeClient: client,
@@ -129,7 +192,8 @@ void main() {
     final controller = buildController(
       settings: SettingsState()
         ..setProvider(AiProviderType.elevenLabs)
-        ..setElevenLabsKey('session-key'),
+        ..setElevenLabsKey('session-key')
+        ..setElevenLabsRealtime(true),
       content: content,
       recorder: recorder,
       realtimeClient: client,
@@ -153,7 +217,8 @@ void main() {
     final controller = buildController(
       settings: SettingsState()
         ..setProvider(AiProviderType.elevenLabs)
-        ..setElevenLabsKey('session-key'),
+        ..setElevenLabsKey('session-key')
+        ..setElevenLabsRealtime(true),
       content: content,
       recorder: recorder,
       realtimeClient: client,
@@ -675,9 +740,10 @@ void main() {
   });
 }
 
-SettingsState elevenLabsSettings() => SettingsState()
+SettingsState elevenLabsSettings({bool realtime = true}) => SettingsState()
   ..setProvider(AiProviderType.elevenLabs)
-  ..setElevenLabsKey('session-key');
+  ..setElevenLabsKey('session-key')
+  ..setElevenLabsRealtime(realtime);
 
 HomeController buildController({
   required SettingsState settings,
@@ -863,6 +929,7 @@ class FakeRealtimeClient implements RealtimeTranscriptionClient {
   int connectCalls = 0;
   int finishAudioCalls = 0;
   int closeCalls = 0;
+  String? lastModel;
 
   @override
   Future<void> connect({
@@ -876,6 +943,7 @@ class FakeRealtimeClient implements RealtimeTranscriptionClient {
     required VoidCallback onDisconnected,
   }) async {
     connectCalls++;
+    lastModel = model;
     if (!connectEntered.isCompleted) connectEntered.complete();
     if (pauseConnect) await _allowConnect.future;
     _onDisconnected = onDisconnected;
@@ -1001,7 +1069,7 @@ class TrackingAiProviderFactory extends AiProviderFactory {
   }) {
     if (provider == AiProviderType.localAi) {
       localAiRoutes.add((localAiLlmUrl!, localAiWhisperUrl!));
-      return const TrackingAiProvider();
+      return TrackingAiProvider();
     }
     return super.create(
       provider,
@@ -1013,7 +1081,9 @@ class TrackingAiProviderFactory extends AiProviderFactory {
 }
 
 class TrackingAiProvider implements AiProvider {
-  const TrackingAiProvider();
+  TrackingAiProvider();
+
+  String? lastTranscribeModel;
 
   @override
   Future<String> transcribe({
@@ -1022,8 +1092,10 @@ class TrackingAiProvider implements AiProvider {
     required String fileName,
     required String mimeType,
     required String model,
-  }) async =>
-      'transcript';
+  }) async {
+    lastTranscribeModel = model;
+    return 'transcript';
+  }
 
   @override
   Future<String> translate({

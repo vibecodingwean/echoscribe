@@ -24,6 +24,7 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
             "gemini" -> transcribeGemini(file)
             "xai" -> transcribeXai(file)
             "localAi" -> transcribeLocalAi(file)
+            "elevenLabs", "elevenlabs" -> transcribeElevenLabs(file)
             else -> throw IllegalStateException("Speech input not supported for ${config.brandName.ifBlank { "this provider" }}")
         }
     }
@@ -31,6 +32,7 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
     fun format(rawText: String): String {
         val raw = rawText.trim()
         if (raw.isBlank()) return raw
+        if (isElevenLabs()) return raw
         return rewrite(
             systemPrompt = "You format dictated speech transcripts into final text input. Output only the final text.",
             userPrompt = "${config.dictationPrompt}\n\nRaw text:\n$raw",
@@ -75,6 +77,44 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
 
     fun rewrite(systemPrompt: String, userPrompt: String): String {
         return rewrite(systemPrompt, userPrompt, variantCount = 1).firstOrNull().orEmpty()
+    }
+
+    private fun isElevenLabs(): Boolean {
+        return config.provider.equals("elevenLabs", ignoreCase = true)
+    }
+
+    private fun transcribeElevenLabs(file: File): String {
+        val fields = linkedMapOf(
+            "model_id" to config.transcriptionModel.ifBlank { "scribe_v2" },
+            "tag_audio_events" to "false",
+        )
+        if (config.targetLanguageCode.isNotBlank() && config.targetLanguageCode != "auto") {
+            fields["language_code"] = config.targetLanguageCode
+        }
+        val json = postMultipart(
+            endpoint = "https://api.elevenlabs.io/v1/speech-to-text",
+            headers = mapOf("xi-api-key" to config.apiKey),
+            fields = fields,
+            fileField = "file",
+            file = file,
+        )
+        val text = json.optString("text").trim()
+        if (text.isNotEmpty()) return text
+        val transcripts = json.optJSONArray("transcripts")
+        if (transcripts != null) {
+            val joined = buildString {
+                for (i in 0 until transcripts.length()) {
+                    val item = transcripts.optJSONObject(i) ?: continue
+                    val part = item.optString("text").trim()
+                    if (part.isNotEmpty()) {
+                        if (isNotEmpty()) append("\n")
+                        append(part)
+                    }
+                }
+            }
+            if (joined.isNotEmpty()) return joined
+        }
+        throw IllegalStateException("Transcription returned empty text")
     }
 
     private fun transcribeOpenAi(file: File): String {
@@ -420,8 +460,25 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
     private fun apiErrorMessage(body: String): String {
         return try {
             val json = JSONObject(body)
-            json.optJSONObject("error")?.optString("message")
-                ?: json.optString("message")
+            val detail = json.opt("detail")
+            when (detail) {
+                is JSONObject -> detail.optString("message")
+                is String -> detail
+                is org.json.JSONArray -> buildString {
+                    for (i in 0 until detail.length()) {
+                        val item = detail.optJSONObject(i) ?: continue
+                        val msg = item.optString("msg").ifBlank { item.optString("message") }
+                        if (msg.isNotBlank()) {
+                            if (isNotEmpty()) append("; ")
+                            append(msg)
+                        }
+                    }
+                }
+                else -> ""
+            }.ifBlank {
+                json.optJSONObject("error")?.optString("message")
+                    ?: json.optString("message")
+            }
         } catch (_: Exception) {
             body.take(200)
         }

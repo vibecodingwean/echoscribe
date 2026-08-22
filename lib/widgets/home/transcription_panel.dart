@@ -72,6 +72,7 @@ class TranscriptionPanel extends StatefulWidget {
   final bool isRealtime;
   final VoidCallback onCopy;
   final VoidCallback onShare;
+  final bool canShare;
   final VoidCallback onPaste;
   final VoidCallback onClear;
   final VoidCallback onGenerateImage;
@@ -95,6 +96,7 @@ class TranscriptionPanel extends StatefulWidget {
     this.isRealtime = false,
     required this.onCopy,
     required this.onShare,
+    this.canShare = false,
     required this.onPaste,
     required this.onClear,
     required this.onGenerateImage,
@@ -198,7 +200,7 @@ class TranscriptionPanelState extends State<TranscriptionPanel> {
           ),
           IconButton(
             icon: const Icon(Icons.share, size: 20),
-            onPressed: hasText ? widget.onShare : null,
+            onPressed: widget.canShare ? widget.onShare : null,
             tooltip: 'Share',
           ),
           IconButton(

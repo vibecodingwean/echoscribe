@@ -45,9 +45,9 @@ enum AiProviderType {
       case AiProviderType.gemini:
       case AiProviderType.xai:
       case AiProviderType.localAi:
+      case AiProviderType.elevenLabs:
         return true;
       case AiProviderType.anthropic:
-      case AiProviderType.elevenLabs:
         return false;
     }
   }
@@ -78,7 +78,8 @@ enum AiProviderType {
       this == AiProviderType.openai ||
       this == AiProviderType.gemini ||
       this == AiProviderType.xai ||
-      this == AiProviderType.localAi;
+      this == AiProviderType.localAi ||
+      this == AiProviderType.elevenLabs;
 
   bool get supportsFloatingDictation => supportsKeyboardDictation;
 

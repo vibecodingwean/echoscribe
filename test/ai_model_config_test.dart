@@ -16,9 +16,14 @@ void main() {
         AiModelConfig.openAiRealtimeTranslation,
         'gpt-realtime-translate',
       );
+      expect(AiModelConfig.elevenLabsTranscription, 'scribe_v2');
       expect(
         AiModelConfig.elevenLabsRealtimeTranscription,
         'scribe_v2_realtime',
+      );
+      expect(
+        AiModelConfig.elevenLabsVoiceLibraryUrl,
+        'https://elevenlabs.io/app/voice-library',
       );
       expect(AiModelConfig.elevenLabsTts, 'eleven_flash_v2_5');
       expect(AiModelConfig.elevenLabsTtsVoice, 'JBFqnCBsd6RMkjVDRZzb');
