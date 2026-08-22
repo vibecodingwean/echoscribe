@@ -4,6 +4,7 @@ import 'package:echoscribe/services/debug_console.dart';
 import 'package:echoscribe/config/prompts.dart';
 import 'package:echoscribe/services/anthropic_service.dart';
 import 'package:echoscribe/models/app_exception.dart';
+import 'package:echoscribe/models/enums.dart';
 import 'package:echoscribe/services/local_ai_response_parser.dart';
 import 'package:echoscribe/services/local_ai_health_service.dart';
 
@@ -35,7 +36,7 @@ class TranslationService {
         {
           'role': 'user',
           'content':
-              'Translate the following text to ${_codeToHuman(targetLanguageCode)}. Keep tone and meaning. Text:\n\n$text',
+              'Translate the following text to ${targetLanguageName(targetLanguageCode)}. Keep tone and meaning. Text:\n\n$text',
         },
       ],
     };
@@ -114,7 +115,7 @@ class TranslationService {
           'parts': [
             {
               'text':
-                  'Translate the following text to ${_codeToHuman(targetLanguageCode)}. Output only the translated text. Text:\n\n$text',
+                  'Translate the following text to ${targetLanguageName(targetLanguageCode)}. Output only the translated text. Text:\n\n$text',
             },
           ],
         },
@@ -196,7 +197,7 @@ class TranslationService {
         {
           'role': 'user',
           'content':
-              'Translate the following text to ${_codeToHuman(targetLanguageCode)}. Keep tone and meaning. Text:\n\n$text',
+              'Translate the following text to ${targetLanguageName(targetLanguageCode)}. Keep tone and meaning. Text:\n\n$text',
         },
       ],
     });
@@ -276,7 +277,7 @@ class TranslationService {
         {
           'role': 'user',
           'content':
-              'Translate the following text to ${_codeToHuman(targetLanguageCode)}. Keep tone and meaning. Text:\n\n$text',
+              'Translate the following text to ${targetLanguageName(targetLanguageCode)}. Keep tone and meaning. Text:\n\n$text',
         },
       ],
     };
@@ -350,56 +351,9 @@ class TranslationService {
       apiKey: apiKey,
       model: model,
       prompt:
-          'Translate the following text to ${_codeToHuman(targetLanguageCode)}. Keep tone and meaning. Text:\n\n$text',
+          'Translate the following text to ${targetLanguageName(targetLanguageCode)}. Keep tone and meaning. Text:\n\n$text',
       systemPrompt:
           'You are a precise translation engine. Output only the translated text without additional commentary.',
     );
-  }
-
-  String _codeToHuman(String code) {
-    switch (code) {
-      case 'en':
-        return 'English';
-      case 'zh':
-        return 'Chinese (Simplified)';
-      case 'hi':
-        return 'Hindi';
-      case 'es':
-        return 'Spanish';
-      case 'fr':
-        return 'French';
-      case 'ar':
-        return 'Arabic';
-      case 'bn':
-        return 'Bengali';
-      case 'pt':
-        return 'Portuguese';
-      case 'ru':
-        return 'Russian';
-      case 'ur':
-        return 'Urdu';
-      case 'id':
-        return 'Indonesian';
-      case 'de':
-        return 'German';
-      case 'ja':
-        return 'Japanese';
-      case 'sw':
-        return 'Swahili';
-      case 'mr':
-        return 'Marathi';
-      case 'te':
-        return 'Telugu';
-      case 'tr':
-        return 'Turkish';
-      case 'ta':
-        return 'Tamil';
-      case 'vi':
-        return 'Vietnamese';
-      case 'ko':
-        return 'Korean';
-      default:
-        return code;
-    }
   }
 }

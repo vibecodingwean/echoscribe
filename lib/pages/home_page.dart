@@ -278,28 +278,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _showLanguagePicker() {
-    final List<Map<String, String>> langs = [
+    final langs = [
       {'code': 'auto', 'label': 'Auto (match spoken)'},
-      {'code': 'en', 'label': 'English'},
-      {'code': 'zh', 'label': 'Chinese (Simplified)'},
-      {'code': 'hi', 'label': 'Hindi'},
-      {'code': 'es', 'label': 'Spanish'},
-      {'code': 'fr', 'label': 'French'},
-      {'code': 'ar', 'label': 'Arabic'},
-      {'code': 'bn', 'label': 'Bengali'},
-      {'code': 'pt', 'label': 'Portuguese'},
-      {'code': 'ru', 'label': 'Russian'},
-      {'code': 'ur', 'label': 'Urdu'},
-      {'code': 'id', 'label': 'Indonesian'},
-      {'code': 'de', 'label': 'German'},
-      {'code': 'ja', 'label': 'Japanese'},
-      {'code': 'sw', 'label': 'Swahili'},
-      {'code': 'mr', 'label': 'Marathi'},
-      {'code': 'te', 'label': 'Telugu'},
-      {'code': 'tr', 'label': 'Turkish'},
-      {'code': 'ta', 'label': 'Tamil'},
-      {'code': 'vi', 'label': 'Vietnamese'},
-      {'code': 'ko', 'label': 'Korean'},
+      for (final language in kTargetLanguageNames.entries)
+        {'code': language.key, 'label': language.value},
     ];
 
     showModalBottomSheet(
