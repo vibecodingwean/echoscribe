@@ -97,9 +97,10 @@ class FloatingDictationService {
       'dictationPrompt': settings.dictationPrompt.trim().isNotEmpty
           ? settings.dictationPrompt.trim()
           : kDefaultDictationPrompt,
-      'transcriptionModel': supported ? _transcriptionModel(settings) : '',
-      'formattingModel': supported ? _formattingModel(settings) : '',
-      'reasoningEffort': supported ? _reasoningEffort(settings) : '',
+      'transcriptionModel': supported ? settings.transcriptionModel : '',
+      'formattingModel': supported ? settings.summaryModel : '',
+      'reasoningEffort':
+          supported ? (settings.reasoningEffort ?? '') : '',
       'localAiLlmUrl': supported && provider == AiProviderType.localAi
           ? settings.localAiLlmUrl
           : '',
@@ -130,53 +131,6 @@ class FloatingDictationService {
       await _channel.invokeMethod<void>(method);
     } on MissingPluginException {
       return;
-    }
-  }
-
-  static String _transcriptionModel(SettingsState settings) {
-    switch (settings.provider) {
-      case AiProviderType.gemini:
-        return AiModelConfig.geminiTranscription(pro: settings.geminiPro);
-      case AiProviderType.xai:
-        return AiModelConfig.xaiTranscription(pro: settings.xaiPro);
-      case AiProviderType.localAi:
-        return settings.localAiWhisperModel;
-      case AiProviderType.openai:
-      case AiProviderType.anthropic:
-        return AiModelConfig.openAiTranscription(pro: settings.openAiPro);
-      case AiProviderType.elevenLabs:
-        return '';
-    }
-  }
-
-  static String _formattingModel(SettingsState settings) {
-    switch (settings.provider) {
-      case AiProviderType.gemini:
-        return AiModelConfig.geminiSummary(pro: settings.geminiPro);
-      case AiProviderType.xai:
-        return AiModelConfig.xaiSummary(pro: settings.xaiPro);
-      case AiProviderType.localAi:
-        return settings.localAiLlmModel;
-      case AiProviderType.anthropic:
-        return AiModelConfig.anthropicSummary(pro: settings.anthropicPro);
-      case AiProviderType.openai:
-        return AiModelConfig.openAiSummary(pro: settings.openAiPro);
-      case AiProviderType.elevenLabs:
-        return '';
-    }
-  }
-
-  static String _reasoningEffort(SettingsState settings) {
-    switch (settings.provider) {
-      case AiProviderType.openai:
-        return AiModelConfig.openAiReasoningEffort(pro: settings.openAiPro);
-      case AiProviderType.xai:
-        return AiModelConfig.xaiReasoningEffort(pro: settings.xaiPro);
-      case AiProviderType.gemini:
-      case AiProviderType.anthropic:
-      case AiProviderType.localAi:
-      case AiProviderType.elevenLabs:
-        return '';
     }
   }
 }

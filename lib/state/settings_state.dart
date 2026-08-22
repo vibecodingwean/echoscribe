@@ -151,6 +151,98 @@ class SettingsState extends ChangeNotifier {
   bool get anthropicPro => _anthropicPro;
   bool get xaiPro => _xaiPro;
 
+  String get summaryModel {
+    switch (_provider) {
+      case AiProviderType.gemini:
+        return AiModelConfig.geminiSummary(pro: _geminiPro);
+      case AiProviderType.anthropic:
+        return AiModelConfig.anthropicSummary(pro: _anthropicPro);
+      case AiProviderType.xai:
+        return AiModelConfig.xaiSummary(pro: _xaiPro);
+      case AiProviderType.localAi:
+        return _localAiLlmModel;
+      case AiProviderType.openai:
+        return AiModelConfig.openAiSummary(pro: _openAiPro);
+      case AiProviderType.elevenLabs:
+        return '';
+    }
+  }
+
+  String get transcriptionModel {
+    switch (_provider) {
+      case AiProviderType.gemini:
+        return AiModelConfig.geminiTranscription(pro: _geminiPro);
+      case AiProviderType.xai:
+        return AiModelConfig.xaiTranscription(pro: _xaiPro);
+      case AiProviderType.localAi:
+        return _localAiWhisperModel;
+      case AiProviderType.openai:
+      case AiProviderType.anthropic:
+        return AiModelConfig.openAiTranscription(pro: _openAiPro);
+      case AiProviderType.elevenLabs:
+        return AiModelConfig.elevenLabsRealtimeTranscription;
+    }
+  }
+
+  String get translationModel {
+    switch (_provider) {
+      case AiProviderType.gemini:
+        return AiModelConfig.geminiTranslation(pro: _geminiPro);
+      case AiProviderType.anthropic:
+        return AiModelConfig.anthropicTranslation(pro: _anthropicPro);
+      case AiProviderType.xai:
+        return AiModelConfig.xaiTranslation(pro: _xaiPro);
+      case AiProviderType.localAi:
+        return _localAiLlmModel;
+      case AiProviderType.openai:
+        return AiModelConfig.openAiTranslation(pro: _openAiPro);
+      case AiProviderType.elevenLabs:
+        return '';
+    }
+  }
+
+  String? get reasoningEffort {
+    switch (_provider) {
+      case AiProviderType.openai:
+        return AiModelConfig.openAiReasoningEffort(pro: _openAiPro);
+      case AiProviderType.xai:
+        return AiModelConfig.xaiReasoningEffort(pro: _xaiPro);
+      case AiProviderType.gemini:
+      case AiProviderType.anthropic:
+      case AiProviderType.localAi:
+      case AiProviderType.elevenLabs:
+        return null;
+    }
+  }
+
+  String get imageModel {
+    switch (_provider) {
+      case AiProviderType.gemini:
+        return AiModelConfig.geminiImage(pro: true);
+      case AiProviderType.xai:
+        return AiModelConfig.xaiImage(pro: true);
+      case AiProviderType.openai:
+        return AiModelConfig.openAiImage(pro: true);
+      case AiProviderType.localAi:
+      case AiProviderType.anthropic:
+      case AiProviderType.elevenLabs:
+        return '';
+    }
+  }
+
+  String get ttsVoice {
+    switch (_provider) {
+      case AiProviderType.gemini:
+        return 'Zephyr';
+      case AiProviderType.xai:
+        return 'eve';
+      case AiProviderType.elevenLabs:
+        return AiModelConfig.elevenLabsTtsVoice;
+      default:
+        return 'alloy';
+    }
+  }
+
   void setOpenAiPro(bool enabled) {
     _openAiPro = enabled;
     notifyListeners();

@@ -144,98 +144,6 @@ class HomeController extends ChangeNotifier {
     // Note: Add transcription/summary cancel here if needed later
   }
 
-  String _getModelForSummary() {
-    switch (settings.provider) {
-      case AiProviderType.gemini:
-        return AiModelConfig.geminiSummary(pro: settings.geminiPro);
-      case AiProviderType.anthropic:
-        return AiModelConfig.anthropicSummary(pro: settings.anthropicPro);
-      case AiProviderType.xai:
-        return AiModelConfig.xaiSummary(pro: settings.xaiPro);
-      case AiProviderType.localAi:
-        return settings.localAiLlmModel;
-      case AiProviderType.openai:
-        return AiModelConfig.openAiSummary(pro: settings.openAiPro);
-      case AiProviderType.elevenLabs:
-        return '';
-    }
-  }
-
-  String _getModelForTranscription() {
-    switch (settings.provider) {
-      case AiProviderType.gemini:
-        return AiModelConfig.geminiTranscription(pro: settings.geminiPro);
-      case AiProviderType.xai:
-        return AiModelConfig.xaiTranscription(pro: settings.xaiPro);
-      case AiProviderType.localAi:
-        return settings.localAiWhisperModel;
-      case AiProviderType.openai:
-      case AiProviderType.anthropic:
-        return AiModelConfig.openAiTranscription(pro: settings.openAiPro);
-      case AiProviderType.elevenLabs:
-        return AiModelConfig.elevenLabsRealtimeTranscription;
-    }
-  }
-
-  String _getModelForTranslation() {
-    switch (settings.provider) {
-      case AiProviderType.gemini:
-        return AiModelConfig.geminiTranslation(pro: settings.geminiPro);
-      case AiProviderType.anthropic:
-        return AiModelConfig.anthropicTranslation(pro: settings.anthropicPro);
-      case AiProviderType.xai:
-        return AiModelConfig.xaiTranslation(pro: settings.xaiPro);
-      case AiProviderType.localAi:
-        return settings.localAiLlmModel;
-      case AiProviderType.openai:
-        return AiModelConfig.openAiTranslation(pro: settings.openAiPro);
-      case AiProviderType.elevenLabs:
-        return '';
-    }
-  }
-
-  String? _getReasoningEffort() {
-    switch (settings.provider) {
-      case AiProviderType.openai:
-        return AiModelConfig.openAiReasoningEffort(pro: settings.openAiPro);
-      case AiProviderType.xai:
-        return AiModelConfig.xaiReasoningEffort(pro: settings.xaiPro);
-      case AiProviderType.gemini:
-      case AiProviderType.anthropic:
-      case AiProviderType.localAi:
-      case AiProviderType.elevenLabs:
-        return null;
-    }
-  }
-
-  String _getModelForImage() {
-    switch (settings.provider) {
-      case AiProviderType.gemini:
-        return AiModelConfig.geminiImage(pro: true);
-      case AiProviderType.xai:
-        return AiModelConfig.xaiImage(pro: true);
-      case AiProviderType.openai:
-        return AiModelConfig.openAiImage(pro: true);
-      case AiProviderType.localAi:
-      case AiProviderType.anthropic:
-      case AiProviderType.elevenLabs:
-        return ''; // Unsupported
-    }
-  }
-
-  String get _ttsVoice {
-    switch (settings.provider) {
-      case AiProviderType.gemini:
-        return "Zephyr";
-      case AiProviderType.xai:
-        return "eve";
-      case AiProviderType.elevenLabs:
-        return AiModelConfig.elevenLabsTtsVoice;
-      default:
-        return "alloy";
-    }
-  }
-
   Future<String> _transcribeAudio(
     String path,
     String filename,
@@ -255,7 +163,7 @@ class HomeController extends ChangeNotifier {
       );
     }
     final brand = activeProvider.brandName;
-    final model = transcriptionModel ?? _getModelForTranscription();
+    final model = transcriptionModel ?? settings.transcriptionModel;
 
     if (fileSizeBytes != null) {
       final sizeInMb = (fileSizeBytes / (1024 * 1024)).toStringAsFixed(1);
@@ -311,8 +219,8 @@ class HomeController extends ChangeNotifier {
       );
     }
 
-    final transModel = translationModel ?? _getModelForTranslation();
-    final activeReasoningEffort = reasoningEffort ?? _getReasoningEffort();
+    final transModel = translationModel ?? settings.translationModel;
+    final activeReasoningEffort = reasoningEffort ?? settings.reasoningEffort;
     final brand = activeProvider.brandName;
     content.appendLogLine('🌐 Translating via $brand...');
     content.appendLogLine('🤖 Translation Model: $transModel');
@@ -359,8 +267,8 @@ class HomeController extends ChangeNotifier {
       );
     }
     final brand = activeProvider.brandName;
-    final sumModel = summaryModel ?? _getModelForSummary();
-    final activeReasoningEffort = reasoningEffort ?? _getReasoningEffort();
+    final sumModel = summaryModel ?? settings.summaryModel;
+    final activeReasoningEffort = reasoningEffort ?? settings.reasoningEffort;
     content.appendLogLine('🤖 Summarizing with $brand...');
     content.appendLogLine('🤖 Summary Model: $sumModel');
     if (activeReasoningEffort != null) {
@@ -454,7 +362,7 @@ class HomeController extends ChangeNotifier {
     content.setCurrentImageBytes(null);
 
     final brand = settings.provider.brandName;
-    final model = _getModelForImage();
+    final model = settings.imageModel;
 
     showProgressToast('Uploading prompt to $brand...');
 
@@ -823,13 +731,11 @@ class HomeController extends ChangeNotifier {
         initialProvider == AiProviderType.openai && settings.openAiRealtime;
     final isRealtime = isOpenAiRealtime || isElevenLabsRealtime;
     final targetLanguageCode = settings.targetLanguageCode;
-    final transcriptionModel = isElevenLabsRealtime
-        ? AiModelConfig.elevenLabsRealtimeTranscription
-        : isOpenAiRealtime
-            ? targetLanguageCode == 'auto'
-                ? AiModelConfig.openAiRealtimeTranscription
-                : AiModelConfig.openAiRealtimeTranslation
-            : _getModelForTranscription();
+    final transcriptionModel = isOpenAiRealtime
+        ? targetLanguageCode == 'auto'
+            ? AiModelConfig.openAiRealtimeTranscription
+            : AiModelConfig.openAiRealtimeTranslation
+        : settings.transcriptionModel;
     final session = ActiveRecordingSession(
       RecordingSessionMetadata(
         provider: initialProvider,
@@ -837,9 +743,9 @@ class HomeController extends ChangeNotifier {
         targetLanguageCode: targetLanguageCode,
         apiKey: settings.activeApiKey,
         transcriptionModel: transcriptionModel,
-        translationModel: _getModelForTranslation(),
-        summaryModel: _getModelForSummary(),
-        reasoningEffort: _getReasoningEffort(),
+        translationModel: settings.translationModel,
+        summaryModel: settings.summaryModel,
+        reasoningEffort: settings.reasoningEffort,
         summaryPrompt: settings.summaryPrompt,
         localAiLlmUrl: settings.localAiLlmUrl,
         localAiWhisperUrl: settings.localAiWhisperUrl,
@@ -1372,7 +1278,7 @@ class HomeController extends ChangeNotifier {
 
       logsBuffer.writeln('🔌 Connecting to AI translation service...');
       updateDisplayWithLogs(src);
-      final reprocessModel = _getModelForTranslation();
+      final reprocessModel = settings.translationModel;
       logsBuffer.writeln('🤖 Model: $reprocessModel ($providerName)');
       updateDisplayWithLogs(src);
       logsBuffer.writeln('🔄 Re-processing original text...');
@@ -1458,7 +1364,7 @@ class HomeController extends ChangeNotifier {
       final cached = playback.hasCachedSummaryAudio(
         playbackText,
         settings.provider,
-        voice: _ttsVoice,
+        voice: settings.ttsVoice,
       );
       if (cached) {
         hideProgressToast();
