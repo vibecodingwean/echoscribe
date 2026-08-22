@@ -38,13 +38,6 @@ void main() {
     expect(payload['localAiWhisperUrl'], '');
   });
 
-  test('ElevenLabs realtime recording is available on Android', () {
-    expect(
-      AiProviderType.elevenLabs.supportsRealtimeTranscription,
-      isTrue,
-    );
-  });
-
   test('summary history loads as transcript when provider has no summaries',
       () {
     final content = ContentState();

@@ -808,9 +808,6 @@ class _HomePageState extends State<HomePage> {
                                                     _settings.hasActiveApiKey,
                                                 providerSupportsAudio: _settings
                                                     .provider.supportsAudio,
-                                                recordingSupportedOnCurrentPlatform:
-                                                    _settings
-                                                        .recordingSupportedOnCurrentPlatform,
                                               ),
                                               isAnthropic: !_settings
                                                   .provider.supportsAudio,
@@ -843,12 +840,6 @@ class _HomePageState extends State<HomePage> {
                                                                 settings:
                                                                     _settings)),
                                                   );
-                                                  return;
-                                                }
-                                                if (!_settings
-                                                    .recordingSupportedOnCurrentPlatform) {
-                                                  _showError(
-                                                      'ElevenLabs Realtime is available in the installed app, not the browser build.');
                                                   return;
                                                 }
                                                 if (!_settings

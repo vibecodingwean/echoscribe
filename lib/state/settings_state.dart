@@ -147,8 +147,6 @@ class SettingsState extends ChangeNotifier {
   bool get realtimeEnabled =>
       (_provider == AiProviderType.openai && _openAiRealtime) ||
       elevenLabsRealtime;
-  bool get recordingSupportedOnCurrentPlatform =>
-      _provider != AiProviderType.elevenLabs || elevenLabsRealtime;
   bool get geminiPro => _geminiPro;
   bool get anthropicPro => _anthropicPro;
   bool get xaiPro => _xaiPro;

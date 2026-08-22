@@ -72,7 +72,6 @@ void main() {
         isRecording: true,
         hasActiveApiKey: false,
         providerSupportsAudio: false,
-        recordingSupportedOnCurrentPlatform: false,
       ),
       isTrue,
     );
@@ -81,7 +80,25 @@ void main() {
         isRecording: false,
         hasActiveApiKey: false,
         providerSupportsAudio: true,
-        recordingSupportedOnCurrentPlatform: true,
+      ),
+      isFalse,
+    );
+  });
+
+  test('idle microphone needs an API key and an audio-capable provider', () {
+    expect(
+      microphoneControlEnabled(
+        isRecording: false,
+        hasActiveApiKey: true,
+        providerSupportsAudio: true,
+      ),
+      isTrue,
+    );
+    expect(
+      microphoneControlEnabled(
+        isRecording: false,
+        hasActiveApiKey: true,
+        providerSupportsAudio: false,
       ),
       isFalse,
     );

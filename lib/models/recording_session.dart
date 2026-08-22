@@ -79,10 +79,6 @@ bool microphoneControlEnabled({
   required bool isRecording,
   required bool hasActiveApiKey,
   required bool providerSupportsAudio,
-  required bool recordingSupportedOnCurrentPlatform,
 }) {
-  return isRecording ||
-      (hasActiveApiKey &&
-          providerSupportsAudio &&
-          recordingSupportedOnCurrentPlatform);
+  return isRecording || (hasActiveApiKey && providerSupportsAudio);
 }
