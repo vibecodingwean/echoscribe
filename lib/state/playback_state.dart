@@ -87,6 +87,20 @@ class PlaybackState extends ChangeNotifier {
         !_playbackCompleted;
   }
 
+  Uint8List? cachedAudioBytes(
+    String text,
+    AiProviderType provider, {
+    String voice = "default",
+  }) {
+    final key = _audioCacheKey(text, provider, voice: voice);
+    if (key == null) return null;
+    return _audioCache[key];
+  }
+
+  String cachedAudioMimeType(AiProviderType provider) {
+    return provider == AiProviderType.gemini ? "audio/wav" : "audio/mpeg";
+  }
+
   int? cachedSummaryAudioSize(
     String text,
     AiProviderType provider, {

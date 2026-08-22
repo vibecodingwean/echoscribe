@@ -69,7 +69,7 @@ void main() {
     expect(find.text('Claude (no-audio) 🦀'), findsOneWidget);
     expect(find.text('Grok'), findsOneWidget);
     expect(find.text('Local AI'), findsOneWidget);
-    expect(find.text('ElevenLabs (Live STT + TTS)'), findsOneWidget);
+    expect(find.text('ElevenLabs (STT + TTS)'), findsOneWidget);
   });
 
   testWidgets('ElevenLabs key is only shown for the ElevenLabs provider',
@@ -79,7 +79,8 @@ void main() {
       MaterialApp(home: SettingsPage(settings: openAi)),
     );
     await tester.pump();
-    expect(find.text('ElevenLabs API Key (Live STT + TTS)'), findsNothing);
+    expect(find.text('ElevenLabs API Key (STT + TTS)'), findsNothing);
+    expect(find.text('TTS Voice ID'), findsNothing);
 
     final elevenLabs = SettingsState()..setProvider(AiProviderType.elevenLabs);
     await tester.pumpWidget(
@@ -87,11 +88,16 @@ void main() {
     );
     await tester.pump();
     expect(
-      find.text('ElevenLabs API Key (Live STT + TTS)'),
+      find.text('ElevenLabs API Key (STT + TTS)'),
       findsOneWidget,
     );
+    expect(find.text('TTS Voice ID'), findsOneWidget);
+    expect(find.text('Q0Co3mt4NHZCSmKqCMMo'), findsOneWidget);
+    expect(find.text('Voice Library'), findsOneWidget);
+    expect(find.text('Pro'), findsNothing);
+    expect(find.text('Realtime'), findsOneWidget);
     expect(
-      find.textContaining('Live transcription and text-to-speech only.'),
+      find.textContaining('Realtime uses Scribe v2 Realtime'),
       findsOneWidget,
     );
   });

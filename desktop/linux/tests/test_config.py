@@ -27,6 +27,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(DEFAULTS["paste"]["shortcut"], "auto")
         self.assertEqual(DEFAULTS["recorder"]["reminder_seconds"], 90)
         self.assertNotIn("max_seconds", DEFAULTS["recorder"])
+        self.assertEqual(DEFAULTS["elevenlabs"]["transcription_model"], "scribe_v2")
 
     def test_unknown_toml_fields_are_tolerated_and_merged(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

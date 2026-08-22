@@ -61,9 +61,12 @@ class AiModelConfig {
   static const String openAiTts = 'gpt-4o-mini-tts';
   static const String openAiRealtimeTranscription = 'gpt-live-transcribe';
   static const String openAiRealtimeTranslation = 'gpt-realtime-translate';
+  static const String elevenLabsTranscription = 'scribe_v2';
   static const String elevenLabsRealtimeTranscription = 'scribe_v2_realtime';
   static const String elevenLabsTts = 'eleven_flash_v2_5';
   static const String elevenLabsTtsVoice = 'JBFqnCBsd6RMkjVDRZzb';
+  static const String elevenLabsVoiceLibraryUrl =
+      'https://elevenlabs.io/app/voice-library';
   static const String openAiReasoningEffortFast = 'none';
 
   // ---------- Gemini ----------

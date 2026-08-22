@@ -726,16 +726,19 @@ class HomeController extends ChangeNotifier {
     }
 
     final isElevenLabsRealtime =
-        initialProvider == AiProviderType.elevenLabs;
+        initialProvider == AiProviderType.elevenLabs &&
+            settings.elevenLabsRealtime;
     final isOpenAiRealtime =
         initialProvider == AiProviderType.openai && settings.openAiRealtime;
     final isRealtime = isOpenAiRealtime || isElevenLabsRealtime;
     final targetLanguageCode = settings.targetLanguageCode;
-    final transcriptionModel = isOpenAiRealtime
-        ? targetLanguageCode == 'auto'
-            ? AiModelConfig.openAiRealtimeTranscription
-            : AiModelConfig.openAiRealtimeTranslation
-        : settings.transcriptionModel;
+    final transcriptionModel = isElevenLabsRealtime
+        ? AiModelConfig.elevenLabsRealtimeTranscription
+        : isOpenAiRealtime
+            ? targetLanguageCode == 'auto'
+                ? AiModelConfig.openAiRealtimeTranscription
+                : AiModelConfig.openAiRealtimeTranslation
+            : settings.transcriptionModel;
     final session = ActiveRecordingSession(
       RecordingSessionMetadata(
         provider: initialProvider,
@@ -1348,7 +1351,7 @@ class HomeController extends ChangeNotifier {
       openAiVoice: "alloy",
       geminiVoice: "Zephyr",
       xaiVoice: "eve",
-      elevenLabsVoice: AiModelConfig.elevenLabsTtsVoice,
+      elevenLabsVoice: settings.ttsVoice,
     )) {
       await playback.resumeAudio();
     } else {
@@ -1380,7 +1383,7 @@ class HomeController extends ChangeNotifier {
         openAiVoice: "alloy",
         geminiVoice: "Zephyr",
         xaiVoice: "eve",
-        elevenLabsVoice: AiModelConfig.elevenLabsTtsVoice,
+        elevenLabsVoice: settings.ttsVoice,
         languageCode: lang,
       );
       hideProgressToast();
@@ -1391,7 +1394,7 @@ class HomeController extends ChangeNotifier {
       openAiVoice: "alloy",
       geminiVoice: "Zephyr",
       xaiVoice: "eve",
-      elevenLabsVoice: AiModelConfig.elevenLabsTtsVoice,
+      elevenLabsVoice: settings.ttsVoice,
     );
     if (size != null && size > 0) {
       final mb = size / (1024 * 1024);

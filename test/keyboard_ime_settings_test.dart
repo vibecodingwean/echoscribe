@@ -140,7 +140,7 @@ void main() {
       expect(payload['enabled'], isTrue);
     });
 
-    test('ElevenLabs still strips apiKey from keyboard payload', () {
+    test('ElevenLabs keyboard payload includes Scribe v2 and the API key', () {
       final settings = SettingsState()
         ..setProvider(AiProviderType.elevenLabs)
         ..setElevenLabsKey('secret-eleven-key')
@@ -151,9 +151,10 @@ void main() {
 
       final payload = KeyboardImeService.buildConfigPayload(settings);
 
-      expect(payload['supportsDictation'], isFalse);
-      expect(payload['enabled'], isFalse);
-      expect(payload['apiKey'], '');
+      expect(payload['supportsDictation'], isTrue);
+      expect(payload['enabled'], isTrue);
+      expect(payload['apiKey'], 'secret-eleven-key');
+      expect(payload['transcriptionModel'], 'scribe_v2');
       expect(payload['voiceMode'], 'echoscribe');
       expect(payload['customTones'], [
         {'name': 'Warm', 'prompt': 'Be warm'},

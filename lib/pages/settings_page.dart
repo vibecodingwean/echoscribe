@@ -1,3 +1,4 @@
+import 'package:echoscribe/config/prompts.dart';
 import 'package:echoscribe/services/secure_storage_service.dart';
 import 'package:echoscribe/services/keyboard_ime_service.dart';
 import 'package:echoscribe/services/floating_dictation_service.dart';
@@ -8,6 +9,7 @@ import 'package:echoscribe/services/local_ai_health_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
 
 class SettingsPage extends StatefulWidget {
@@ -30,6 +32,7 @@ class _SettingsPageState extends State<SettingsPage>
   late final TextEditingController _anthropicCtrl;
   late final TextEditingController _xaiCtrl;
   late final TextEditingController _elevenLabsCtrl;
+  late final TextEditingController _elevenLabsVoiceCtrl;
   late final TextEditingController _localAiLlmUrlCtrl;
   late final TextEditingController _localAiLlmModelCtrl;
   late final TextEditingController _localAiWhisperUrlCtrl;
@@ -51,6 +54,7 @@ class _SettingsPageState extends State<SettingsPage>
   late bool _debugMode;
   late bool _openAiPro;
   late bool _openAiRealtime;
+  late bool _elevenLabsRealtime;
   late bool _geminiPro;
   late bool _anthropicPro;
   late bool _xaiPro;
@@ -74,6 +78,9 @@ class _SettingsPageState extends State<SettingsPage>
     _elevenLabsCtrl = TextEditingController(
       text: widget.settings.elevenLabsKey,
     );
+    _elevenLabsVoiceCtrl = TextEditingController(
+      text: widget.settings.elevenLabsVoiceId,
+    );
     _localAiLlmUrlCtrl = TextEditingController(
       text: widget.settings.localAiLlmUrl,
     );
@@ -91,6 +98,7 @@ class _SettingsPageState extends State<SettingsPage>
     _debugMode = widget.settings.debugMode;
     _openAiPro = widget.settings.openAiPro;
     _openAiRealtime = widget.settings.openAiRealtime;
+    _elevenLabsRealtime = widget.settings.elevenLabsRealtime;
     _geminiPro = widget.settings.geminiPro;
     _anthropicPro = widget.settings.anthropicPro;
     _xaiPro = widget.settings.xaiPro;
@@ -115,6 +123,7 @@ class _SettingsPageState extends State<SettingsPage>
     _anthropicCtrl.dispose();
     _xaiCtrl.dispose();
     _elevenLabsCtrl.dispose();
+    _elevenLabsVoiceCtrl.dispose();
     _localAiLlmUrlCtrl.dispose();
     _localAiLlmModelCtrl.dispose();
     _localAiWhisperUrlCtrl.dispose();
@@ -337,6 +346,7 @@ class _SettingsPageState extends State<SettingsPage>
     final antKey = _anthropicCtrl.text.trim();
     final xaiKey = _xaiCtrl.text.trim();
     final elevenLabsKey = _elevenLabsCtrl.text.trim();
+    final elevenLabsVoiceId = _elevenLabsVoiceCtrl.text.trim();
     final localLlmUrl = _localAiLlmUrlCtrl.text.trim();
     final localLlmModel = _localAiLlmModelCtrl.text.trim();
     final localWhisperUrl = _localAiWhisperUrlCtrl.text.trim();
@@ -346,6 +356,7 @@ class _SettingsPageState extends State<SettingsPage>
     widget.settings.setAnthropicKey(antKey);
     widget.settings.setXaiKey(xaiKey);
     widget.settings.setElevenLabsKey(elevenLabsKey);
+    widget.settings.setElevenLabsVoiceId(elevenLabsVoiceId);
     widget.settings.setLocalAiLlmUrl(localLlmUrl);
     widget.settings.setLocalAiLlmModel(localLlmModel);
     widget.settings.setLocalAiWhisperUrl(localWhisperUrl);
@@ -355,6 +366,7 @@ class _SettingsPageState extends State<SettingsPage>
     await _storage.saveAnthropicKey(antKey);
     await _storage.saveXaiKey(xaiKey);
     await _storage.saveElevenLabsKey(elevenLabsKey);
+    await _storage.saveElevenLabsVoiceId(elevenLabsVoiceId);
     await _storage.saveLocalAiLlmUrl(localLlmUrl);
     await _storage.saveLocalAiLlmModel(localLlmModel);
     await _storage.saveLocalAiWhisperUrl(localWhisperUrl);
@@ -423,6 +435,7 @@ class _SettingsPageState extends State<SettingsPage>
       final antKey = _anthropicCtrl.text.trim();
       final xaiKey = _xaiCtrl.text.trim();
       final elevenLabsKey = _elevenLabsCtrl.text.trim();
+      final elevenLabsVoiceId = _elevenLabsVoiceCtrl.text.trim();
       final localLlmUrl = _localAiLlmUrlCtrl.text.trim();
       final localLlmModel = _localAiLlmModelCtrl.text.trim();
       final localWhisperUrl = _localAiWhisperUrlCtrl.text.trim();
@@ -432,6 +445,7 @@ class _SettingsPageState extends State<SettingsPage>
       widget.settings.setAnthropicKey(antKey);
       widget.settings.setXaiKey(xaiKey);
       widget.settings.setElevenLabsKey(elevenLabsKey);
+      widget.settings.setElevenLabsVoiceId(elevenLabsVoiceId);
       widget.settings.setLocalAiLlmUrl(localLlmUrl);
       widget.settings.setLocalAiLlmModel(localLlmModel);
       widget.settings.setLocalAiWhisperUrl(localWhisperUrl);
@@ -441,6 +455,7 @@ class _SettingsPageState extends State<SettingsPage>
       await _storage.saveAnthropicKey(antKey);
       await _storage.saveXaiKey(xaiKey);
       await _storage.saveElevenLabsKey(elevenLabsKey);
+      await _storage.saveElevenLabsVoiceId(elevenLabsVoiceId);
       await _storage.saveLocalAiLlmUrl(localLlmUrl);
       await _storage.saveLocalAiLlmModel(localLlmModel);
       await _storage.saveLocalAiWhisperUrl(localWhisperUrl);
@@ -552,26 +567,82 @@ class _SettingsPageState extends State<SettingsPage>
               ),
             if (widget.settings.provider == AiProviderType.elevenLabs)
               _ApiKeyCard(
-                labelText: 'ElevenLabs API Key (Live STT + TTS)',
+                labelText: 'ElevenLabs API Key (STT + TTS)',
                 hintText: 'xi-...',
                 controller: _elevenLabsCtrl,
                 obscure: _obscureElevenLabs,
+                realtimeValue: _elevenLabsRealtime,
                 onObscureToggle: () => setState(
                   () => _obscureElevenLabs = !_obscureElevenLabs,
                 ),
                 onChanged: (_) => _scheduleAutoSaveImmediate(),
+                onRealtimeChanged: (val) async {
+                  setState(() => _elevenLabsRealtime = val);
+                  widget.settings.setElevenLabsRealtime(val);
+                  await _storage.saveElevenLabsRealtime(val);
+                  await _syncAndRefreshKeyboardStatus();
+                },
                 onDelete: () async {
                   await _storage.deleteElevenLabsKey();
                   widget.settings.setElevenLabsKey('');
                   _elevenLabsCtrl.clear();
+                  await _syncAndRefreshKeyboardStatus();
                 },
                 formKey: _elevenLabsFormKey,
+              ),
+            if (widget.settings.provider == AiProviderType.elevenLabs)
+              Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                margin: const EdgeInsets.only(top: 8),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextFormField(
+                        controller: _elevenLabsVoiceCtrl,
+                        style: const TextStyle(fontSize: 13),
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          labelText: 'TTS Voice ID',
+                          hintText: 'Q0Co3mt4NHZCSmKqCMMo',
+                          prefixIcon: Icon(Icons.record_voice_over, size: 18),
+                        ),
+                        onChanged: (_) => _scheduleAutoSaveImmediate(),
+                      ),
+                      const SizedBox(height: 4),
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                        ),
+                        onPressed: () {
+                          unawaited(
+                            launchUrl(
+                              Uri.parse(AiModelConfig.elevenLabsVoiceLibraryUrl),
+                              mode: LaunchMode.externalApplication,
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Voice Library',
+                          style: TextStyle(
+                            fontSize: 12,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             if (widget.settings.provider == AiProviderType.elevenLabs)
               const Padding(
                 padding: EdgeInsets.fromLTRB(12, 8, 12, 0),
                 child: Text(
-                  'Live transcription and text-to-speech only. Summary, image generation, translation, shared audio, and Keyboard STT are unavailable.',
+                  'Realtime uses Scribe v2 Realtime for the microphone. Off uses Scribe v2 file transcription, including Keyboard STT. Text-to-speech uses the Voice ID above, or the default if empty. Summary, image generation, and translation are unavailable.',
                   style: TextStyle(fontSize: 12),
                 ),
               ),
@@ -1783,7 +1854,7 @@ class ProviderSelectorCard extends StatelessWidget {
           const Divider(height: 1, indent: 56),
           _ProviderOptionTile(
             value: AiProviderType.elevenLabs,
-            label: 'ElevenLabs (Live STT + TTS)',
+            label: 'ElevenLabs (STT + TTS)',
             iconData: Icons.record_voice_over_outlined,
             selectedProvider: selectedProvider,
             onSelected: onProviderSelected,

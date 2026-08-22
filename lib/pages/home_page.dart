@@ -1,7 +1,6 @@
 import "dart:async";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
-import "package:share_plus/share_plus.dart";
 import "package:share_handler/share_handler.dart";
 
 import "package:echoscribe/services/service_locator.dart";
@@ -21,6 +20,7 @@ import "package:echoscribe/controllers/home_controller.dart";
 import "package:echoscribe/controllers/share_intent_controller.dart";
 
 import "package:echoscribe/widgets/home/recording_controls.dart";
+import "package:echoscribe/widgets/home/share_content_sheet.dart";
 import "package:echoscribe/widgets/home/transcription_panel.dart";
 import "package:echoscribe/models/enums.dart";
 import "package:echoscribe/models/recording_session.dart";
@@ -109,7 +109,8 @@ class _HomePageState extends State<HomePage> {
       final openAiPro = await secure.readOpenAiPro();
       final openAiRealtime = await secure.readOpenAiRealtime();
       final elevenLabsKey = await secure.readElevenLabsKey();
-      final legacyElevenLabsRealtime = await secure.readElevenLabsRealtime();
+      final elevenLabsVoiceId = await secure.readElevenLabsVoiceId();
+      final elevenLabsRealtime = await secure.readElevenLabsRealtime();
       final geminiPro = await secure.readGeminiPro();
       final anthropicPro = await secure.readAnthropicPro();
       final xai = await secure.readXaiKey();
@@ -133,14 +134,6 @@ class _HomePageState extends State<HomePage> {
       final customAssistants = await secure.readCustomAssistants();
       final lastIntent = await secure.readLastSharedIntentId();
 
-      if (legacyElevenLabsRealtime) {
-        if (provider != AiProviderType.elevenLabs) {
-          provider = AiProviderType.elevenLabs;
-          await secure.saveProvider(provider);
-        }
-        await secure.saveElevenLabsRealtime(false);
-      }
-
       _settings.setProvider(provider);
       if (open.isNotEmpty) _settings.setOpenAiKey(open);
       if (gem.isNotEmpty) _settings.setGeminiKey(gem);
@@ -148,6 +141,9 @@ class _HomePageState extends State<HomePage> {
       if (xai.isNotEmpty) _settings.setXaiKey(xai);
       if (elevenLabsKey.isNotEmpty) {
         _settings.setElevenLabsKey(elevenLabsKey);
+      }
+      if (elevenLabsVoiceId.isNotEmpty) {
+        _settings.setElevenLabsVoiceId(elevenLabsVoiceId);
       }
       _settings.setLocalAiLlmUrl(localAiLlmUrl);
       _settings.setLocalAiLlmModel(localAiLlmModel);
@@ -163,6 +159,7 @@ class _HomePageState extends State<HomePage> {
       _settings.setDebugMode(dbg);
       _settings.setOpenAiPro(openAiPro);
       _settings.setOpenAiRealtime(openAiRealtime);
+      _settings.setElevenLabsRealtime(elevenLabsRealtime);
       _settings.setGeminiPro(geminiPro);
       _settings.setAnthropicPro(anthropicPro);
       _settings.setXaiPro(xaiPro);
@@ -275,6 +272,54 @@ class _HomePageState extends State<HomePage> {
     _playback.stopAudio();
     _settings.setLastSharedIntentId('');
     await _sl.secureStorage.saveLastSharedIntentId('');
+  }
+
+  String _currentShareText() {
+    return ((_settings.debugMode ||
+                    _content.isTranscribing ||
+                    _content.isRecording) &&
+                _content.logText.value.isNotEmpty
+            ? _content.logText.value
+            : (_content.isSummaryMode
+                ? _content.currentSummaryValue
+                : HomeController.cleanTranscriptText(
+                    _content.currentTranscriptValue)))
+        .trim();
+  }
+
+  String _currentPlaybackText() {
+    return (_content.isSummaryMode
+            ? _content.currentSummaryValue
+            : _content.currentTranscriptValue)
+        .trim();
+  }
+
+  bool _canShareCurrent() {
+    final options = resolveShareContentOptions(
+      hasText: _currentShareText().isNotEmpty,
+      hasAudio: _playback.cachedAudioBytes(
+            _currentPlaybackText(),
+            _settings.provider,
+            voice: _settings.ttsVoice,
+          ) !=
+          null,
+      hasImage: _content.currentImageBytes.value?.isNotEmpty == true,
+    );
+    return !options.isEmpty;
+  }
+
+  Future<void> _shareCurrent(BuildContext context) {
+    return showShareContentSheet(
+      context: context,
+      text: _currentShareText(),
+      audioBytes: _playback.cachedAudioBytes(
+        _currentPlaybackText(),
+        _settings.provider,
+        voice: _settings.ttsVoice,
+      ),
+      audioMimeType: _playback.cachedAudioMimeType(_settings.provider),
+      imageBytes: _content.currentImageBytes.value,
+    );
   }
 
   void _showLanguagePicker() {
@@ -474,20 +519,8 @@ class _HomePageState extends State<HomePage> {
                       await _content.addToClipboard(t);
                       _showSuccess("Copied");
                     },
-                    onShare: () async {
-                      final text = ((_settings.debugMode ||
-                                      _content.isTranscribing ||
-                                      _content.isRecording) &&
-                                  _content.logText.value.isNotEmpty
-                              ? _content.logText.value
-                              : (_content.isSummaryMode
-                                  ? _content.currentSummaryValue
-                                  : HomeController.cleanTranscriptText(
-                                      _content.currentTranscriptValue)))
-                          .trim();
-                      if (text.isEmpty) return;
-                      await SharePlus.instance.share(ShareParams(text: text));
-                    },
+                    canShare: _canShareCurrent(),
+                    onShare: () => _shareCurrent(context),
                     onPaste: _pasteFromClipboard,
                     onClear: _clearTranscription,
                     onGenerateImage: () =>

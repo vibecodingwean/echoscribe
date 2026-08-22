@@ -90,9 +90,9 @@
       "summary": false,
       "translation": false,
       "image": false,
-      "batch_transcription": false,
-      "keyboard_dictation": false,
-      "floating_dictation": false
+      "batch_transcription": true,
+      "keyboard_dictation": true,
+      "floating_dictation": true
     }
   },
   "localai": {

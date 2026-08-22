@@ -27,6 +27,7 @@ class SecureStorageService {
   static const _keyOpenAiPro = 'openai_pro_enabled';
   static const _keyOpenAiRealtime = 'openai_realtime_enabled';
   static const _keyElevenLabs = 'elevenlabs_api_key';
+  static const _keyElevenLabsVoiceId = 'elevenlabs_voice_id';
   static const _keyElevenLabsRealtime = 'elevenlabs_realtime_enabled';
   static const _keyGeminiPro = 'gemini_pro_enabled';
   static const _keyAnthropicPro = 'anthropic_pro_enabled';
@@ -137,6 +138,12 @@ class SecureStorageService {
   Future<void> saveElevenLabsKey(String key) => _safeWrite(_keyElevenLabs, key);
   Future<String> readElevenLabsKey() async => _safeRead(_keyElevenLabs);
   Future<void> deleteElevenLabsKey() => _safeDelete(_keyElevenLabs);
+
+  Future<void> saveElevenLabsVoiceId(String voiceId) =>
+      _safeWrite(_keyElevenLabsVoiceId, voiceId);
+  Future<String> readElevenLabsVoiceId() async =>
+      _safeRead(_keyElevenLabsVoiceId);
+  Future<void> deleteElevenLabsVoiceId() => _safeDelete(_keyElevenLabsVoiceId);
 
   // Gemini Key
   Future<void> saveGeminiKey(String key) => _safeWrite(_keyGemini, key);
