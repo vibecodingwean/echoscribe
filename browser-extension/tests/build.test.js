@@ -14,6 +14,7 @@ describe('generated manifests', () => {
     expect(manifest.description).toMatch(/^Summarize webpages/);
     expect(CHROMIUM_EXTENSION_KEY).toMatch(/^MIIB[A-Za-z0-9+/=]{300,}$/);
     expect(manifest.key).toBe(CHROMIUM_EXTENSION_KEY);
+    expect(makeManifest().key).toBe(CHROMIUM_EXTENSION_KEY);
     expect(manifest.permissions.sort()).toEqual(['activeTab', 'clipboardWrite', 'contextMenus', 'scripting', 'storage'].sort());
     expect(JSON.stringify(manifest)).not.toMatch(/nativeMessaging|localhost|127\.0\.0\.1|telemetry/i);
     expect(manifest.background).toEqual({ service_worker: 'background.js' });

@@ -71,8 +71,8 @@ def inspect_manifest(target: str, manifest: dict) -> None:
         if set(required) != {"authenticationInfo", "websiteContent"}:
             fail("firefox: data permission disclosure mismatch")
     else:
-        if manifest.get("key") != CHROMIUM_EXTENSION_KEY:
-            fail(f"{target}: Chromium update identity key mismatch")
+        if "key" in manifest:
+            fail(f"{target}: store ZIP must omit key; Chrome/Edge listings assign identity")
         if manifest.get("background") != {"service_worker": "background.js"}:
             fail(f"{target}: Chromium service worker missing")
 
@@ -100,7 +100,16 @@ def inspect_archive(target: str, archive_path: Path) -> None:
         for name in names:
             data = archive.read(name)
             source = dist / name
-            if not source.is_file() or data != source.read_bytes():
+            if not source.is_file():
+                fail(f"{target}: archive differs from dist at {name}")
+            expected = source.read_bytes()
+            if name == "manifest.json" and target == "chrome":
+                dist_manifest = json.loads(expected.decode("utf-8"))
+                if dist_manifest.get("key") != CHROMIUM_EXTENSION_KEY:
+                    fail(f"{target}: unpacked dist must keep the Chromium public key")
+                dist_manifest.pop("key", None)
+                expected = (json.dumps(dist_manifest, indent=2) + "\n").encode("utf-8")
+            if data != expected:
                 fail(f"{target}: archive differs from dist at {name}")
             scan_text(target, name, data, FORBIDDEN_TEXT)
             try:
