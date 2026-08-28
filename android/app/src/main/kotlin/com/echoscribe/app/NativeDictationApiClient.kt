@@ -219,6 +219,45 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
             "https://generativelanguage.googleapis.com/v1beta/$name"
         }
 
+        val model = config.transcriptionModel.ifBlank { "gemini-3.5-transcribe" }
+        if (isGeminiDedicatedTranscribe(model)) {
+            val body = JSONObject()
+                .put("model", model)
+                .put(
+                    "input",
+                    JSONArray().put(
+                        JSONObject()
+                            .put("type", "audio")
+                            .put("uri", fileUri)
+                            .put("mime_type", mimeType(file)),
+                    ),
+                )
+                .put(
+                    "generation_config",
+                    JSONObject().put(
+                        "transcription_config",
+                        JSONObject()
+                            .put(
+                                "mode",
+                                JSONObject()
+                                    .put("type", "verbatim")
+                                    .put("diarization_mode", "speaker"),
+                            ),
+                    ),
+                )
+            val json = postJson(
+                endpoint = "https://generativelanguage.googleapis.com/v1beta/interactions",
+                headers = mapOf(
+                    "Content-Type" to "application/json",
+                    "x-goog-api-key" to config.apiKey,
+                ),
+                body = body,
+            )
+            return extractGeminiInteractionsText(json).ifBlank {
+                throw IllegalStateException("Transcription returned empty text")
+            }
+        }
+
         val parts = JSONArray()
             .put(JSONObject().put("text", "Transcribe the following audio accurately. Auto-detect the spoken language and return only the raw transcript text without any extra words."))
             .put(
@@ -246,13 +285,35 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
                 ),
             )
         val json = postJson(
-            endpoint = "https://generativelanguage.googleapis.com/v1beta/models/${config.transcriptionModel.ifBlank { "gemini-3.7-flash" }}:generateContent?key=${config.apiKey}",
+            endpoint = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=${config.apiKey}",
             headers = mapOf("Content-Type" to "application/json"),
             body = body,
         )
         return extractGeminiText(json).ifBlank {
             throw IllegalStateException("Transcription returned empty text")
         }
+    }
+
+    private fun isGeminiDedicatedTranscribe(model: String): Boolean {
+        val id = model.lowercase()
+        return id.contains("3.5-transcribe") && !id.contains("-live")
+    }
+
+    private fun extractGeminiInteractionsText(json: JSONObject): String {
+        val output = json.optString("output_text").trim()
+        if (output.isNotBlank()) return output
+        val texts = mutableListOf<String>()
+        val steps = json.optJSONArray("steps")
+        if (steps != null) {
+            for (i in 0 until steps.length()) {
+                val content = steps.optJSONObject(i)?.optJSONArray("content") ?: continue
+                for (j in 0 until content.length()) {
+                    val text = content.optJSONObject(j)?.optString("text").orEmpty().trim()
+                    if (text.isNotBlank()) texts.add(text)
+                }
+            }
+        }
+        return texts.joinToString("\n").trim()
     }
 
     private fun chatCompletions(

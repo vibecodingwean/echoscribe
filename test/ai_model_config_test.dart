@@ -36,7 +36,15 @@ void main() {
       expect(AiModelConfig.geminiTranslation(pro: false), 'gemini-3.7-flash');
       expect(
         AiModelConfig.geminiTranscription(pro: false),
-        'gemini-3.7-flash',
+        'gemini-3.5-transcribe',
+      );
+      expect(
+        AiModelConfig.geminiTranscription(pro: true),
+        'gemini-3.5-transcribe',
+      );
+      expect(
+        AiModelConfig.geminiRealtimeTranscription,
+        'gemini-3.5-transcribe-live',
       );
       expect(AiModelConfig.anthropicSummary(pro: false), 'claude-sonnet-5');
       expect(AiModelConfig.anthropicSummary(pro: true), 'claude-opus-5');

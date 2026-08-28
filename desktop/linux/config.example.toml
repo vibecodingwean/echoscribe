@@ -15,7 +15,7 @@ target_language = "auto"
 [gemini]
 api_key = ""
 api_key_env = "GEMINI_API_KEY"
-transcription_model = "gemini-3.7-flash"
+transcription_model = "gemini-3.5-transcribe"
 target_language = "auto"
 
 [xai]

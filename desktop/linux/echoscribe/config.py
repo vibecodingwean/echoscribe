@@ -18,9 +18,12 @@ TRANSCRIPTION_PROVIDERS = {"openai", "gemini", "xai", "elevenlabs", "localai"}
 ALL_PROVIDERS = TRANSCRIPTION_PROVIDERS
 DEFAULT_LOCAL_AI_WHISPER_URL = "http://127.0.0.1:8000/v1/audio/transcriptions"
 
-DEPRECATED_MODEL_DEFAULTS = {
-    "gemini-3.1-flash-lite": "gemini-3.7-flash",  # model-migration-ok
-    "gemini-3.6-flash": "gemini-3.7-flash",  # model-migration-ok
+# Only applied to gemini.transcription_model — never to summary/translation models.
+DEPRECATED_GEMINI_TRANSCRIPTION_MODELS = {
+    "gemini-3.1-flash-lite": "gemini-3.5-transcribe",  # model-migration-ok
+    "gemini-3.6-flash": "gemini-3.5-transcribe",  # model-migration-ok
+    "gemini-3.7-flash": "gemini-3.5-transcribe",  # model-migration-ok
+    "gemini-3.1-pro-preview": "gemini-3.5-transcribe",  # model-migration-ok
 }
 
 
@@ -37,7 +40,7 @@ DEFAULTS: dict[str, Any] = {
     "gemini": {
         "api_key": "",
         "api_key_env": "GEMINI_API_KEY",
-        "transcription_model": "gemini-3.7-flash",
+        "transcription_model": "gemini-3.5-transcribe",
         "target_language": "auto",
     },
     "xai": {
@@ -330,11 +333,10 @@ def load_config(project_dir: Path | None = None) -> Config:
 
 
 def migrate_loaded_config(data: dict[str, Any]) -> None:
-    for section_name in ALL_PROVIDERS:
-        section = data.get(section_name)
-        if not isinstance(section, dict):
-            continue
-        value = str(section.get("transcription_model", "")).strip()
-        replacement = DEPRECATED_MODEL_DEFAULTS.get(value)
-        if replacement:
-            section["transcription_model"] = replacement
+    gemini = data.get("gemini")
+    if not isinstance(gemini, dict):
+        return
+    value = str(gemini.get("transcription_model", "")).strip()
+    replacement = DEPRECATED_GEMINI_TRANSCRIPTION_MODELS.get(value)
+    if replacement:
+        gemini["transcription_model"] = replacement

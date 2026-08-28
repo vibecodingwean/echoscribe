@@ -24,18 +24,18 @@ object ImeAiActions {
         val builtIn = listOf(
             ImeChip("grammar_fix", "✍️ Grammar", "Fix the grammar and spelling. Keep meaning and language. Return only the corrected text."),
             ImeChip(
+                "reply",
+                "💬 Reply",
+                "The text below is a copied message from the clipboard, not the input field. Write a concise, natural reply to that copied message. Keep the same language. Return only the reply.",
+                usesClipboard = true,
+            ),
+            ImeChip(
                 "rephrase",
                 "🔄 Rephrase",
                 "Rephrase this text in the same language as the input. Do not translate. Keep meaning. Return only the rephrased text.",
             ),
             ImeChip("emojis", "😊 Emojis", "Add emojis in the sentence. Keep the original language. Return only the rewritten text."),
             ImeChip("realistic", "📱 Realistic", "Rewrite this realistically, as if it was quickly typed on a mobile keyboard. Keep the original language. Return only the rewritten text."),
-            ImeChip(
-                "reply",
-                "💬 Reply",
-                "The text below is a copied message from the clipboard, not the input field. Write a concise, natural reply to that copied message. Keep the same language. Return only the reply.",
-                usesClipboard = true,
-            ),
         )
         return builtIn
     }

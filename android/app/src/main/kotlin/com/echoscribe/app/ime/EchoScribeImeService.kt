@@ -19,7 +19,6 @@ import android.media.SoundPool
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.text.InputType
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
@@ -73,14 +72,24 @@ class EchoScribeImeService : InputMethodService() {
         longPressFired = true
         when (key.action) {
             KeyAction.Shift -> {
-                capsLock = true
-                shiftOnce = false
+                val next = ImeShiftState(capsLock, shiftOnce, autoCapNext).longPress()
+                capsLock = next.capsLock
+                shiftOnce = next.shiftOnce
+                autoCapNext = next.autoCapNext
                 applyLetterCase()
             }
-            KeyAction.CycleLayout -> {
-                (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
+            else -> {
+                val base = key.baseLabel.ifEmpty {
+                    (key.action as? KeyAction.CommitChar)?.value?.toString().orEmpty()
+                }
+                val umlaut = ImeUmlauts.primary(base)
+                if (umlaut != null) {
+                    onKey(KeyAction.CommitChar(umlaut.first()))
+                } else {
+                    val extras = ImeUmlauts.popupAccents(base)
+                    if (extras.isNotEmpty()) showAccents(visual, extras)
+                }
             }
-            else -> if (key.longPress.isNotEmpty()) showAccents(visual, key.longPress)
         }
     }
     private var voiceLog: String? = null
@@ -334,12 +343,6 @@ class EchoScribeImeService : InputMethodService() {
             setBackgroundColor(0xFF555555.toInt())
         })
         scrollRow.addView(space(4))
-        scrollRow.addView(
-            tool("☺", ImeAiActions.isToolbarToolSelected(activeSheet, ImeSheetKind.Emoji)) {
-                openSheet(ImeSheetKind.Emoji)
-            },
-        )
-        scrollRow.addView(space(3))
         scrollRow.addView(tool("⧉") { copyCurrentText() })
         scrollRow.addView(space(3))
         scrollRow.addView(
@@ -452,7 +455,6 @@ class EchoScribeImeService : InputMethodService() {
             return KeySpec(
                 ImeKeyboardLayout.displayLetter(label, lettersUppercase()),
                 action = KeyAction.CommitChar(label.first()),
-                longPress = accentOptions(label),
                 baseLabel = label,
             )
         }
@@ -499,7 +501,7 @@ class EchoScribeImeService : InputMethodService() {
                 action = if (lettersLayer) KeyAction.Symbols else KeyAction.Letters,
             ),
             KeySpec(",", widthWeight = 1f, action = KeyAction.CommitChar(',')),
-            KeySpec("🌐", widthWeight = 1.05f, action = KeyAction.CycleLayout),
+            KeySpec("☺", widthWeight = 1.05f, action = KeyAction.Emoji),
             KeySpec(ImeKeyboardLayout.spaceLabel(currentLayout()), widthWeight = 4.1f, action = KeyAction.Space),
             KeySpec(".", widthWeight = 1f, action = KeyAction.CommitChar('.')),
             KeySpec("⏎", widthWeight = 1.4f, action = KeyAction.Enter, accent = true),
@@ -529,7 +531,7 @@ class EchoScribeImeService : InputMethodService() {
         val normalColor = when {
             key.accent -> COLOR_ENTER
             key.action == KeyAction.Shift && capsLock -> 0xFF3D6BFF.toInt()
-            key.action == KeyAction.Shift && shiftOnce -> 0xFF5C5C5E.toInt()
+            key.action == KeyAction.Shift && (shiftOnce || autoCapNext) -> 0xFF5C5C5E.toInt()
             else -> COLOR_KEY
         }
         val visual = TextView(this).apply {
@@ -561,9 +563,7 @@ class EchoScribeImeService : InputMethodService() {
         if (key.action == KeyAction.Shift) {
             shiftVisual = visual
         }
-        val holdAction = key.action == KeyAction.Shift ||
-            key.action == KeyAction.CycleLayout ||
-            key.longPress.isNotEmpty()
+        val holdAction = key.action == KeyAction.Shift || ImeUmlauts.hasHold(key.baseLabel)
         val cell = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -677,28 +677,27 @@ class EchoScribeImeService : InputMethodService() {
                 val info = currentInputEditorInfo
                 val inputType = info?.inputType ?: 0
                 val imeOptions = info?.imeOptions ?: 0
-                val multiLine = inputType and InputType.TYPE_TEXT_FLAG_MULTI_LINE != 0
-                val noEnterAction = imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION != 0
-                val actionId = imeOptions and EditorInfo.IME_MASK_ACTION
-                if (multiLine || noEnterAction ||
-                    actionId == EditorInfo.IME_ACTION_NONE ||
-                    actionId == EditorInfo.IME_ACTION_UNSPECIFIED
-                ) {
-                    ic.commitText("\n", 1)
-                    armAutoCap()
-                    applyLetterCase()
-                } else {
-                    ic.performEditorAction(actionId)
+                when (ImeEnterBehavior.decide(inputType, imeOptions)) {
+                    ImeEnterBehavior.Outcome.Newline -> {
+                        ic.commitText("\n", 1)
+                        armAutoCap()
+                        applyLetterCase()
+                    }
+                    ImeEnterBehavior.Outcome.EditorAction -> {
+                        ic.performEditorAction(ImeEnterBehavior.actionId(imeOptions))
+                    }
+                    ImeEnterBehavior.Outcome.SendEnterKey -> {
+                        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+                    }
                 }
                 composing.clear()
             }
             KeyAction.Shift -> {
-                if (capsLock) {
-                    capsLock = false
-                    shiftOnce = false
-                } else {
-                    shiftOnce = !shiftOnce
-                }
+                val next = ImeShiftState(capsLock, shiftOnce, autoCapNext).tap()
+                capsLock = next.capsLock
+                shiftOnce = next.shiftOnce
+                autoCapNext = next.autoCapNext
                 applyLetterCase()
                 return
             }
@@ -714,12 +713,8 @@ class EchoScribeImeService : InputMethodService() {
                 renderContent()
                 return
             }
-            KeyAction.CycleLayout -> {
-                val next = ImeKeyboardLayout.cycle(currentLayout(), layoutLanguageCode())
-                NativeDictationConfigStore(this).saveKeyboardLayout(next)
-                config = config?.copy(keyboardLayout = next)
-                activeLayout = next
-                renderContent()
+            KeyAction.Emoji -> {
+                openSheet(ImeSheetKind.Emoji)
                 return
             }
         }
@@ -785,6 +780,24 @@ class EchoScribeImeService : InputMethodService() {
         } else {
             ic.commitText("", 1)
         }
+        refreshAutoCapFromField()
+    }
+
+    private fun refreshAutoCapFromField() {
+        if (capsLock) {
+            applyLetterCase()
+            return
+        }
+        if (config?.autoCapitalizeEnabled == false) {
+            autoCapNext = false
+            shiftOnce = false
+            applyLetterCase()
+            return
+        }
+        val before = currentInputConnection?.getTextBeforeCursor(128, 0)?.toString().orEmpty()
+        autoCapNext = ImeAutoCap.shouldCapitalize(before)
+        shiftOnce = false
+        applyLetterCase()
     }
 
     private fun sendDeleteKey(ic: android.view.inputmethod.InputConnection) {
@@ -1632,10 +1645,7 @@ class EchoScribeImeService : InputMethodService() {
     }
 
     private fun applyCapitalization(raw: String): String {
-        if (!lettersUppercase()) return raw
-        return raw.replaceFirstChar { ch ->
-            if (ch.isLowerCase()) ch.titlecase() else ch.toString()
-        }
+        return ImeUmlauts.applyCase(raw, lettersUppercase())
     }
 
     private fun lettersUppercase(): Boolean = capsLock || shiftOnce || autoCapNext
@@ -1652,7 +1662,7 @@ class EchoScribeImeService : InputMethodService() {
         shift.text = if (capsLock) "⇪" else "⇧"
         val color = when {
             capsLock -> 0xFF3D6BFF.toInt()
-            shiftOnce -> 0xFF5C5C5E.toInt()
+            shiftOnce || autoCapNext -> 0xFF5C5C5E.toInt()
             else -> COLOR_KEY
         }
         shift.background = InsetDrawable(keyBackground(color, 16f), dp(2), dp(3), dp(2), dp(3))
@@ -1663,10 +1673,6 @@ class EchoScribeImeService : InputMethodService() {
         pendingKey = null
         pendingKeyVisual = null
         longPressFired = false
-    }
-
-    private fun layoutLanguageCode(): String {
-        return resources.configuration.locales[0]?.language.orEmpty()
     }
 
     private fun consumeOneShotShift() {
@@ -1690,7 +1696,8 @@ class EchoScribeImeService : InputMethodService() {
         val model = config?.transcriptionModel.orEmpty().lowercase()
         val brand = config?.brandName.orEmpty()
         return when {
-            model.contains("gemini") -> "Gemini 3.7"
+            model.contains("3.5-transcribe") -> "Gemini 3.5"
+            model.contains("gemini") -> "Gemini"
             model.contains("gpt") || brand.contains("OpenAI", true) -> "OpenAI"
             model.contains("grok") || brand.contains("xAI", true) -> "xAI"
             brand.isNotBlank() -> brand
@@ -1719,26 +1726,6 @@ class EchoScribeImeService : InputMethodService() {
             insets.systemWindowInsetBottom
         }
         return maxOf(fromSystem, dp(48))
-    }
-
-    private fun accentOptions(base: String): List<String> {
-        val opts = when (base.lowercase()) {
-            "a" -> listOf("ä", "á", "à", "â", "æ")
-            "o" -> listOf("ö", "ó", "ò", "ô")
-            "u" -> listOf("ü", "ú", "ù", "û")
-            "s" -> listOf("ß")
-            "e" -> listOf("é", "è", "ê", "ë")
-            "i" -> listOf("í", "ì", "î", "ï")
-            "n" -> listOf("ñ")
-            "c" -> listOf("ç")
-            else -> emptyList()
-        }
-        if (opts.isEmpty()) return emptyList()
-        return if (lettersUppercase()) {
-            opts.map { glyph -> if (glyph == "ß") "ẞ" else glyph.uppercase() }
-        } else {
-            opts
-        }
     }
 
     private fun showAccents(anchor: View, chars: List<String>) {
@@ -1835,7 +1822,7 @@ class EchoScribeImeService : InputMethodService() {
         data object Shift : KeyAction()
         data object Symbols : KeyAction()
         data object Letters : KeyAction()
-        data object CycleLayout : KeyAction()
+        data object Emoji : KeyAction()
     }
 
     private data class KeySpec(

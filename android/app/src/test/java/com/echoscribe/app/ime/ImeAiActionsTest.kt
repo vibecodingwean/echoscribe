@@ -17,8 +17,9 @@ class ImeAiActionsTest {
     @Test
     fun grammarTabOwnsReplyFromClipboardAndDropsFree() {
         val chips = ImeAiActions.grammarChips(null)
-        assertEquals("reply", chips.last().id)
-        assertTrue(chips.last().usesClipboard)
+        assertEquals("reply", chips[1].id)
+        assertTrue(chips[1].usesClipboard)
+        assertEquals("grammar_fix", chips[0].id)
         assertFalse(chips.any { it.id == "free" })
         assertFalse(chips.any { it.id == "humanise" })
         assertFalse(chips.any { it.id == "idioms" })
