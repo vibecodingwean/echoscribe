@@ -28,6 +28,7 @@ class GeminiProvider:
     upload_endpoint = "https://generativelanguage.googleapis.com/upload/v1beta/files"
     files_endpoint = "https://generativelanguage.googleapis.com/v1beta"
     models_endpoint = "https://generativelanguage.googleapis.com/v1beta/models"
+    interactions_endpoint = "https://generativelanguage.googleapis.com/v1beta/interactions"
 
     def __init__(self, api_key: str, timeout: int = 180) -> None:
         self.api_key = api_key
@@ -38,6 +39,13 @@ class GeminiProvider:
             raise ApiError("GEMINI_API_KEY is not configured")
         mime_type = guess_mime_type(audio_path)
         file_obj = self._upload_file(audio_path, mime_type)
+        if is_gemini_dedicated_transcribe_model(model):
+            return self._transcribe_interactions(
+                model=model,
+                mime_type=mime_type,
+                file_uri=str(file_obj["uri"]),
+                language=language,
+            )
         language_hint = ""
         if language and language != "auto":
             language_hint = f" Use language code {language} when relevant."
@@ -68,6 +76,29 @@ class GeminiProvider:
             timeout=self.timeout,
         )
         return gemini_text(payload, "Gemini transcription returned empty text")
+
+    def _transcribe_interactions(
+        self,
+        *,
+        model: str,
+        mime_type: str,
+        file_uri: str,
+        language: str = "auto",
+    ) -> str:
+        body = build_gemini_interactions_request(
+            model=model,
+            file_uri=file_uri,
+            mime_type=mime_type,
+            language=language,
+        )
+        response = http_post_json(
+            self.interactions_endpoint,
+            headers={"x-goog-api-key": self.api_key},
+            body=body,
+            timeout=self.timeout,
+        )
+        payload = json_or_error(response)
+        return parse_gemini_interactions_transcript(payload)
 
     def _upload_file(self, audio_path: Path, mime_type: str) -> dict[str, Any]:
         data = audio_path.read_bytes()
@@ -334,6 +365,158 @@ def gemini_text(payload: dict[str, Any], empty_message: str) -> str:
             if text:
                 return text
     raise ApiError(empty_message)
+
+
+def build_gemini_interactions_request(
+    *,
+    model: str,
+    file_uri: str,
+    mime_type: str,
+    language: str = "auto",
+) -> dict[str, Any]:
+    transcription_config: dict[str, Any] = {
+        "mode": {
+            "type": "verbatim",
+            "diarization_mode": "speaker",
+        }
+    }
+    if language and language != "auto":
+        transcription_config["language_codes"] = [language]
+    return {
+        "model": model,
+        "input": [
+            {
+                "type": "audio",
+                "uri": file_uri,
+                "mime_type": mime_type,
+            }
+        ],
+        "generation_config": {
+            "transcription_config": transcription_config,
+        },
+    }
+
+
+def is_gemini_dedicated_transcribe_model(model: str) -> bool:
+    normalized = model.strip().lower()
+    return "3.5-transcribe" in normalized and "-live" not in normalized
+
+
+def normalize_speaker_label(raw: str) -> str:
+    trimmed = raw.strip()
+    if not trimmed:
+        return "Speaker 1"
+    lowered = trimmed.lower()
+    for prefix in ("spk_", "spk-", "spk ", "speaker "):
+        if lowered.startswith(prefix):
+            digits = "".join(ch for ch in trimmed[len(prefix) :] if ch.isdigit())
+            if digits:
+                return f"Speaker {digits}"
+    digits = "".join(ch for ch in trimmed if ch.isdigit())
+    if digits:
+        return f"Speaker {digits}"
+    if trimmed.startswith("Speaker "):
+        return trimmed
+    return f"Speaker {trimmed}"
+
+
+def format_native_speaker_turns(turns: list[tuple[str, str]]) -> str:
+    if not turns:
+        return ""
+    lines: list[str] = []
+    current_speaker = ""
+    current_parts: list[str] = []
+
+    def flush() -> None:
+        nonlocal current_speaker, current_parts
+        text = " ".join(part for part in current_parts if part).strip()
+        if current_speaker and text:
+            lines.append(f"{current_speaker}: {text}")
+        current_parts = []
+
+    for speaker, text in turns:
+        label = normalize_speaker_label(speaker)
+        piece = text.strip()
+        if not piece:
+            continue
+        if label == current_speaker:
+            current_parts.append(piece)
+        else:
+            flush()
+            current_speaker = label
+            current_parts = [piece]
+    flush()
+    return "\n".join(lines).strip()
+
+
+def parse_gemini_interactions_transcript(payload: dict[str, Any]) -> str:
+    words: list[tuple[str, str]] = []
+
+    def collect_annotations(annotations: Any) -> None:
+        if not isinstance(annotations, list):
+            return
+        for annotation in annotations:
+            if not isinstance(annotation, dict):
+                continue
+            type_name = str(annotation.get("type", "")).strip().lower()
+            if type_name and type_name not in {"word_info", "word"}:
+                continue
+            text = str(annotation.get("text") or annotation.get("word") or "").strip()
+            speaker = annotation.get("speaker")
+            if not text or speaker is None:
+                continue
+            speaker_text = str(speaker).strip()
+            if not speaker_text:
+                continue
+            words.append((speaker_text, text))
+
+    def walk(node: Any) -> None:
+        if isinstance(node, dict):
+            if "annotations" in node:
+                collect_annotations(node.get("annotations"))
+                for key, value in node.items():
+                    if key == "annotations":
+                        continue
+                    walk(value)
+                return
+            type_name = str(node.get("type", "")).strip().lower()
+            if type_name in {"word_info", "word"}:
+                collect_annotations([node])
+                return
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+
+    walk(payload)
+    if words:
+        formatted = format_native_speaker_turns(words)
+        if formatted:
+            return formatted
+
+    output_text = str(payload.get("output_text", "")).strip()
+    if output_text:
+        return output_text
+
+    texts: list[str] = []
+    steps = payload.get("steps")
+    if isinstance(steps, list):
+        for step in steps:
+            if not isinstance(step, dict):
+                continue
+            content = step.get("content")
+            if not isinstance(content, list):
+                continue
+            for item in content:
+                if isinstance(item, dict):
+                    text = str(item.get("text", "")).strip()
+                    if text:
+                        texts.append(text)
+    joined = "\n".join(texts).strip()
+    if joined:
+        return joined
+    raise ApiError("Gemini transcription returned empty text")
 
 
 def gemini_file_state(file_obj: dict[str, Any]) -> str:

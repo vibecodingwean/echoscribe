@@ -29,6 +29,7 @@ class SecureStorageService {
   static const _keyElevenLabs = 'elevenlabs_api_key';
   static const _keyElevenLabsVoiceId = 'elevenlabs_voice_id';
   static const _keyElevenLabsRealtime = 'elevenlabs_realtime_enabled';
+  static const _keyGeminiRealtime = 'gemini_realtime_enabled';
   static const _keyGeminiPro = 'gemini_pro_enabled';
   static const _keyAnthropicPro = 'anthropic_pro_enabled';
   static const _keyAppFetchUrl = 'app_fetch_url_enabled';
@@ -47,6 +48,8 @@ class SecureStorageService {
   static const _keyXai = 'xai_api_key';
   static const _keyXaiPro = 'xai_pro_enabled';
   static const _keyLastSharedIntentId = 'last_shared_intent_id';
+  static const _keyWelcomeSeen = 'welcome_seen';
+  static const _keyWhatsNewVersionCode = 'whats_new_version_code';
   static const _keyLocalAiLlmUrl = 'local_ai_llm_url';
   static const _keyLocalAiLlmModel = 'local_ai_llm_model';
   static const _keyLocalAiWhisperUrl = 'local_ai_whisper_url';
@@ -203,6 +206,11 @@ class SecureStorageService {
   Future<bool> readElevenLabsRealtime() async =>
       (await _safeRead(_keyElevenLabsRealtime, fallback: '0')) == '1';
 
+  Future<void> saveGeminiRealtime(bool enabled) =>
+      _safeWrite(_keyGeminiRealtime, enabled ? '1' : '0');
+  Future<bool> readGeminiRealtime() async =>
+      (await _safeRead(_keyGeminiRealtime, fallback: '0')) == '1';
+
   Future<void> saveGeminiPro(bool enabled) =>
       _safeWrite(_keyGeminiPro, enabled ? '1' : '0');
   Future<bool> readGeminiPro() async =>
@@ -317,6 +325,18 @@ class SecureStorageService {
       _safeWrite(_keyLastSharedIntentId, id);
   Future<String> readLastSharedIntentId() async =>
       _safeRead(_keyLastSharedIntentId);
+
+  Future<void> saveWelcomeSeen(bool seen) =>
+      _safeWrite(_keyWelcomeSeen, seen ? '1' : '0');
+  Future<bool> readWelcomeSeen() async =>
+      (await _safeRead(_keyWelcomeSeen, fallback: '0')) == '1';
+
+  Future<void> saveWhatsNewVersionCode(int versionCode) =>
+      _safeWrite(_keyWhatsNewVersionCode, versionCode.toString());
+  Future<int> readWhatsNewVersionCode() async {
+    final raw = await _safeRead(_keyWhatsNewVersionCode, fallback: '0');
+    return int.tryParse(raw) ?? 0;
+  }
 
   // Local AI
   Future<void> saveLocalAiLlmUrl(String value) =>

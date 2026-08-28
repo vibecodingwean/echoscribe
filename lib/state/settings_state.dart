@@ -18,6 +18,7 @@ class SettingsState extends ChangeNotifier {
   bool _openAiPro = false;
   bool _openAiRealtime = false;
   bool _elevenLabsRealtime = false;
+  bool _geminiRealtime = false;
 
   bool _geminiPro = false;
   bool _anthropicPro = false;
@@ -150,9 +151,11 @@ class SettingsState extends ChangeNotifier {
   bool get openAiPro => _openAiPro;
   bool get openAiRealtime => _openAiRealtime;
   bool get elevenLabsRealtime => _elevenLabsRealtime;
+  bool get geminiRealtime => _geminiRealtime;
   bool get realtimeEnabled =>
       (_provider == AiProviderType.openai && _openAiRealtime) ||
-      (_provider == AiProviderType.elevenLabs && _elevenLabsRealtime);
+      (_provider == AiProviderType.elevenLabs && _elevenLabsRealtime) ||
+      (_provider == AiProviderType.gemini && _geminiRealtime);
   bool get geminiPro => _geminiPro;
   bool get anthropicPro => _anthropicPro;
   bool get xaiPro => _xaiPro;
@@ -263,6 +266,11 @@ class SettingsState extends ChangeNotifier {
 
   void setElevenLabsRealtime(bool enabled) {
     _elevenLabsRealtime = enabled;
+    notifyListeners();
+  }
+
+  void setGeminiRealtime(bool enabled) {
+    _geminiRealtime = enabled;
     notifyListeners();
   }
 

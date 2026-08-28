@@ -7,6 +7,7 @@ import 'package:echoscribe/services/anthropic_service.dart';
 import 'package:echoscribe/models/app_exception.dart';
 import 'package:echoscribe/models/enums.dart';
 import 'package:echoscribe/services/local_ai_response_parser.dart';
+import 'package:echoscribe/services/speakers/speaker_aware_summary.dart';
 
 class SummaryService {
   static const int _localAiMaxInputChars = 1200;
@@ -44,6 +45,16 @@ class SummaryService {
     return '$basePrompt\n\n$langHint\n\nText:\n$text';
   }
 
+  String _resolveSummaryPrompt({
+    required String text,
+    String? summaryPrompt,
+  }) {
+    return SpeakerAwareSummary.resolvePrompt(
+      text: text,
+      summaryPrompt: summaryPrompt,
+    );
+  }
+
   // OpenAI summary via Chat Completions
   Future<String> summarizeOpenAI({
     required String apiKey,
@@ -57,11 +68,12 @@ class SummaryService {
     if (trimmed.isEmpty) return trimmed;
 
     final langHint = _languageDirective(targetLanguageCode);
-    final basePrompt = summaryPrompt?.trim().isNotEmpty == true
-        ? summaryPrompt!.trim()
+    // OpenAI chat path historically used a short local-style default when unset.
+    final resolved = summaryPrompt?.trim().isNotEmpty == true
+        ? _resolveSummaryPrompt(text: trimmed, summaryPrompt: summaryPrompt)
         : _localAiSummaryPrompt;
     final prompt = _buildPrompt(
-      basePrompt: basePrompt,
+      basePrompt: resolved,
       langHint: langHint,
       text: trimmed,
     );
@@ -148,9 +160,10 @@ class SummaryService {
     }
 
     final langHint = _languageDirective(targetLanguageCode);
-    final basePrompt = summaryPrompt?.trim().isNotEmpty == true
-        ? summaryPrompt!.trim()
-        : kDefaultSummaryPrompt;
+    final basePrompt = _resolveSummaryPrompt(
+      text: trimmed,
+      summaryPrompt: summaryPrompt,
+    );
     var prompt = _buildPrompt(
       basePrompt: basePrompt,
       langHint: langHint,
@@ -334,9 +347,10 @@ class SummaryService {
     }
 
     final langHint = _languageDirective(targetLanguageCode);
-    final basePrompt = summaryPrompt?.trim().isNotEmpty == true
-        ? summaryPrompt!.trim()
-        : kDefaultSummaryPrompt;
+    final basePrompt = _resolveSummaryPrompt(
+      text: trimmed,
+      summaryPrompt: summaryPrompt,
+    );
     final prompt = _buildPrompt(
       basePrompt: basePrompt,
       langHint: langHint,
@@ -376,9 +390,10 @@ class SummaryService {
     if (trimmed.isEmpty) return trimmed;
 
     final langHint = _languageDirective(targetLanguageCode);
-    final basePrompt = summaryPrompt?.trim().isNotEmpty == true
-        ? summaryPrompt!.trim()
-        : kDefaultSummaryPrompt;
+    final basePrompt = _resolveSummaryPrompt(
+      text: trimmed,
+      summaryPrompt: summaryPrompt,
+    );
     final prompt = _buildPrompt(
       basePrompt: basePrompt,
       langHint: langHint,
@@ -464,9 +479,10 @@ class SummaryService {
     if (trimmed.isEmpty) return trimmed;
 
     final langHint = _languageDirective(targetLanguageCode);
-    final basePrompt = summaryPrompt?.trim().isNotEmpty == true
-        ? summaryPrompt!.trim()
-        : kDefaultSummaryPrompt;
+    final basePrompt = _resolveSummaryPrompt(
+      text: trimmed,
+      summaryPrompt: summaryPrompt,
+    );
     final prompt = _buildPrompt(
       basePrompt: basePrompt,
       langHint: langHint,

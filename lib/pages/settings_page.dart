@@ -55,6 +55,7 @@ class _SettingsPageState extends State<SettingsPage>
   late bool _openAiPro;
   late bool _openAiRealtime;
   late bool _elevenLabsRealtime;
+  late bool _geminiRealtime;
   late bool _geminiPro;
   late bool _anthropicPro;
   late bool _xaiPro;
@@ -99,6 +100,7 @@ class _SettingsPageState extends State<SettingsPage>
     _openAiPro = widget.settings.openAiPro;
     _openAiRealtime = widget.settings.openAiRealtime;
     _elevenLabsRealtime = widget.settings.elevenLabsRealtime;
+    _geminiRealtime = widget.settings.geminiRealtime;
     _geminiPro = widget.settings.geminiPro;
     _anthropicPro = widget.settings.anthropicPro;
     _xaiPro = widget.settings.xaiPro;
@@ -653,6 +655,7 @@ class _SettingsPageState extends State<SettingsPage>
                 controller: _geminiCtrl,
                 obscure: _obscureGemini,
                 proValue: _geminiPro,
+                realtimeValue: _geminiRealtime,
                 onObscureToggle: () =>
                     setState(() => _obscureGemini = !_obscureGemini),
                 onChanged: (_) => _scheduleAutoSaveImmediate(),
@@ -661,6 +664,11 @@ class _SettingsPageState extends State<SettingsPage>
                   widget.settings.setGeminiPro(val);
                   await _storage.saveGeminiPro(val);
                   await _syncAndRefreshKeyboardStatus();
+                },
+                onRealtimeChanged: (val) async {
+                  setState(() => _geminiRealtime = val);
+                  widget.settings.setGeminiRealtime(val);
+                  await _storage.saveGeminiRealtime(val);
                 },
                 onDelete: () async {
                   await _storage.deleteGeminiKey();
@@ -1186,8 +1194,8 @@ class _SettingsPageState extends State<SettingsPage>
                     const SizedBox(height: 6),
                     Text(
                       widget.settings.keyboardLayout == 'qwertz'
-                          ? 'Spacebar shows Deutsch. Globe key switches to QWERTY English.'
-                          : 'Spacebar shows English. Globe key switches to QWERTZ Deutsch.',
+                          ? 'Spacebar shows Deutsch. Layout is set only here; the emoji key does not change it.'
+                          : 'Spacebar shows English. Layout is set only here; the emoji key does not change it.',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],

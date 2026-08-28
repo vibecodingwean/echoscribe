@@ -70,17 +70,30 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Unsupported API provider"):
                 config.active_provider("transcription")
 
-    def test_legacy_gemini_fast_defaults_migrate_to_3_7_flash(self) -> None:
-        with tempfile.TemporaryDirectory() as raw:
-            root = Path(raw)
-            config = root / "config.toml"
-            config.write_text(
-                '[gemini]\ntranscription_model = "gemini-3.6-flash"\n',
-                encoding="utf-8",
-            )
-            with patch.dict(os.environ, {"ECHOSCRIBE_CONFIG": str(config)}, clear=False):
-                loaded = load_config(root)
-            self.assertEqual(loaded.data["gemini"]["transcription_model"], "gemini-3.7-flash")
+    def test_default_gemini_transcription_model_is_3_5_transcribe(self) -> None:
+        self.assertEqual(DEFAULTS["gemini"]["transcription_model"], "gemini-3.5-transcribe")
+
+    def test_legacy_gemini_transcription_models_migrate_to_3_5_transcribe(self) -> None:
+        for legacy in (
+            "gemini-3.6-flash",
+            "gemini-3.7-flash",
+            "gemini-3.1-pro-preview",
+            "gemini-3.1-flash-lite",
+        ):
+            with self.subTest(legacy=legacy):
+                with tempfile.TemporaryDirectory() as raw:
+                    root = Path(raw)
+                    config = root / "config.toml"
+                    config.write_text(
+                        f'[gemini]\ntranscription_model = "{legacy}"\n',
+                        encoding="utf-8",
+                    )
+                    with patch.dict(os.environ, {"ECHOSCRIBE_CONFIG": str(config)}, clear=False):
+                        loaded = load_config(root)
+                    self.assertEqual(
+                        loaded.data["gemini"]["transcription_model"],
+                        "gemini-3.5-transcribe",
+                    )
 
     def test_summary_only_provider_is_no_longer_supported(self) -> None:
         with self.assertRaisesRegex(ValueError, "Unsupported API provider"):

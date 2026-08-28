@@ -32,14 +32,17 @@
       "pro": "gemini-3.1-pro-preview"
     },
     "transcription": {
-      "fast": "gemini-3.7-flash",
-      "pro": "gemini-3.1-pro-preview"
+      "fast": "gemini-3.5-transcribe",
+      "pro": "gemini-3.5-transcribe"
     },
     "image": {
       "fast": "gemini-3.1-flash-image",
       "pro": "gemini-3-pro-image"
     },
-    "tts": "gemini-3.1-flash-tts-preview"
+    "tts": "gemini-3.1-flash-tts-preview",
+    "realtime": {
+      "transcription": "gemini-3.5-transcribe-live"
+    }
   },
   "anthropic": {
     "summary": {

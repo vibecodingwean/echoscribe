@@ -54,7 +54,9 @@ enum AiProviderType {
 
   /// Whether microphone audio can be streamed as realtime transcription.
   bool get supportsRealtimeTranscription =>
-      this == AiProviderType.openai || this == AiProviderType.elevenLabs;
+      this == AiProviderType.openai ||
+      this == AiProviderType.elevenLabs ||
+      this == AiProviderType.gemini;
 
   /// Whether this provider supports text-to-speech playback.
   bool get supportsTts {

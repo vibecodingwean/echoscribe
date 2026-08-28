@@ -18,6 +18,7 @@ import 'package:echoscribe/services/local_ai_health_service.dart';
 
 import 'package:echoscribe/services/ai/openai_realtime_client.dart';
 import 'package:echoscribe/services/ai/elevenlabs_realtime_client.dart';
+import 'package:echoscribe/services/ai/gemini_realtime_client.dart';
 import 'package:echoscribe/services/ai/realtime_transcription_client.dart';
 
 class HomeController extends ChangeNotifier {
@@ -42,7 +43,7 @@ class HomeController extends ChangeNotifier {
   ActiveRecordingSession? _finalizingRecordingSession;
   Future<void>? _recordingFinalization;
   bool _disposed = false;
-  final RealtimeTranscriptionClient Function(bool useElevenLabs)
+  final RealtimeTranscriptionClient Function(AiProviderType provider)
       _realtimeClientFactory;
   final Future<void> Function(Duration duration) _waitForRealtimeFinalization;
   final Future<LocalAiCheckResult> Function({
@@ -69,7 +70,7 @@ class HomeController extends ChangeNotifier {
     required this.aiFactory,
     required this.showError,
     required this.showSuccess,
-    RealtimeTranscriptionClient Function(bool useElevenLabs)?
+    RealtimeTranscriptionClient Function(AiProviderType provider)?
         realtimeClientFactory,
     Future<void> Function(Duration duration)? waitForRealtimeFinalization,
     Future<LocalAiCheckResult> Function({
@@ -81,9 +82,19 @@ class HomeController extends ChangeNotifier {
       required String model,
     })? localAiLlmCheck,
   })  : _realtimeClientFactory = realtimeClientFactory ??
-            ((useElevenLabs) => useElevenLabs
-                ? ElevenLabsRealtimeClient()
-                : OpenAiRealtimeClient()),
+            ((provider) {
+              switch (provider) {
+                case AiProviderType.elevenLabs:
+                  return ElevenLabsRealtimeClient();
+                case AiProviderType.gemini:
+                  return GeminiRealtimeClient();
+                case AiProviderType.openai:
+                case AiProviderType.anthropic:
+                case AiProviderType.xai:
+                case AiProviderType.localAi:
+                  return OpenAiRealtimeClient();
+              }
+            }),
         _waitForRealtimeFinalization =
             waitForRealtimeFinalization ?? Future<void>.delayed,
         _localAiWhisperCheck =
@@ -730,15 +741,20 @@ class HomeController extends ChangeNotifier {
             settings.elevenLabsRealtime;
     final isOpenAiRealtime =
         initialProvider == AiProviderType.openai && settings.openAiRealtime;
-    final isRealtime = isOpenAiRealtime || isElevenLabsRealtime;
+    final isGeminiRealtime =
+        initialProvider == AiProviderType.gemini && settings.geminiRealtime;
+    final isRealtime =
+        isOpenAiRealtime || isElevenLabsRealtime || isGeminiRealtime;
     final targetLanguageCode = settings.targetLanguageCode;
     final transcriptionModel = isElevenLabsRealtime
         ? AiModelConfig.elevenLabsRealtimeTranscription
-        : isOpenAiRealtime
-            ? targetLanguageCode == 'auto'
-                ? AiModelConfig.openAiRealtimeTranscription
-                : AiModelConfig.openAiRealtimeTranslation
-            : settings.transcriptionModel;
+        : isGeminiRealtime
+            ? AiModelConfig.geminiRealtimeTranscription
+            : isOpenAiRealtime
+                ? targetLanguageCode == 'auto'
+                    ? AiModelConfig.openAiRealtimeTranscription
+                    : AiModelConfig.openAiRealtimeTranslation
+                : settings.transcriptionModel;
     final session = ActiveRecordingSession(
       RecordingSessionMetadata(
         provider: initialProvider,
@@ -779,7 +795,11 @@ class HomeController extends ChangeNotifier {
       content.clearTranscription();
 
       if (isRealtime) {
-        final realtimeBrand = isElevenLabsRealtime ? 'ElevenLabs' : 'OpenAI';
+        final realtimeBrand = isElevenLabsRealtime
+            ? 'ElevenLabs'
+            : isGeminiRealtime
+                ? 'Gemini'
+                : 'OpenAI';
         if (session.metadata.apiKey.trim().isEmpty) {
           throw AppException('Please add your $realtimeBrand API key first.');
         }
@@ -807,7 +827,7 @@ class HomeController extends ChangeNotifier {
         );
         updateDisplayWithLogs("");
 
-        final realtimeClient = _realtimeClientFactory(isElevenLabsRealtime);
+        final realtimeClient = _realtimeClientFactory(initialProvider);
         _realtimeClient = realtimeClient;
         String finalizedTextAccumulated = "";
         final StringBuffer currentWordBuffer = StringBuffer();
@@ -872,7 +892,8 @@ class HomeController extends ChangeNotifier {
         }
 
         final stream = await recorder.startAudioStream(
-          sampleRate: isElevenLabsRealtime ? 16000 : 24000,
+          sampleRate:
+              (isElevenLabsRealtime || isGeminiRealtime) ? 16000 : 24000,
         );
         _requireCurrentRecordingSession(session);
         if (stream == null) {

@@ -30,6 +30,11 @@ void main() {
       ..setProvider(AiProviderType.gemini)
       ..setGeminiPro(false);
     expect(settings.summaryModel, AiModelConfig.geminiSummaryFast);
+    expect(
+      settings.transcriptionModel,
+      AiModelConfig.geminiTranscriptionFast,
+    );
+    expect(settings.transcriptionModel, 'gemini-3.5-transcribe');
     expect(settings.reasoningEffort, isNull);
     expect(settings.imageModel, AiModelConfig.geminiImagePro);
     expect(settings.ttsVoice, 'Zephyr');
@@ -45,6 +50,9 @@ void main() {
     settings.setProvider(AiProviderType.gemini);
     expect(settings.openAiRealtime, isTrue);
     expect(settings.realtimeEnabled, isFalse);
+    expect(settings.geminiRealtime, isFalse);
+    settings.setGeminiRealtime(true);
+    expect(settings.realtimeEnabled, isTrue);
 
     settings.setProvider(AiProviderType.elevenLabs);
     expect(settings.realtimeEnabled, isFalse);
@@ -53,5 +61,12 @@ void main() {
 
     settings.setProvider(AiProviderType.openai);
     expect(settings.realtimeEnabled, isTrue);
+
+    settings.setProvider(AiProviderType.gemini);
+    expect(settings.realtimeEnabled, isTrue);
+  });
+
+  test('Gemini supports realtime transcription capability', () {
+    expect(AiProviderType.gemini.supportsRealtimeTranscription, isTrue);
   });
 }

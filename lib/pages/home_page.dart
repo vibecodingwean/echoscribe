@@ -16,8 +16,11 @@ import "package:echoscribe/state/playback_state.dart";
 import "package:echoscribe/pages/history_page.dart";
 import "package:echoscribe/pages/settings_page.dart";
 
+import "package:echoscribe/config/whats_new.dart";
 import "package:echoscribe/controllers/home_controller.dart";
 import "package:echoscribe/controllers/share_intent_controller.dart";
+import "package:echoscribe/services/launch_overlay_policy.dart";
+import "package:echoscribe/widgets/whats_new_dialog.dart";
 
 import "package:echoscribe/widgets/home/recording_controls.dart";
 import "package:echoscribe/widgets/home/share_content_sheet.dart";
@@ -84,7 +87,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _bootstrap() async {
     await _initializeFromStorage();
     await _content.loadHistory();
-    await _initShareHandling();
+    final hasInitialShare = await _initShareHandling();
     if (mounted) {
       setState(() {
         _isLoading = false;
@@ -92,6 +95,9 @@ class _HomePageState extends State<HomePage> {
     }
     unawaited(KeyboardImeService.syncSettings(_settings));
     unawaited(FloatingDictationService.syncSettings(_settings));
+    if (mounted) {
+      await _maybeShowLaunchOverlay(hasInitialShare);
+    }
   }
 
   Future<void> _initializeFromStorage() async {
@@ -111,6 +117,7 @@ class _HomePageState extends State<HomePage> {
       final elevenLabsKey = await secure.readElevenLabsKey();
       final elevenLabsVoiceId = await secure.readElevenLabsVoiceId();
       final elevenLabsRealtime = await secure.readElevenLabsRealtime();
+      final geminiRealtime = await secure.readGeminiRealtime();
       final geminiPro = await secure.readGeminiPro();
       final anthropicPro = await secure.readAnthropicPro();
       final xai = await secure.readXaiKey();
@@ -160,6 +167,7 @@ class _HomePageState extends State<HomePage> {
       _settings.setOpenAiPro(openAiPro);
       _settings.setOpenAiRealtime(openAiRealtime);
       _settings.setElevenLabsRealtime(elevenLabsRealtime);
+      _settings.setGeminiRealtime(geminiRealtime);
       _settings.setGeminiPro(geminiPro);
       _settings.setAnthropicPro(anthropicPro);
       _settings.setXaiPro(xaiPro);
@@ -207,7 +215,7 @@ class _HomePageState extends State<HomePage> {
                 prompt.contains('Add 1-2 fitting emojis when natural.')));
   }
 
-  Future<void> _initShareHandling() async {
+  Future<bool> _initShareHandling() async {
     _shareIntentController = ShareIntentController(
       settings: _settings,
       content: _content,
@@ -223,11 +231,15 @@ class _HomePageState extends State<HomePage> {
       showError: _showError,
       showSuccess: _showSuccess,
     );
+    var hasInitialShare = false;
     try {
       final initialMedia = await _shareHandler.getInitialSharedMedia();
       if (initialMedia != null) {
+        hasInitialShare = true;
         if (mounted) {
-          _shareIntentController.handleSharedMedia(initialMedia, context);
+          unawaited(
+            _shareIntentController.handleSharedMedia(initialMedia, context),
+          );
         }
       }
       _shareHandler.sharedMediaStream.listen((m) {
@@ -235,6 +247,34 @@ class _HomePageState extends State<HomePage> {
       });
     } catch (e) {
       debugPrint("Share handling init failed: $e");
+    }
+    return hasInitialShare;
+  }
+
+  Future<void> _maybeShowLaunchOverlay(bool hasInitialShare) async {
+    if (!mounted) return;
+    final secure = _sl.secureStorage;
+    final kind = decideLaunchOverlay(
+      welcomeSeen: await secure.readWelcomeSeen(),
+      lastWhatsNewVersionCode: await secure.readWhatsNewVersionCode(),
+      currentVersionCode: WhatsNewCopy.releaseVersionCode,
+      hasInitialShare: hasInitialShare,
+    );
+    if (!mounted || kind == LaunchOverlayKind.none) return;
+    final isWelcome = kind == LaunchOverlayKind.welcome;
+    final confirmed = await showLaunchOverlayDialog(
+      context: context,
+      title: isWelcome ? WhatsNewCopy.welcomeTitle : WhatsNewCopy.whatsNewTitle,
+      bullets:
+          isWelcome ? WhatsNewCopy.welcomeBullets : WhatsNewCopy.whatsNewBullets,
+      buttonLabel:
+          isWelcome ? WhatsNewCopy.welcomeButton : WhatsNewCopy.whatsNewButton,
+    );
+    if (!confirmed) return;
+    if (isWelcome) {
+      await secure.saveWelcomeSeen(true);
+    } else {
+      await secure.saveWhatsNewVersionCode(WhatsNewCopy.releaseVersionCode);
     }
   }
 
