@@ -1,5 +1,6 @@
 package com.echoscribe.app.ime
 
+import com.echoscribe.app.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -50,6 +51,9 @@ class ImeAiActionsTest {
         assertEquals("✍️", ImeAiActions.toolbarIcon(ImeSheetKind.Grammar))
         assertEquals("🎭", ImeAiActions.toolbarIcon(ImeSheetKind.Tone))
         assertEquals("文A", ImeAiActions.toolbarIcon(ImeSheetKind.Translate))
+        assertEquals(R.drawable.ic_ime_rewrite, ImeAiActions.toolbarIconRes(ImeSheetKind.Grammar))
+        assertEquals(R.drawable.ic_ime_tone, ImeAiActions.toolbarIconRes(ImeSheetKind.Tone))
+        assertEquals(null, ImeAiActions.toolbarIconRes(ImeSheetKind.Translate))
     }
 
     @Test
@@ -67,5 +71,25 @@ class ImeAiActionsTest {
         val hint = ImeAiActions.clipboardHint(reply)
         assertTrue(hint!!.contains("clipboard"))
         assertTrue(hint.contains("↻"))
+    }
+
+    @Test
+    fun grammarTapDoesNotAutoRunButToneDoes() {
+        assertFalse(ImeAiActions.shouldAutoRunOnToolbarTap(ImeSheetKind.Grammar))
+        assertTrue(ImeAiActions.shouldAutoRunOnToolbarTap(ImeSheetKind.Tone))
+        assertTrue(ImeAiActions.shouldAutoRunOnToolbarTap(ImeSheetKind.Translate))
+    }
+
+    @Test
+    fun poeticAndToneKeepSourceLanguage() {
+        val poetic = ImeAiActions.toneChips(null).first { it.id == "poetic" }.prompt
+        assertTrue(poetic.contains("same language"))
+        assertTrue(poetic.contains("Do not translate"))
+        assertTrue(poetic.contains("Do not switch to English"))
+        val system = ImeAiActions.systemPromptFor(ImeSheetKind.Tone)
+        assertTrue(system.contains("keep the input language"))
+        ImeAiActions.toneChips(null).forEach { chip ->
+            assertTrue(chip.id, chip.prompt.contains("Do not translate"))
+        }
     }
 }

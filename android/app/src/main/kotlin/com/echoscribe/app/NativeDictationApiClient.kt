@@ -388,7 +388,14 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
                         .put("parts", JSONArray().put(JSONObject().put("text", userPrompt))),
                 ),
             )
-        val model = config.formattingModel.ifBlank { "gemini-3.7-flash" }
+            .put(
+                "generationConfig",
+                JSONObject().put(
+                    "thinkingConfig",
+                    JSONObject().put("thinkingBudget", 0),
+                ),
+            )
+        val model = config.formattingModel.ifBlank { "gemini-3.8-flash" }
         val json = postJson(
             endpoint = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=${config.apiKey}",
             headers = mapOf("Content-Type" to "application/json"),

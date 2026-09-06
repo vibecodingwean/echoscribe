@@ -7,6 +7,7 @@ import 'package:echoscribe/models/app_exception.dart';
 import 'package:echoscribe/models/enums.dart';
 import 'package:echoscribe/services/local_ai_response_parser.dart';
 import 'package:echoscribe/services/local_ai_health_service.dart';
+import 'package:echoscribe/services/gemini_content_text.dart';
 
 class TranslationService {
   Future<String> translateOpenAI({
@@ -120,6 +121,7 @@ class TranslationService {
           ],
         },
       ],
+      'generationConfig': GeminiContentText.thinkingOffConfig(),
     });
 
     final sw = Stopwatch()..start();
@@ -151,13 +153,7 @@ class TranslationService {
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
       final data = json.decode(res.body) as Map<String, dynamic>;
-      final candidates = data['candidates'] as List<dynamic>?;
-      final parts = (candidates != null && candidates.isNotEmpty)
-          ? (candidates.first['content']?['parts'] as List<dynamic>?)
-          : const [];
-      final out = (parts != null && parts.isNotEmpty)
-          ? (parts.first['text'] ?? '').toString()
-          : '';
+      final out = GeminiContentText.extract(data);
       if (out.trim().isEmpty) {
         throw const EmptyResultException('Empty translation result');
       }

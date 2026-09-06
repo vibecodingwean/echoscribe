@@ -32,8 +32,8 @@ void main() {
     });
 
     test('Gemini and Anthropic preserve fast and pro roles', () {
-      expect(AiModelConfig.geminiSummary(pro: false), 'gemini-3.7-flash');
-      expect(AiModelConfig.geminiTranslation(pro: false), 'gemini-3.7-flash');
+      expect(AiModelConfig.geminiSummary(pro: false), 'gemini-3.8-flash');
+      expect(AiModelConfig.geminiTranslation(pro: false), 'gemini-3.8-flash');
       expect(
         AiModelConfig.geminiTranscription(pro: false),
         'gemini-3.5-transcribe',

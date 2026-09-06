@@ -31,12 +31,12 @@ describe('normalizeSettings', () => {
     });
   });
 
-  it('migrates retained Gemini Fast defaults to 3.7 Flash', () => {
+  it('migrates retained Gemini Fast defaults to 3.8 Flash', () => {
     const settings = normalizeSettings({
       provider: 'gemini',
       models: { gemini: 'gemini-3.6-flash' }
     });
-    expect(settings.models.gemini).toBe('gemini-3.7-flash');
+    expect(settings.models.gemini).toBe('gemini-3.8-flash');
   });
 
   it('migrates retained xAI Pro defaults to Grok 4.6', () => {
