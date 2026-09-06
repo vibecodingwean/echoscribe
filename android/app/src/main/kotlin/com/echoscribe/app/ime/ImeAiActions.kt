@@ -2,6 +2,7 @@ package com.echoscribe.app.ime
 
 import com.echoscribe.app.CustomPromptEntry
 import com.echoscribe.app.NativeDictationConfig
+import com.echoscribe.app.R
 
 enum class ImeSheetKind {
     Grammar,
@@ -41,17 +42,24 @@ object ImeAiActions {
     }
 
     fun toneChips(config: NativeDictationConfig?): List<ImeChip> {
+        val keepLang = "Write in the same language as the input. Do not translate. Return only the rewritten text."
         val builtIn = listOf(
-            ImeChip("funny", "😂 Funny", "Rewrite in a funny tone. Keep language. Return only the rewritten text."),
-            ImeChip("poetic", "✨ Poetic", "Rewrite in a poetic tone. Keep language. Return only the rewritten text."),
-            ImeChip("shorten", "✂️ Shorten", "Shorten the text while keeping meaning. Return only the shortened text."),
-            ImeChip("sarcastic", "😏 Sarcastic", "Rewrite in a sarcastic tone. Keep language. Return only the rewritten text."),
-            ImeChip("angry", "😠 Angry", "Rewrite in an angry tone. Keep language. Return only the rewritten text."),
-            ImeChip("flirty", "😘 Flirty", "Rewrite in a flirty tone. Keep language. Return only the rewritten text."),
-            ImeChip("genz", "😎 Gen-Z", "Rewrite in a Gen-Z tone. Keep language. Return only the rewritten text."),
-            ImeChip("witty", "🧠 Witty", "Rewrite in a witty tone. Keep language. Return only the rewritten text."),
-            ImeChip("humanise", "🌿 Humanize", "Humanise this text so it sounds natural and less robotic. Keep language. Return only the rewritten text."),
-            ImeChip("idioms", "🗣️ Idioms", "Rewrite using fitting idioms where natural. Keep language. Return only the rewritten text."),
+            ImeChip("funny", "😂 Funny", "Rewrite in a funny tone. $keepLang"),
+            ImeChip(
+                "poetic",
+                "✨ Poetic",
+                "Rewrite in a poetic tone in the same language as the input. " +
+                    "Do not switch to English or any other language. Do not translate. " +
+                    "Return only the rewritten text.",
+            ),
+            ImeChip("shorten", "✂️ Shorten", "Shorten the text while keeping meaning. $keepLang"),
+            ImeChip("sarcastic", "😏 Sarcastic", "Rewrite in a sarcastic tone. $keepLang"),
+            ImeChip("angry", "😠 Angry", "Rewrite in an angry tone. $keepLang"),
+            ImeChip("flirty", "😘 Flirty", "Rewrite in a flirty tone. $keepLang"),
+            ImeChip("genz", "😎 Gen-Z", "Rewrite in a Gen-Z tone. $keepLang"),
+            ImeChip("witty", "🧠 Witty", "Rewrite in a witty tone. $keepLang"),
+            ImeChip("humanise", "🌿 Humanize", "Humanise this text so it sounds natural and less robotic. $keepLang"),
+            ImeChip("idioms", "🗣️ Idioms", "Rewrite using fitting idioms where natural. $keepLang"),
         )
         val customTones = config?.customTones.orEmpty().mapIndexed { index, entry ->
             entry.toChip("tone_custom_$index")
@@ -69,6 +77,11 @@ object ImeAiActions {
 
     fun isToolbarToolSelected(activeSheet: ImeSheetKind?, tool: ImeSheetKind): Boolean {
         return activeSheet == tool
+    }
+
+    /** Tone/Translate tap opens and runs. Grammar tap only opens; long-press runs. */
+    fun shouldAutoRunOnToolbarTap(kind: ImeSheetKind): Boolean {
+        return kind == ImeSheetKind.Tone || kind == ImeSheetKind.Translate
     }
 
     fun sheetTitle(kind: ImeSheetKind): String {
@@ -91,6 +104,14 @@ object ImeAiActions {
         }
     }
 
+    fun toolbarIconRes(kind: ImeSheetKind): Int? {
+        return when (kind) {
+            ImeSheetKind.Grammar -> R.drawable.ic_ime_rewrite
+            ImeSheetKind.Tone -> R.drawable.ic_ime_tone
+            else -> null
+        }
+    }
+
     fun clipboardHint(chip: ImeChip?): String? {
         if (chip?.usesClipboard != true) return null
         return "This replies to the clipboard, not the field. Copy the message, then tap ↻."
@@ -103,7 +124,7 @@ object ImeAiActions {
     fun systemPromptFor(kind: ImeSheetKind): String {
         return when (kind) {
             ImeSheetKind.Grammar -> "You are a precise writing assistant for mobile keyboard text. Output only the final text."
-            ImeSheetKind.Tone -> "You rewrite mobile keyboard text into the requested tone. Output only the final text. Never mention OpenAI, ChatGPT, or brand names."
+            ImeSheetKind.Tone -> "You rewrite mobile keyboard text into the requested tone. Always keep the input language. Never translate unless explicitly asked. Output only the final text. Never mention OpenAI, ChatGPT, or brand names."
             ImeSheetKind.Translate -> "You are a precise translation engine. Output only the translated text."
             else -> "You rewrite text. Output only the final text."
         }

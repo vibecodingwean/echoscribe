@@ -1,5 +1,5 @@
 class WhatsNewCopy {
-  static const int releaseVersionCode = 95;
+  static const int releaseVersionCode = 104;
 
   static const String welcomeTitle = 'Welcome to Echo Scribe';
   static const String welcomeButton = 'Got it';
@@ -12,8 +12,9 @@ class WhatsNewCopy {
   static const String whatsNewTitle = "What's new";
   static const String whatsNewButton = 'OK';
   static const List<String> whatsNewBullets = [
-    'After . ! ?, tap Shift to keep typing lowercase.',
-    'Gemini file STT: 3.5 Transcribe with speaker labels.',
-    'Optional Gemini Live (switch, off by default).',
+    'Clipboard history keeps the last 5 items.',
+    'Hold space for 360° cursor move with a loupe.',
+    'Replace text stays as a footer at the bottom of the AI sheet.',
+    'Long-press Rewrite pastes a grammar fix without opening the menu.',
   ];
 }

@@ -2,8 +2,9 @@ import { PROVIDERS } from './constants.js';
 
 const LANGUAGE_CODE = /^(auto|[a-z]{2,3}(?:-[a-z0-9]{2,8})?)$/i;
 const DEPRECATED_MODELS = Object.freeze({
-  'gemini-3.1-flash-lite': 'gemini-3.7-flash',
-  'gemini-3.6-flash': 'gemini-3.7-flash',
+  'gemini-3.1-flash-lite': 'gemini-3.8-flash',
+  'gemini-3.6-flash': 'gemini-3.8-flash',
+  'gemini-3.7-flash': 'gemini-3.8-flash',
   'grok-4.5': 'grok-4.6'
 });
 

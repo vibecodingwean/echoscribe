@@ -34,4 +34,28 @@ class ImeUmlautsTest {
         assertTrue(ImeUmlauts.hasHold("e"))
         assertTrue(!ImeUmlauts.hasHold("q"))
     }
+
+    @Test
+    fun holdListForUStartsWithPrimaryUmlautAndDefaultIndexIsZero() {
+        val glyphs = ImeAccentHold.holdGlyphs("u")
+        assertEquals("ü", glyphs.first())
+        assertEquals(0, ImeAccentHold.defaultIndex("u"))
+        assertTrue(glyphs.size > 1)
+        assertEquals("ä", ImeAccentHold.holdGlyphs("a").first())
+        assertEquals("ö", ImeAccentHold.holdGlyphs("o").first())
+        assertEquals("ß", ImeAccentHold.holdGlyphs("s").first())
+        assertEquals(listOf("é", "è", "ê", "ë"), ImeAccentHold.holdGlyphs("e"))
+    }
+
+    @Test
+    fun slidingPastThresholdSelectsNeighborGlyph() {
+        val count = ImeAccentHold.holdGlyphs("u").size
+        val slot = 40f
+        assertEquals(0, ImeAccentHold.indexFromHorizontalDelta(0f, slot, count, startIndex = 0))
+        assertEquals(0, ImeAccentHold.indexFromHorizontalDelta(19f, slot, count, startIndex = 0))
+        assertEquals(1, ImeAccentHold.indexFromHorizontalDelta(20f, slot, count, startIndex = 0))
+        assertEquals(2, ImeAccentHold.indexFromHorizontalDelta(80f, slot, count, startIndex = 0))
+        assertEquals(0, ImeAccentHold.indexFromHorizontalDelta(-10f, slot, count, startIndex = 0))
+        assertEquals(count - 1, ImeAccentHold.indexFromHorizontalDelta(10_000f, slot, count, startIndex = 0))
+    }
 }

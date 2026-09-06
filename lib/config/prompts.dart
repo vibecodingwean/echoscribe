@@ -77,9 +77,9 @@ class AiModelConfig {
   static const String geminiImagePro = 'gemini-3-pro-image';
 
   // Fast models
-  static const String geminiSummaryFast = 'gemini-3.7-flash';
+  static const String geminiSummaryFast = 'gemini-3.8-flash';
   static const String geminiTranscriptionFast = 'gemini-3.5-transcribe';
-  static const String geminiTranslationFast = 'gemini-3.7-flash';
+  static const String geminiTranslationFast = 'gemini-3.8-flash';
   static const String geminiImageFast = 'gemini-3.1-flash-image';
   static const String geminiTts = 'gemini-3.1-flash-tts-preview';
   static const String geminiRealtimeTranscription = 'gemini-3.5-transcribe-live';

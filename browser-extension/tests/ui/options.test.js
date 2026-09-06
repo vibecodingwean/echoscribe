@@ -23,7 +23,7 @@ function setup() {
   };
   const api = { runtime: { sendMessage: vi.fn(async (message) => {
     if (message.type === 'getSettings') return { ok: true, settings };
-    if (message.type === 'listModels') return { ok: true, models: ['gemini-api-extra', 'gemini-3.7-flash'] };
+    if (message.type === 'listModels') return { ok: true, models: ['gemini-api-extra', 'gemini-3.8-flash'] };
     return { ok: true };
   }) } };
   const document = optionsDocument();
@@ -43,7 +43,7 @@ describe('options', () => {
     expect(document.querySelector('#api-key').value).toBe('');
     expect(document.querySelector('#key-status').textContent).toContain('configured');
     expect(modelOptions(document)).toEqual([
-      { value: 'gemini-3.7-flash', label: 'Fast — gemini-3.7-flash' },
+      { value: 'gemini-3.8-flash', label: 'Fast — gemini-3.8-flash' },
       { value: 'gemini-3.1-pro-preview', label: 'Pro — gemini-3.1-pro-preview' }
     ]);
     expect(document.querySelector('#model').value).toBe('gemini-3.1-pro-preview');
@@ -56,7 +56,7 @@ describe('options', () => {
     await controller.fetchModels();
     expect(api.runtime.sendMessage).toHaveBeenCalledWith({ type: 'listModels', provider: 'gemini' });
     expect(modelOptions(document)).toEqual([
-      { value: 'gemini-3.7-flash', label: 'Fast — gemini-3.7-flash' },
+      { value: 'gemini-3.8-flash', label: 'Fast — gemini-3.8-flash' },
       { value: 'gemini-3.1-pro-preview', label: 'Pro — gemini-3.1-pro-preview' },
       { value: 'gemini-api-extra', label: 'API — gemini-api-extra' }
     ]);

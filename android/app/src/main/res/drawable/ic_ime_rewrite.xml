@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Rewrite: pencil over a short text line -->
+    <path
+        android:fillColor="#5B67F0"
+        android:pathData="M4,19h16v1.6H4z" />
+    <path
+        android:fillColor="#5B67F0"
+        android:pathData="M14.9,4.2c0.4,-0.4 1.1,-0.4 1.5,0l2.4,2.4c0.4,0.4 0.4,1.1 0,1.5L10.2,16.7 6.4,17.6c-0.6,0.15 -1.15,-0.4 -1,-1l0.9,-3.8 8.6,-8.6zM15.65,5.7L8.2,13.15 7.7,15.3 9.85,14.8 17.3,7.35 15.65,5.7z" />
+</vector>

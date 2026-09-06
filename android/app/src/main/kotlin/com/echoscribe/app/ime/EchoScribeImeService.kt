@@ -3,11 +3,15 @@ package com.echoscribe.app.ime
 import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.ClipData
+import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.PorterDuff
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.InsetDrawable
@@ -16,9 +20,13 @@ import android.inputmethodservice.InputMethodService
 import android.media.AudioAttributes
 import android.media.MediaRecorder
 import android.media.SoundPool
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
@@ -28,10 +36,13 @@ import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedTextRequest
+import android.view.inputmethod.InputConnection
+import android.view.inputmethod.InputContentInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.ProgressBar
@@ -56,6 +67,7 @@ class EchoScribeImeService : InputMethodService() {
     private var contentHost: FrameLayout? = null
     private var suggestionBar: LinearLayout? = null
     private var toolbar: View? = null
+    private var clipboardPreviewHost: LinearLayout? = null
 
     private var capsLock = false
     private var shiftOnce = false
@@ -66,6 +78,10 @@ class EchoScribeImeService : InputMethodService() {
     private var pendingKey: KeySpec? = null
     private var pendingKeyVisual: TextView? = null
     private var longPressFired = false
+    private var accentHoldOriginX = 0f
+    private var accentHoldGlyphs: List<String> = emptyList()
+    private var accentHoldIndex = 0
+    private var accentHoldViews: List<TextView> = emptyList()
     private val longPressRunnable = Runnable {
         val key = pendingKey ?: return@Runnable
         val visual = pendingKeyVisual ?: return@Runnable
@@ -82,12 +98,9 @@ class EchoScribeImeService : InputMethodService() {
                 val base = key.baseLabel.ifEmpty {
                     (key.action as? KeyAction.CommitChar)?.value?.toString().orEmpty()
                 }
-                val umlaut = ImeUmlauts.primary(base)
-                if (umlaut != null) {
-                    onKey(KeyAction.CommitChar(umlaut.first()))
-                } else {
-                    val extras = ImeUmlauts.popupAccents(base)
-                    if (extras.isNotEmpty()) showAccents(visual, extras)
+                val glyphs = ImeAccentHold.holdGlyphs(base)
+                if (glyphs.isNotEmpty()) {
+                    showAccentHold(visual, glyphs)
                 }
             }
         }
@@ -110,16 +123,42 @@ class EchoScribeImeService : InputMethodService() {
     private var isRecording = false
     private var isProcessingVoice = false
     private var accentPopup: PopupWindow? = null
+    private var clipboardImageUri: Uri? = null
+    private var clipboardImageMime: String? = null
     private var keySoundPool: SoundPool? = null
     private var keyClickId = 0
     private var keyClickReady = false
     private var backspaceHeld = false
+    private var backspaceOriginX = 0f
+    private var backspaceSwipeWords = 0
+    private var spaceCursorArmed = false
+    private var spaceOriginX = 0f
+    private var spaceOriginY = 0f
+    private var spaceCursorBefore = 0
+    private var spaceSnapshot = ""
+    private var lastCharSteps = 0
+    private var lastLineSteps = 0
+    private var spaceLoupe: PopupWindow? = null
+    private var spaceLoupeText: TextView? = null
+    private var statusLine: String? = null
+    private var sheetResetPending = false
     private val backspaceRepeatRunnable = object : Runnable {
         override fun run() {
             if (!backspaceHeld) return
             deleteBackward()
             mainHandler.postDelayed(this, 45)
         }
+    }
+    private val spaceCursorRunnable = Runnable {
+        val ic = currentInputConnection ?: return@Runnable
+        val before = ic.getTextBeforeCursor(MAX_SOURCE_CHARS, 0)?.toString().orEmpty()
+        val after = ic.getTextAfterCursor(MAX_SOURCE_CHARS, 0)?.toString().orEmpty()
+        spaceCursorArmed = true
+        spaceSnapshot = before + after
+        spaceCursorBefore = before.length
+        lastCharSteps = 0
+        lastLineSteps = 0
+        showSpaceLoupe(spaceCursorBefore)
     }
 
     private val configReceiver = object : BroadcastReceiver() {
@@ -136,6 +175,7 @@ class EchoScribeImeService : InputMethodService() {
         if (!text.isNullOrBlank()) {
             clipboardStore.add(text)
         }
+        mainHandler.post { refreshSuggestions() }
     }
 
     override fun onCreate() {
@@ -195,8 +235,10 @@ class EchoScribeImeService : InputMethodService() {
         if (!restarting) {
             resetShiftState(newField = true)
         }
-        if (sensitiveField) {
+        if (ImeViewReset.shouldClearSheet(restarting = restarting, sensitiveField = sensitiveField)) {
             activeSheet = null
+        }
+        if (sensitiveField) {
             stopRecordingSilently()
         }
     }
@@ -207,16 +249,29 @@ class EchoScribeImeService : InputMethodService() {
         updateSensitivity(info)
         if (contentHost == null || wasSensitive != sensitiveField) {
             rebuildUi()
+            sheetResetPending = false
+        } else if (sheetResetPending) {
+            sheetResetPending = false
+            renderContent()
+            applyLetterCase()
         } else {
             applyLetterCase()
         }
+        refreshSuggestions()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
-        cancelPendingKey()
-        dismissAccents()
+        val reset = ImeViewReset.finishInputView()
+        sheetResetPending = activeSheet != null || layer != Layer.Letters
+        if (reset.cancelPendingKey) cancelPendingKey()
+        if (reset.dismissAccentPopup) dismissAccents()
         stopRecordingSilently()
-        voiceLog = null
+        if (reset.clearVoiceLog) voiceLog = null
+        activeSheet = reset.activeSheet
+        if (reset.lettersLayer) layer = Layer.Letters
+        spaceCursorArmed = false
+        dismissSpaceLoupe()
+        statusLine = null
         super.onFinishInputView(finishingInput)
     }
 
@@ -262,15 +317,23 @@ class EchoScribeImeService : InputMethodService() {
         if (!sensitiveField) {
             toolbar = buildToolbar()
             container.addView(toolbar)
+        } else {
+            toolbar = null
+            clipboardPreviewHost = null
         }
 
         suggestionBar = buildSuggestionBar()
         container.addView(suggestionBar)
 
+        val fillAi = when (activeSheet) {
+            ImeSheetKind.Grammar, ImeSheetKind.Tone, ImeSheetKind.Translate -> true
+            else -> false
+        }
         contentHost = FrameLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
+                if (fillAi) 0 else LinearLayout.LayoutParams.WRAP_CONTENT,
+                if (fillAi) 1f else 0f,
             )
         }
         container.addView(contentHost)
@@ -293,7 +356,12 @@ class EchoScribeImeService : InputMethodService() {
     }
 
     private fun buildToolbar(): View {
-        fun tool(label: String, selected: Boolean = false, onClick: () -> Unit): TextView {
+        fun tool(
+            label: String,
+            selected: Boolean = false,
+            onLongClick: (() -> Unit)? = null,
+            onClick: () -> Unit,
+        ): TextView {
             return TextView(this).apply {
                 text = label
                 setTextColor(COLOR_TEXT)
@@ -304,6 +372,49 @@ class EchoScribeImeService : InputMethodService() {
                 setPadding(dp(9), dp(8), dp(9), dp(8))
                 background = rounded(if (selected) COLOR_SELECTED else COLOR_TOOL, 12f)
                 setOnClickListener { onClick() }
+                if (onLongClick != null) {
+                    setOnLongClickListener {
+                        onLongClick()
+                        true
+                    }
+                }
+            }
+        }
+        fun iconTool(
+            iconRes: Int,
+            contentDescription: String,
+            selected: Boolean = false,
+            onLongClick: (() -> Unit)? = null,
+            onClick: () -> Unit,
+        ): ImageView {
+            return ImageView(this).apply {
+                setImageResource(iconRes)
+                this.contentDescription = contentDescription
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                adjustViewBounds = true
+                minimumWidth = dp(40)
+                minimumHeight = dp(40)
+                setPadding(dp(4), dp(4), dp(4), dp(4))
+                background = rounded(if (selected) COLOR_SELECTED else COLOR_TOOL, 12f)
+                layoutParams = LinearLayout.LayoutParams(dp(40), dp(40))
+                if (selected) {
+                    setColorFilter(COLOR_TEXT, PorterDuff.Mode.SRC_IN)
+                } else {
+                    clearColorFilter()
+                }
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    keyFeedback(this)
+                    onClick()
+                }
+                if (onLongClick != null) {
+                    setOnLongClickListener {
+                        keyFeedback(this)
+                        onLongClick()
+                        true
+                    }
+                }
             }
         }
         val scrollRow = LinearLayout(this).apply {
@@ -312,17 +423,20 @@ class EchoScribeImeService : InputMethodService() {
             setPadding(dp(4), dp(4), dp(2), dp(4))
         }
         scrollRow.addView(
-            tool(
-                ImeAiActions.toolbarIcon(ImeSheetKind.Grammar),
+            iconTool(
+                ImeAiActions.toolbarIconRes(ImeSheetKind.Grammar)!!,
+                ImeAiActions.sheetTitle(ImeSheetKind.Grammar),
                 ImeAiActions.isToolbarToolSelected(activeSheet, ImeSheetKind.Grammar),
+                onLongClick = { runGrammarInPlace() },
             ) {
-                openSheet(ImeSheetKind.Grammar)
+                openSheet(ImeSheetKind.Grammar, autoRun = false)
             },
         )
         scrollRow.addView(space(3))
         scrollRow.addView(
-            tool(
-                ImeAiActions.toolbarIcon(ImeSheetKind.Tone),
+            iconTool(
+                ImeAiActions.toolbarIconRes(ImeSheetKind.Tone)!!,
+                ImeAiActions.sheetTitle(ImeSheetKind.Tone),
                 ImeAiActions.isToolbarToolSelected(activeSheet, ImeSheetKind.Tone),
             ) {
                 openSheet(ImeSheetKind.Tone)
@@ -356,6 +470,18 @@ class EchoScribeImeService : InputMethodService() {
                 }
             },
         )
+        scrollRow.addView(space(3))
+        val previewHost = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            visibility = View.GONE
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+        }
+        clipboardPreviewHost = previewHost
+        scrollRow.addView(previewHost)
         val micLabel = when {
             isProcessingVoice -> "…"
             isRecording -> "■"
@@ -404,8 +530,9 @@ class EchoScribeImeService : InputMethodService() {
     private fun buildSuggestionBar(): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+            gravity = Gravity.CENTER
             setPadding(dp(8), dp(6), dp(8), dp(6))
+            minimumHeight = dp(SUGGESTION_BAR_MIN_DP)
             visibility = View.GONE
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -417,11 +544,22 @@ class EchoScribeImeService : InputMethodService() {
     private fun refreshSuggestions() {
         val bar = suggestionBar ?: return
         val log = voiceLog
-        if (isRecording || isProcessingVoice || !log.isNullOrBlank()) {
+        val status = statusLine
+        if (isRecording || isProcessingVoice || !log.isNullOrBlank() || !status.isNullOrBlank()) {
+            clipboardImageUri = null
+            clipboardImageMime = null
+            clearClipboardPreviewHost()
             bar.removeAllViews()
             bar.visibility = View.VISIBLE
+            bar.minimumHeight = dp(SUGGESTION_BAR_MIN_DP)
+            bar.gravity = Gravity.CENTER_VERTICAL
             bar.addView(TextView(this).apply {
-                text = log ?: if (isRecording) "🎙️ Recording…" else "⏳ Please wait…"
+                text = when {
+                    !log.isNullOrBlank() -> log
+                    isRecording -> "🎙️ Recording…"
+                    isProcessingVoice -> "⏳ Please wait…"
+                    else -> status.orEmpty()
+                }
                 setTextColor(COLOR_TEXT)
                 textSize = 13f
                 maxLines = 2
@@ -430,9 +568,132 @@ class EchoScribeImeService : InputMethodService() {
             })
             return
         }
-        if (bar.visibility != View.GONE) {
-            bar.removeAllViews()
-            bar.visibility = View.GONE
+
+        bar.removeAllViews()
+        bar.visibility = View.GONE
+
+        val host = clipboardPreviewHost
+        if (host == null || toolbar == null) {
+            clipboardImageUri = null
+            clipboardImageMime = null
+            return
+        }
+
+        val clip = inspectPrimaryClip()
+        val snapshot = ImeClipboardPreview.classify(clip.text, clip.hasImage)
+        if (!ImeClipboardPreview.shouldShowChip(
+                sensitiveField = sensitiveField,
+                recordingOrProcessing = false,
+                voiceLog = null,
+                snapshot = snapshot,
+            )
+        ) {
+            clipboardImageUri = null
+            clipboardImageMime = null
+            clearClipboardPreviewHost()
+            return
+        }
+
+        clipboardImageUri = clip.imageUri
+        clipboardImageMime = clip.imageMime
+        host.removeAllViews()
+        host.visibility = View.VISIBLE
+        host.addView(buildClipboardChip(snapshot, clip.thumbnail))
+    }
+
+    private fun clearClipboardPreviewHost() {
+        val host = clipboardPreviewHost ?: return
+        host.removeAllViews()
+        host.visibility = View.GONE
+    }
+
+    private fun buildClipboardChip(
+        snapshot: ImeClipboardPreview.Snapshot,
+        thumbnail: Bitmap?,
+    ): View {
+        val chip = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = rounded(COLOR_TOOL, 12f)
+            minimumHeight = dp(36)
+            setPadding(dp(9), dp(8), dp(9), dp(8))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                dp(36),
+            )
+            isClickable = true
+            isFocusable = true
+        }
+        when (snapshot.kind) {
+            ImeClipboardPreview.Kind.Text -> {
+                chip.addView(TextView(this).apply {
+                    text = snapshot.textPreview
+                    setTextColor(COLOR_TEXT)
+                    textSize = 12f
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    maxWidth = dp(110)
+                })
+                chip.setOnClickListener { commitClipboardTextPreview() }
+            }
+            ImeClipboardPreview.Kind.Image -> {
+                if (thumbnail != null) {
+                    chip.addView(ImageView(this).apply {
+                        setImageBitmap(thumbnail)
+                        scaleType = ImageView.ScaleType.CENTER_CROP
+                        layoutParams = LinearLayout.LayoutParams(dp(20), dp(20))
+                        background = rounded(0xFF555555.toInt(), 4f)
+                    })
+                } else {
+                    chip.addView(TextView(this).apply {
+                        text = "🖼️"
+                        textSize = 12f
+                    })
+                }
+                chip.setOnClickListener { commitClipboardImage() }
+            }
+            ImeClipboardPreview.Kind.Empty -> Unit
+        }
+        return chip
+    }
+
+    private fun commitClipboardTextPreview() {
+        val text = readPrimaryClipText()
+        if (text.isNullOrBlank()) {
+            refreshSuggestions()
+            return
+        }
+        currentInputConnection?.commitText(text, 1)
+        clipboardStore.add(text)
+    }
+
+    private fun commitClipboardImage() {
+        val uri = clipboardImageUri
+        val mime = clipboardImageMime
+        if (uri == null || mime.isNullOrBlank()) {
+            Toast.makeText(this, "No image to insert", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (Build.VERSION.SDK_INT < 25) {
+            Toast.makeText(this, "Image insert needs Android 7.1+", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val editorInfo = currentInputEditorInfo
+        val supported = editorInfo?.contentMimeTypes.orEmpty().any { advertised ->
+            ClipDescription.compareMimeTypes(advertised, mime) ||
+                ClipDescription.compareMimeTypes(advertised, "image/*")
+        }
+        if (!supported) {
+            Toast.makeText(this, "This field cannot accept images", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val ic = currentInputConnection ?: return
+        val contentInfo = InputContentInfo(uri, ClipDescription("clipboard-image", arrayOf(mime)))
+        val ok = runCatching {
+            ic.commitContent(contentInfo, InputConnection.INPUT_CONTENT_GRANT_READ_URI_PERMISSION, null)
+        }.getOrDefault(false)
+        if (!ok) {
+            Toast.makeText(this, "Could not insert image", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -563,7 +824,7 @@ class EchoScribeImeService : InputMethodService() {
         if (key.action == KeyAction.Shift) {
             shiftVisual = visual
         }
-        val holdAction = key.action == KeyAction.Shift || ImeUmlauts.hasHold(key.baseLabel)
+        val holdAction = key.action == KeyAction.Shift || ImeAccentHold.hasHold(key.baseLabel)
         val cell = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -577,8 +838,22 @@ class EchoScribeImeService : InputMethodService() {
                         MotionEvent.ACTION_DOWN -> {
                             visual.isPressed = true
                             keyFeedback(visual)
+                            backspaceOriginX = event.rawX
+                            backspaceSwipeWords = 0
                             deleteBackward()
                             startBackspaceRepeat()
+                            true
+                        }
+                        MotionEvent.ACTION_MOVE -> {
+                            val extra = ImeBackspaceGestures.extraWordsFromSwipe(
+                                event.rawX - backspaceOriginX,
+                                dp(ImeBackspaceGestures.WORD_SLOT_DP).toFloat(),
+                            )
+                            if (extra > backspaceSwipeWords) {
+                                stopBackspaceRepeat()
+                                repeat(extra - backspaceSwipeWords) { deleteWord() }
+                                backspaceSwipeWords = extra
+                            }
                             true
                         }
                         MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
@@ -591,25 +866,47 @@ class EchoScribeImeService : InputMethodService() {
                 }
             } else {
                 setOnTouchListener { _, event ->
+                    val isSpace = key.action == KeyAction.Space
                     when (event.actionMasked) {
                         MotionEvent.ACTION_DOWN -> {
                             visual.isPressed = true
                             keyFeedback(visual)
                             longPressFired = false
+                            spaceCursorArmed = false
+                            accentHoldOriginX = event.rawX
+                            spaceOriginX = event.rawX
+                            spaceOriginY = event.rawY
                             pendingKey = key
                             pendingKeyVisual = visual
-                            if (holdAction) {
-                                mainHandler.postDelayed(longPressRunnable, KEY_HOLD_MS)
-                            } else {
-                                onKey(key.action)
+                            when {
+                                isSpace -> mainHandler.postDelayed(
+                                    spaceCursorRunnable,
+                                    ImeSpaceGestures.HOLD_MS,
+                                )
+                                holdAction -> mainHandler.postDelayed(longPressRunnable, KEY_HOLD_MS)
+                                else -> onKey(key.action)
+                            }
+                            true
+                        }
+                        MotionEvent.ACTION_MOVE -> {
+                            when {
+                                spaceCursorArmed -> updateSpaceCursor(event.rawX, event.rawY)
+                                longPressFired && accentPopup != null -> updateAccentHoldFromMove(event.rawX)
                             }
                             true
                         }
                         MotionEvent.ACTION_UP -> {
                             visual.isPressed = false
                             mainHandler.removeCallbacks(longPressRunnable)
-                            if (holdAction && !longPressFired) {
-                                onKey(key.action)
+                            mainHandler.removeCallbacks(spaceCursorRunnable)
+                            when {
+                                spaceCursorArmed -> {
+                                    spaceCursorArmed = false
+                                    dismissSpaceLoupe()
+                                }
+                                isSpace -> commitSpace()
+                                holdAction && !longPressFired -> onKey(key.action)
+                                longPressFired && accentPopup != null -> commitAccentHold()
                             }
                             pendingKey = null
                             pendingKeyVisual = null
@@ -618,6 +915,9 @@ class EchoScribeImeService : InputMethodService() {
                         MotionEvent.ACTION_CANCEL -> {
                             visual.isPressed = false
                             cancelPendingKey()
+                            dismissAccents()
+                            spaceCursorArmed = false
+                            dismissSpaceLoupe()
                             true
                         }
                         else -> true
@@ -668,10 +968,7 @@ class EchoScribeImeService : InputMethodService() {
                     return
                 }
             }
-            KeyAction.Space -> {
-                ic.commitText(" ", 1)
-                composing.clear()
-            }
+            KeyAction.Space -> commitSpace()
             KeyAction.Backspace -> deleteBackward()
             KeyAction.Enter -> {
                 val info = currentInputEditorInfo
@@ -769,6 +1066,107 @@ class EchoScribeImeService : InputMethodService() {
         mainHandler.removeCallbacks(backspaceRepeatRunnable)
     }
 
+    private fun commitSpace() {
+        val ic = currentInputConnection ?: return
+        val before = ic.getTextBeforeCursor(MAX_SOURCE_CHARS, 0)?.toString().orEmpty()
+        composing.clear()
+        if (ImeSpaceGestures.shouldInsertPeriod(before)) {
+            if (!ic.deleteSurroundingText(1, 0)) {
+                sendDeleteKey(ic)
+            }
+            ic.commitText(". ", 1)
+            armAutoCap()
+            applyLetterCase()
+        } else {
+            ic.commitText(" ", 1)
+        }
+        refreshSuggestions()
+    }
+
+    private fun updateSpaceCursor(rawX: Float, rawY: Float) {
+        val ic = currentInputConnection ?: return
+        val charSteps = ImeSpaceGestures.cursorSteps(
+            rawX - spaceOriginX,
+            dp(ImeSpaceGestures.CURSOR_SLOT_DP).toFloat(),
+        )
+        val lineSteps = ImeSpaceGestures.cursorSteps(
+            rawY - spaceOriginY,
+            dp(ImeSpaceGestures.LINE_SLOT_DP).toFloat(),
+        )
+        if (charSteps == lastCharSteps && lineSteps == lastLineSteps) return
+        lastCharSteps = charSteps
+        lastLineSteps = lineSteps
+        val pos = ImeSpaceGestures.moveIndex(spaceSnapshot, spaceCursorBefore, charSteps, lineSteps)
+        ic.setSelection(pos, pos)
+        updateSpaceLoupe(pos)
+    }
+
+    private fun showSpaceLoupe(caretIndex: Int) {
+        dismissSpaceLoupe()
+        val tv = TextView(this).apply {
+            setTextColor(COLOR_TEXT)
+            textSize = 22f
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(dp(12), dp(8), dp(12), dp(8))
+            background = rounded(COLOR_TOOL, 18f)
+            elevation = dp(6).toFloat()
+        }
+        spaceLoupeText = tv
+        val popup = PopupWindow(
+            tv,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            false,
+        ).apply {
+            isClippingEnabled = false
+            elevation = dp(8).toFloat()
+        }
+        spaceLoupe = popup
+        updateSpaceLoupe(caretIndex)
+        val anchor = pendingKeyVisual ?: root ?: return
+        runCatching {
+            popup.showAtLocation(anchor, Gravity.CENTER_HORIZONTAL or Gravity.TOP, 0, -dp(72))
+        }.onFailure {
+            runCatching { popup.showAsDropDown(anchor, 0, -dp(56)) }
+        }
+    }
+
+    private fun updateSpaceLoupe(caretIndex: Int) {
+        val snippet = ImeSpaceGestures.loupeSnippet(spaceSnapshot, caretIndex)
+        val marker = ImeSpaceGestures.LOUPE_MARKER
+        val start = snippet.indexOf(marker)
+        val spannable = SpannableString(snippet)
+        if (start >= 0) {
+            spannable.setSpan(
+                ForegroundColorSpan(COLOR_ENTER),
+                start,
+                start + 1,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+            )
+        }
+        spaceLoupeText?.text = spannable
+    }
+
+    private fun dismissSpaceLoupe() {
+        runCatching { spaceLoupe?.dismiss() }
+        spaceLoupe = null
+        spaceLoupeText = null
+    }
+
+    private fun deleteWord() {
+        val ic = currentInputConnection ?: return
+        ic.finishComposingText()
+        composing.clear()
+        val before = ic.getTextBeforeCursor(MAX_SOURCE_CHARS, 0)?.toString().orEmpty()
+        val count = ImeBackspaceGestures.wordDeleteCount(before)
+        if (count <= 0) return
+        if (!ic.deleteSurroundingText(count, 0)) {
+            repeat(count) { sendDeleteKey(ic) }
+        }
+        refreshAutoCapFromField()
+    }
+
     private fun deleteBackward() {
         val ic = currentInputConnection ?: return
         ic.finishComposingText()
@@ -805,7 +1203,65 @@ class EchoScribeImeService : InputMethodService() {
         ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
     }
 
-    private fun openSheet(kind: ImeSheetKind) {
+    private fun setStatus(text: String?, clearAfterMs: Long = 0L) {
+        statusLine = text
+        refreshSuggestions()
+        if (!text.isNullOrBlank() && clearAfterMs > 0L) {
+            mainHandler.postDelayed({
+                if (statusLine == text) {
+                    statusLine = null
+                    refreshSuggestions()
+                }
+            }, clearAfterMs)
+        }
+    }
+
+    private fun runGrammarInPlace() {
+        if (sensitiveField) return
+        if (aiBusy || isRecording || isProcessingVoice) return
+        val cfg = config
+        if (cfg == null || !cfg.hasUsableProvider()) {
+            setStatus("❌ Open EchoScribe settings", 2500)
+            return
+        }
+        val chip = ImeAiActions.grammarChips(cfg).firstOrNull { it.id == "grammar_fix" }
+        val source = readSourceText()
+        if (source.isBlank()) {
+            setStatus("❌ Kein Text im Feld", 2000)
+            return
+        }
+        val instruction = chip?.prompt.orEmpty()
+        if (instruction.isBlank()) {
+            setStatus("❌ Please choose an option", 2000)
+            return
+        }
+        aiBusy = true
+        setStatus("⏳ Grammar…")
+        Thread {
+            try {
+                val client = NativeDictationApiClient(cfg)
+                val system = ImeAiActions.systemPromptFor(ImeSheetKind.Grammar)
+                val results = client.rewrite(system, "$instruction\n\nText:\n$source", variantCount = 1)
+                val out = results.firstOrNull()?.trim().orEmpty()
+                mainHandler.post {
+                    aiBusy = false
+                    if (out.isEmpty()) {
+                        setStatus("❌ Leere Antwort", 2500)
+                    } else {
+                        replaceFieldText(out)
+                        setStatus("✅ Eingefügt", 1500)
+                    }
+                }
+            } catch (e: Exception) {
+                mainHandler.post {
+                    aiBusy = false
+                    setStatus("❌ " + (e.message?.take(80) ?: "AI failed"), 2500)
+                }
+            }
+        }.start()
+    }
+
+    private fun openSheet(kind: ImeSheetKind, autoRun: Boolean = ImeAiActions.shouldAutoRunOnToolbarTap(kind)) {
         if (sensitiveField) return
         activeSheet = kind
         selectedChipId = null
@@ -821,9 +1277,8 @@ class EchoScribeImeService : InputMethodService() {
             else -> Unit
         }
         rebuildUi()
-        when (kind) {
-            ImeSheetKind.Grammar, ImeSheetKind.Tone, ImeSheetKind.Translate -> runAi(kind)
-            else -> Unit
+        if (autoRun && kind in setOf(ImeSheetKind.Grammar, ImeSheetKind.Tone, ImeSheetKind.Translate)) {
+            runAi(kind)
         }
     }
 
@@ -911,7 +1366,7 @@ class EchoScribeImeService : InputMethodService() {
             })
         } else if (aiResults.isEmpty()) {
             resultsCol.addView(TextView(this).apply {
-                text = "Generating…"
+                text = if (aiBusy) "Generating…" else "Choose an action"
                 setTextColor(0xFF9E9E9E.toInt())
                 textSize = 13f
                 setPadding(dp(8), dp(12), dp(8), dp(8))
@@ -956,6 +1411,10 @@ class EchoScribeImeService : InputMethodService() {
         column.addView(buildSheetActionRow())
 
         wrap.addView(column)
+        wrap.layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT,
+        )
         wrap.minimumHeight = dp(320)
         return wrap
     }
@@ -992,7 +1451,7 @@ class EchoScribeImeService : InputMethodService() {
             addView(
                 actionButton(
                     if (selectedChipUsesClipboard()) "Insert reply" else "Replace text",
-                    0xFF1B6B4A.toInt(),
+                    COLOR_ENTER,
                     4f,
                     aiResults.isNotEmpty() && !aiBusy,
                 ) { replaceWithSelectedResult() },
@@ -1670,9 +2129,12 @@ class EchoScribeImeService : InputMethodService() {
 
     private fun cancelPendingKey() {
         mainHandler.removeCallbacks(longPressRunnable)
+        mainHandler.removeCallbacks(spaceCursorRunnable)
         pendingKey = null
         pendingKeyVisual = null
         longPressFired = false
+        spaceCursorArmed = false
+        dismissSpaceLoupe()
     }
 
     private fun consumeOneShotShift() {
@@ -1728,41 +2190,81 @@ class EchoScribeImeService : InputMethodService() {
         return maxOf(fromSystem, dp(48))
     }
 
-    private fun showAccents(anchor: View, chars: List<String>) {
+    private fun showAccentHold(anchor: View, glyphs: List<String>) {
         dismissAccents()
+        if (glyphs.isEmpty()) return
+        accentHoldGlyphs = glyphs
+        accentHoldIndex = ImeAccentHold.defaultIndex()
+        val upper = lettersUppercase()
+        val views = mutableListOf<TextView>()
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(dp(4), dp(4), dp(4), dp(4))
             background = rounded(0xFF3A3A3C.toInt(), 12f)
         }
-        chars.forEach { glyph ->
-            row.addView(TextView(this).apply {
-                text = glyph
+        glyphs.forEachIndexed { index, glyph ->
+            val cell = TextView(this).apply {
+                text = ImeUmlauts.applyCase(glyph, upper)
                 setTextColor(COLOR_TEXT)
                 textSize = 20f
                 setPadding(dp(12), dp(8), dp(12), dp(8))
-                setOnClickListener {
-                    onKey(KeyAction.CommitChar(glyph.first()))
-                    dismissAccents()
+                background = if (index == accentHoldIndex) {
+                    rounded(COLOR_SELECTED, 10f)
+                } else {
+                    null
                 }
-            })
+            }
+            views.add(cell)
+            row.addView(cell)
         }
+        accentHoldViews = views
+        // Non-focusable / non-touchable so ACTION_MOVE keeps going to the key.
         accentPopup = PopupWindow(
             row,
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
-            true,
+            false,
         ).apply {
             elevation = 12f
-            isOutsideTouchable = true
+            isTouchable = false
+            isOutsideTouchable = false
             setBackgroundDrawable(rounded(0xFF3A3A3C.toInt(), 12f))
             showAsDropDown(anchor, 0, -anchor.height - dp(56))
         }
     }
 
+    private fun updateAccentHoldFromMove(rawX: Float) {
+        if (accentHoldGlyphs.isEmpty()) return
+        val next = ImeAccentHold.indexFromHorizontalDelta(
+            deltaPx = rawX - accentHoldOriginX,
+            slotWidthPx = dp(ACCENT_SLOT_DP).toFloat(),
+            count = accentHoldGlyphs.size,
+            startIndex = ImeAccentHold.defaultIndex(),
+        )
+        if (next == accentHoldIndex) return
+        accentHoldIndex = next
+        accentHoldViews.forEachIndexed { index, view ->
+            view.background = if (index == accentHoldIndex) {
+                rounded(COLOR_SELECTED, 10f)
+            } else {
+                null
+            }
+        }
+    }
+
+    private fun commitAccentHold() {
+        val glyph = accentHoldGlyphs.getOrNull(accentHoldIndex)
+        dismissAccents()
+        if (glyph.isNullOrEmpty()) return
+        onKey(KeyAction.CommitChar(glyph.first()))
+    }
+
     private fun dismissAccents() {
         accentPopup?.dismiss()
         accentPopup = null
+        accentHoldGlyphs = emptyList()
+        accentHoldViews = emptyList()
+        accentHoldIndex = 0
     }
 
     private fun rounded(color: Int, radiusDp: Float): GradientDrawable {
@@ -1814,6 +2316,74 @@ class EchoScribeImeService : InputMethodService() {
         return clip.getItemAt(0).coerceToText(this)?.toString()?.trim()
     }
 
+    private data class PrimaryClipInspection(
+        val text: String?,
+        val hasImage: Boolean,
+        val imageUri: Uri?,
+        val imageMime: String?,
+        val thumbnail: Bitmap?,
+    )
+
+    private fun inspectPrimaryClip(): PrimaryClipInspection {
+        val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = clipboard.primaryClip
+        if (clip == null || clip.itemCount <= 0) {
+            return PrimaryClipInspection(
+                text = null,
+                hasImage = false,
+                imageUri = null,
+                imageMime = null,
+                thumbnail = null,
+            )
+        }
+        val description = clip.description
+        val item = clip.getItemAt(0)
+        // Prefer explicit text; coerceToText on image URIs often yields the URI string.
+        val explicitText = item.text?.toString()?.trim().orEmpty()
+        var imageMime: String? = null
+        for (i in 0 until description.mimeTypeCount) {
+            val mime = description.getMimeType(i)
+            if (ClipDescription.compareMimeTypes(mime, "image/*")) {
+                imageMime = mime
+                break
+            }
+        }
+        val imageUri = item.uri?.takeIf { imageMime != null }
+        val thumbnail = loadClipboardThumbnail(imageUri)
+        val hasImage = imageMime != null
+        val text = when {
+            explicitText.isNotEmpty() -> explicitText
+            hasImage -> null
+            else -> item.coerceToText(this)?.toString()?.trim()
+        }
+        return PrimaryClipInspection(
+            text = text,
+            hasImage = hasImage,
+            imageUri = imageUri,
+            imageMime = imageMime,
+            thumbnail = thumbnail,
+        )
+    }
+
+    private fun loadClipboardThumbnail(imageUri: Uri?): Bitmap? {
+        val uri = imageUri ?: return null
+        val target = dp(18)
+        val decoded = runCatching {
+            contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream)
+            }
+        }.getOrNull() ?: return null
+        return scaleBitmap(decoded, target)
+    }
+
+    private fun scaleBitmap(source: Bitmap, targetPx: Int): Bitmap {
+        if (source.width <= targetPx && source.height <= targetPx) return source
+        val scale = targetPx.toFloat() / maxOf(source.width, source.height).toFloat()
+        val w = (source.width * scale).toInt().coerceAtLeast(1)
+        val h = (source.height * scale).toInt().coerceAtLeast(1)
+        return Bitmap.createScaledBitmap(source, w, h, true)
+    }
+
     private sealed class KeyAction {
         data class CommitChar(val value: Char) : KeyAction()
         data object Space : KeyAction()
@@ -1847,5 +2417,7 @@ class EchoScribeImeService : InputMethodService() {
         private const val COLOR_TEXT = 0xFFFFFFFF.toInt()
         private const val MAX_SOURCE_CHARS = 8000
         private const val KEY_HOLD_MS = 350L
+        private const val ACCENT_SLOT_DP = 40
+        private const val SUGGESTION_BAR_MIN_DP = 40
     }
 }

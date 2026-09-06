@@ -20,12 +20,14 @@ class ImeClipboardStore(context: Context) {
         val raw = prefs.getString(KEY, null) ?: return emptyList()
         return try {
             val array = JSONArray(raw)
-            buildList {
-                for (i in 0 until array.length()) {
-                    val value = array.optString(i).trim()
-                    if (value.isNotEmpty()) add(value)
-                }
-            }
+            capHistory(
+                buildList {
+                    for (i in 0 until array.length()) {
+                        val value = array.optString(i).trim()
+                        if (value.isNotEmpty()) add(value)
+                    }
+                },
+            )
         } catch (_: Exception) {
             emptyList()
         }
@@ -38,7 +40,12 @@ class ImeClipboardStore(context: Context) {
     companion object {
         private const val PREFS = "echoscribe_ime_clipboard"
         private const val KEY = "items"
-        private const val MAX_ITEMS = 20
+        const val MAX_ITEMS = 5
         private const val MAX_CHARS = 32_000
+
+        fun capHistory(items: List<String>, maxItems: Int = MAX_ITEMS): List<String> {
+            if (maxItems <= 0) return emptyList()
+            return items.take(maxItems)
+        }
     }
 }
