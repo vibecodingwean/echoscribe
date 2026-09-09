@@ -55,11 +55,17 @@ import com.echoscribe.app.NativeDictationConfig
 import com.echoscribe.app.R
 import com.echoscribe.app.NativeDictationConfigStore
 import java.io.File
+import java.util.concurrent.Executors
 
 class EchoScribeImeService : InputMethodService() {
     private enum class Layer { Letters, Symbols }
 
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val clipboardExecutor = Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "ime-clipboard").apply { isDaemon = true }
+    }
+    private var clipboardGeneration = 0
+    private val clipboardChipRunnable = Runnable { loadClipboardChipOnMain() }
     private val clipboardStore by lazy { ImeClipboardStore(this) }
     private val recentEmojiStore by lazy { ImeRecentEmojiStore(this) }
     private var config: NativeDictationConfig? = null
@@ -171,11 +177,15 @@ class EchoScribeImeService : InputMethodService() {
     }
 
     private val clipListener = ClipboardManager.OnPrimaryClipChangedListener {
-        val text = readPrimaryClipText()
-        if (!text.isNullOrBlank()) {
-            clipboardStore.add(text)
+        mainHandler.post {
+            val clip = inspectPrimaryClip()
+            if (!clip.text.isNullOrBlank()) {
+                clipboardStore.add(clip.text)
+            }
+            refreshStatusBar()
+            applyClipboardChip(clip, thumbnail = null)
+            maybeLoadClipboardThumbnail(clip)
         }
-        mainHandler.post { refreshSuggestions() }
     }
 
     override fun onCreate() {
@@ -205,6 +215,8 @@ class EchoScribeImeService : InputMethodService() {
         keySoundPool?.release()
         keySoundPool = null
         keyClickReady = false
+        mainHandler.removeCallbacks(clipboardChipRunnable)
+        clipboardExecutor.shutdownNow()
         super.onDestroy()
     }
 
@@ -257,7 +269,8 @@ class EchoScribeImeService : InputMethodService() {
         } else {
             applyLetterCase()
         }
-        refreshSuggestions()
+        refreshStatusBar()
+        scheduleClipboardChip()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
@@ -352,7 +365,8 @@ class EchoScribeImeService : InputMethodService() {
             else -> buildAiSheet(sheet)
         }
         host.addView(child)
-        refreshSuggestions()
+        refreshStatusBar()
+        scheduleClipboardChip()
     }
 
     private fun buildToolbar(): View {
@@ -542,6 +556,11 @@ class EchoScribeImeService : InputMethodService() {
     }
 
     private fun refreshSuggestions() {
+        refreshStatusBar()
+        scheduleClipboardChip()
+    }
+
+    private fun refreshStatusBar() {
         val bar = suggestionBar ?: return
         val log = voiceLog
         val status = statusLine
@@ -568,23 +587,36 @@ class EchoScribeImeService : InputMethodService() {
             })
             return
         }
-
         bar.removeAllViews()
         bar.visibility = View.GONE
+    }
 
+    private fun scheduleClipboardChip() {
+        mainHandler.removeCallbacks(clipboardChipRunnable)
+        mainHandler.post(clipboardChipRunnable)
+    }
+
+    private fun loadClipboardChipOnMain() {
+        if (isRecording || isProcessingVoice || !voiceLog.isNullOrBlank() || !statusLine.isNullOrBlank()) {
+            return
+        }
+        val clip = inspectPrimaryClip()
+        applyClipboardChip(clip, thumbnail = null)
+        maybeLoadClipboardThumbnail(clip)
+    }
+
+    private fun applyClipboardChip(clip: PrimaryClipInspection, thumbnail: Bitmap?) {
         val host = clipboardPreviewHost
         if (host == null || toolbar == null) {
             clipboardImageUri = null
             clipboardImageMime = null
             return
         }
-
-        val clip = inspectPrimaryClip()
         val snapshot = ImeClipboardPreview.classify(clip.text, clip.hasImage)
         if (!ImeClipboardPreview.shouldShowChip(
                 sensitiveField = sensitiveField,
-                recordingOrProcessing = false,
-                voiceLog = null,
+                recordingOrProcessing = isRecording || isProcessingVoice,
+                voiceLog = voiceLog,
                 snapshot = snapshot,
             )
         ) {
@@ -593,12 +625,24 @@ class EchoScribeImeService : InputMethodService() {
             clearClipboardPreviewHost()
             return
         }
-
         clipboardImageUri = clip.imageUri
         clipboardImageMime = clip.imageMime
         host.removeAllViews()
         host.visibility = View.VISIBLE
-        host.addView(buildClipboardChip(snapshot, clip.thumbnail))
+        host.addView(buildClipboardChip(snapshot, thumbnail))
+    }
+
+    private fun maybeLoadClipboardThumbnail(clip: PrimaryClipInspection) {
+        val uri = clip.imageUri ?: return
+        val gen = ++clipboardGeneration
+        clipboardExecutor.execute {
+            val bitmap = loadClipboardThumbnail(uri)
+            mainHandler.post {
+                if (gen != clipboardGeneration) return@post
+                if (clipboardImageUri != uri) return@post
+                applyClipboardChip(clip, thumbnail = bitmap)
+            }
+        }
     }
 
     private fun clearClipboardPreviewHost() {
@@ -804,16 +848,15 @@ class EchoScribeImeService : InputMethodService() {
             }
             gravity = Gravity.CENTER
             includeFontPadding = false
-            setPadding(0, 0, 0, 0)
+            setPadding(
+                0,
+                dp(ImeKeyHitGeometry.labelPaddingDp.top),
+                0,
+                dp(ImeKeyHitGeometry.labelPaddingDp.bottom),
+            )
             isAllCaps = false
             setTextColor(COLOR_TEXT)
-            background = InsetDrawable(
-                keyBackground(normalColor, 16f),
-                dp(2),
-                dp(3),
-                dp(2),
-                dp(3),
-            )
+            background = keycapDrawable(normalColor)
             isClickable = false
             isFocusable = false
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
@@ -2124,7 +2167,7 @@ class EchoScribeImeService : InputMethodService() {
             shiftOnce || autoCapNext -> 0xFF5C5C5E.toInt()
             else -> COLOR_KEY
         }
-        shift.background = InsetDrawable(keyBackground(color, 16f), dp(2), dp(3), dp(2), dp(3))
+        shift.background = keycapDrawable(color)
     }
 
     private fun cancelPendingKey() {
@@ -2275,6 +2318,17 @@ class EchoScribeImeService : InputMethodService() {
         }
     }
 
+    private fun keycapDrawable(color: Int): android.graphics.drawable.Drawable {
+        val inset = ImeKeyHitGeometry.visualInsetDp
+        return InsetDrawable(
+            keyBackground(color, 16f),
+            dp(inset.left),
+            dp(inset.top),
+            dp(inset.right),
+            dp(inset.bottom),
+        )
+    }
+
     private fun keyBackground(color: Int, radiusDp: Float): android.graphics.drawable.Drawable {
         if (config?.opticalFeedbackEnabled == false) return rounded(color, radiusDp)
         return StateListDrawable().apply {
@@ -2321,7 +2375,6 @@ class EchoScribeImeService : InputMethodService() {
         val hasImage: Boolean,
         val imageUri: Uri?,
         val imageMime: String?,
-        val thumbnail: Bitmap?,
     )
 
     private fun inspectPrimaryClip(): PrimaryClipInspection {
@@ -2333,7 +2386,6 @@ class EchoScribeImeService : InputMethodService() {
                 hasImage = false,
                 imageUri = null,
                 imageMime = null,
-                thumbnail = null,
             )
         }
         val description = clip.description
@@ -2349,7 +2401,6 @@ class EchoScribeImeService : InputMethodService() {
             }
         }
         val imageUri = item.uri?.takeIf { imageMime != null }
-        val thumbnail = loadClipboardThumbnail(imageUri)
         val hasImage = imageMime != null
         val text = when {
             explicitText.isNotEmpty() -> explicitText
@@ -2361,16 +2412,24 @@ class EchoScribeImeService : InputMethodService() {
             hasImage = hasImage,
             imageUri = imageUri,
             imageMime = imageMime,
-            thumbnail = thumbnail,
         )
     }
 
     private fun loadClipboardThumbnail(imageUri: Uri?): Bitmap? {
         val uri = imageUri ?: return null
-        val target = dp(18)
+        val target = dp(ImeClipboardLoad.THUMB_TARGET_DP)
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        runCatching {
+            contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream, null, bounds)
+            }
+        }
+        val opts = BitmapFactory.Options().apply {
+            inSampleSize = ImeClipboardLoad.inSampleSize(bounds.outWidth, bounds.outHeight, target)
+        }
         val decoded = runCatching {
             contentResolver.openInputStream(uri)?.use { stream ->
-                BitmapFactory.decodeStream(stream)
+                BitmapFactory.decodeStream(stream, null, opts)
             }
         }.getOrNull() ?: return null
         return scaleBitmap(decoded, target)
