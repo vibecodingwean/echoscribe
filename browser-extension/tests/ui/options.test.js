@@ -111,15 +111,15 @@ describe('options', () => {
     provider.dispatchEvent(new document.defaultView.Event('change'));
     expect(modelOptions(document)).toEqual([
       { value: 'gpt-5.6-terra', label: 'Fast — gpt-5.6-terra' },
-      { value: 'gpt-5.6-sol', label: 'Pro — gpt-5.6-sol' }
+      { value: 'gpt-6-astra', label: 'Pro — gpt-6-astra' }
     ]);
-    model.value = 'gpt-5.6-sol';
+    model.value = 'gpt-6-astra';
     provider.value = 'gemini';
     provider.dispatchEvent(new document.defaultView.Event('change'));
     expect(model.value).toBe('gemini-3.1-pro-preview');
     provider.value = 'openai';
     provider.dispatchEvent(new document.defaultView.Event('change'));
-    expect(model.value).toBe('gpt-5.6-sol');
+    expect(model.value).toBe('gpt-6-astra');
   });
 
   it('resets the prompt and clears local data after confirmation', async () => {

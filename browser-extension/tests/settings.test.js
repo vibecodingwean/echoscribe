@@ -47,6 +47,14 @@ describe('normalizeSettings', () => {
     expect(settings.models.xai).toBe('grok-4.6');
   });
 
+  it('migrates retained OpenAI Pro defaults to GPT-6 Astra', () => {
+    const settings = normalizeSettings({
+      provider: 'openai',
+      models: { openai: 'gpt-5.6-sol' }
+    });
+    expect(settings.models.openai).toBe('gpt-6-astra');
+  });
+
   it('trims free-entry model names and bounds custom prompts', () => {
     const settings = normalizeSettings({
       models: { xai: '  grok-user-choice  ' },

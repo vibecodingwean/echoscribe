@@ -1,7 +1,7 @@
 export const PROVIDERS = Object.freeze({
   openai: {
     label: 'OpenAI', defaultModel: 'gpt-5.6-terra',
-    models: [{ id: 'gpt-5.6-terra', tier: 'Fast' }, { id: 'gpt-5.6-sol', tier: 'Pro' }]
+    models: [{ id: 'gpt-5.6-terra', tier: 'Fast' }, { id: 'gpt-6-astra', tier: 'Pro' }]
   },
   anthropic: {
     label: 'Anthropic', defaultModel: 'claude-sonnet-5',

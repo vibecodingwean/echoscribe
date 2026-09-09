@@ -5,7 +5,7 @@ void main() {
   group('AI model defaults', () {
     test('OpenAI preserves fast and pro reasoning roles', () {
       expect(AiModelConfig.openAiSummary(pro: false), 'gpt-5.6-terra');
-      expect(AiModelConfig.openAiSummary(pro: true), 'gpt-5.6-sol');
+      expect(AiModelConfig.openAiSummary(pro: true), 'gpt-6-astra');
       expect(
         AiModelConfig.openAiTranscription(pro: false),
         'gpt-4o-mini-transcribe',
