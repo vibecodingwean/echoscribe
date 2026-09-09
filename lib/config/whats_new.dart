@@ -1,5 +1,5 @@
 class WhatsNewCopy {
-  static const int releaseVersionCode = 108;
+  static const int releaseVersionCode = 109;
 
   static const String welcomeTitle = 'Welcome to Echo Scribe';
   static const String welcomeButton = 'Got it';
