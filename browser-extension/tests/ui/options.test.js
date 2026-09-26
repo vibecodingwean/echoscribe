@@ -15,7 +15,7 @@ function setup() {
   const settings = {
     provider: 'gemini',
     models: {
-      openai: 'gpt-5.6-terra', anthropic: 'claude-sonnet-5',
+      openai: 'gpt-6-luna', anthropic: 'claude-sonnet-5',
       gemini: 'gemini-3.1-pro-preview', xai: 'grok-4.3'
     },
     configuredProviders: { openai: false, anthropic: false, gemini: true, xai: false },
@@ -110,7 +110,7 @@ describe('options', () => {
     provider.value = 'openai';
     provider.dispatchEvent(new document.defaultView.Event('change'));
     expect(modelOptions(document)).toEqual([
-      { value: 'gpt-5.6-terra', label: 'Fast — gpt-5.6-terra' },
+      { value: 'gpt-6-luna', label: 'Fast — gpt-6-luna' },
       { value: 'gpt-6-astra', label: 'Pro — gpt-6-astra' }
     ]);
     model.value = 'gpt-6-astra';

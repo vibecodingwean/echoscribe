@@ -4,6 +4,30 @@ import 'package:echoscribe/state/settings_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  group('target language selection', () {
+    for (final code in ['', '  ', '\t\n', 'unknown', 'de-DE']) {
+      test('invalid value ${code.codeUnits} selects Auto', () {
+        final settings = SettingsState()..setTargetLanguageCode('de');
+        settings.setTargetLanguageCode(code);
+        expect(settings.targetLanguageCode, 'auto');
+      });
+    }
+
+    for (final code in ['auto', ...kTargetLanguageNames.keys]) {
+      test('supported value $code remains selected', () {
+        final settings = SettingsState()..setTargetLanguageCode(code);
+        expect(settings.targetLanguageCode, code);
+      });
+    }
+
+    test('normalizes case and whitespace before matching a language', () {
+      final settings = SettingsState()..setTargetLanguageCode(' DE ');
+      expect(settings.targetLanguageCode, 'de');
+      settings.setTargetLanguageCode(' AUTO ');
+      expect(settings.targetLanguageCode, 'auto');
+    });
+  });
+
   test('model lookup follows the selected provider and pro flags', () {
     final settings = SettingsState();
 

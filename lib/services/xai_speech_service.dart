@@ -6,6 +6,9 @@ import 'package:echoscribe/models/app_exception.dart';
 import 'package:echoscribe/services/debug_console.dart';
 
 class XaiSpeechService {
+  XaiSpeechService({http.Client? client}) : _client = client ?? http.Client();
+
+  final http.Client _client;
   static const String endpoint = 'https://api.x.ai/v1/stt';
 
   static const Set<String> _allowedExts = {
@@ -33,6 +36,7 @@ class XaiSpeechService {
 
   Future<String> transcribe({
     required String apiKey,
+    required String model,
     String? filePath,
     List<int>? fileBytes,
     String fileName = 'audio.m4a',
@@ -48,6 +52,7 @@ class XaiSpeechService {
     final request = http.MultipartRequest('POST', uri);
     request.headers['Authorization'] = 'Bearer $apiKey';
     request.fields['format'] = 'false';
+    request.fields['model'] = model;
     request.files.add(
       http.MultipartFile.fromBytes('file', bytes, filename: patchedName),
     );
@@ -74,7 +79,7 @@ class XaiSpeechService {
       ],
     );
 
-    final streamed = await request.send();
+    final streamed = await _client.send(request);
     final response = await http.Response.fromStream(streamed);
     sw.stop();
     DebugConsole.logApiEnd(

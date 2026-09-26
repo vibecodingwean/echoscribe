@@ -43,9 +43,9 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 
 ### 🚀 Pro Mode & Models
 Access the world's most powerful AI models with a single toggle:
-- **Standard (Fast):** GPT-5.6 Terra, Gemini 3.8 Flash, Claude Sonnet 5, Grok 4.3, or local `qwen2.5:7b`.
-- **Pro Mode (Premium):** GPT-6 Astra, Gemini 3.1 Pro Preview, Claude Opus 5, Grok 4.6.
-- **Speech Models:** OpenAI Pro file transcription uses GPT Transcribe; OpenAI Realtime uses GPT Live Transcribe; ElevenLabs file transcription and Keyboard STT use Scribe v2; optional Realtime uses Scribe v2 Realtime.
+- **Standard (Fast):** GPT-6 Luna, Gemini 3.8 Flash, Claude Sonnet 5, Grok 4.3, or local `qwen2.5:7b`.
+- **Pro Mode (Premium):** GPT-6 Astra, Gemini 3.1 Pro Preview, Claude Opus 5.5, Grok 4.6.
+- **Speech Models:** OpenAI Pro file transcription uses GPT Transcribe; OpenAI Realtime uses GPT Live Transcribe; xAI batch transcription uses Grok Voice Transcribe 2.0; ElevenLabs file transcription and Keyboard STT use Scribe v2; optional Realtime uses Scribe v2 Realtime.
 
 ### 🌍 Intelligent Re-Translation
 Need a result in another language? Change the target language via the globe icon, and EchoScribe will automatically re-process the source content to provide a high-quality summary in the new language.
@@ -54,7 +54,7 @@ Need a result in another language? Change the target language via the globe icon
 Double-tap any transcription or summary to enter an immersive, distraction-free reading mode with smooth animations.
 
 ### 🔊 Text-to-Speech (TTS)
-Listen to your summaries on the go. Supports high-quality neural voices from OpenAI (MP3), Google (WAV), xAI Grok (MP3), and ElevenLabs (MP3, optional Voice ID) with local caching.
+Listen to your summaries on the go. Supports high-quality neural voices from OpenAI (MP3), Google Gemini 3.8 Flash TTS (WAV), xAI Grok (MP3), and ElevenLabs (MP3, optional Voice ID) with local caching.
 
 ---
 

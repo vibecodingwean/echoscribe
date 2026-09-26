@@ -1,3 +1,4 @@
+import 'package:echoscribe/config/whats_new.dart';
 import 'package:echoscribe/services/launch_overlay_policy.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -54,5 +55,24 @@ void main() {
       ),
       LaunchOverlayKind.none,
     );
+  });
+
+  test('existing +112 users see +113 whats new once, but shares skip it', () {
+    expect(WhatsNewCopy.releaseVersionCode, 113);
+    for (final (previousVersion, shared, expected) in [
+      (112, false, LaunchOverlayKind.whatsNew),
+      (112, true, LaunchOverlayKind.none),
+      (113, false, LaunchOverlayKind.none),
+    ]) {
+      expect(
+        decideLaunchOverlay(
+          welcomeSeen: true,
+          lastWhatsNewVersionCode: previousVersion,
+          currentVersionCode: WhatsNewCopy.releaseVersionCode,
+          hasInitialShare: shared,
+        ),
+        expected,
+      );
+    }
   });
 }

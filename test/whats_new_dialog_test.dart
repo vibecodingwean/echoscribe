@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('welcome dialog shows compact bullets and Got it', (tester) async {
+  testWidgets('welcome dialog shows compact bullets and Got it',
+      (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Builder(
@@ -34,7 +35,14 @@ void main() {
     }
   });
 
-  testWidgets('whats new dialog shows three single-line bullets', (tester) async {
+  testWidgets('whats new dialog shows three single-line bullets',
+      (tester) async {
+    expect(WhatsNewCopy.releaseVersionCode, 113);
+    expect(WhatsNewCopy.whatsNewBullets, [
+      'OpenAI Fast now uses GPT-6 Luna; Pro remains GPT-6 Astra. Claude Pro now uses Opus 5.5.',
+      'Gemini 3.8 Flash TTS and Grok Voice Transcribe 2.0 for batch audio are here.',
+      'Sharing and real-time transcription fixes make both flows more reliable.',
+    ]);
     await tester.pumpWidget(
       MaterialApp(
         home: Builder(

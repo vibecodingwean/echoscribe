@@ -55,6 +55,12 @@ describe('normalizeSettings', () => {
     expect(settings.models.openai).toBe('gpt-6-astra');
   });
 
+  it('migrates retained Fast and Anthropic Pro choices without changing Astra', () => {
+    expect(normalizeSettings({ models: { openai: 'gpt-5.6-terra' } }).models.openai).toBe('gpt-6-luna');
+    expect(normalizeSettings({ models: { openai: 'gpt-6-astra' } }).models.openai).toBe('gpt-6-astra');
+    expect(normalizeSettings({ models: { anthropic: 'claude-opus-5' } }).models.anthropic).toBe('claude-opus-5-5');
+  });
+
   it('trims free-entry model names and bounds custom prompts', () => {
     const settings = normalizeSettings({
       models: { xai: '  grok-user-choice  ' },

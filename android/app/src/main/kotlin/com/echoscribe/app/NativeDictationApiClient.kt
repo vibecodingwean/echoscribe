@@ -7,7 +7,10 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 
-class NativeDictationApiClient(private val config: NativeDictationConfig) {
+class NativeDictationApiClient(
+    private val config: NativeDictationConfig,
+    private val multipartConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection },
+) {
     private companion object {
         const val DEFAULT_LOCAL_AI_FORMATTING_MODEL = "qwen2.5:7b"
     }
@@ -134,10 +137,19 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
     }
 
     private fun transcribeXai(file: File): String {
+        val configuredModel = config.transcriptionModel
+        val model = if (configuredModel.isBlank() || configuredModel == "xai-stt") {
+            "grok-voice-transcribe-2.0"
+        } else {
+            configuredModel
+        }
         val json = postMultipart(
             endpoint = "https://api.x.ai/v1/stt",
             headers = mapOf("Authorization" to "Bearer ${config.apiKey}"),
-            fields = linkedMapOf("format" to "false"),
+            fields = linkedMapOf(
+                "model" to model,
+                "format" to "false",
+            ),
             fileField = "file",
             file = file,
         )
@@ -490,7 +502,7 @@ class NativeDictationApiClient(private val config: NativeDictationConfig) {
         readTimeoutMs: Int = 180_000,
     ): JSONObject {
         val boundary = "EchoScribeBoundary${System.currentTimeMillis()}"
-        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+        val connection = multipartConnection(URL(endpoint)).apply {
             requestMethod = "POST"
             connectTimeout = connectTimeoutMs
             readTimeout = readTimeoutMs

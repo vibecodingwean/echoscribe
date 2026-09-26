@@ -47,7 +47,7 @@ DEFAULTS: dict[str, Any] = {
     "xai": {
         "api_key": "",
         "api_key_env": "XAI_API_KEY",
-        "transcription_model": "xai-stt",
+        "transcription_model": "grok-voice-transcribe-2.0",
         "target_language": "auto",
         "stt_format": False,
     },
@@ -335,9 +335,11 @@ def load_config(project_dir: Path | None = None) -> Config:
 
 def migrate_loaded_config(data: dict[str, Any]) -> None:
     gemini = data.get("gemini")
-    if not isinstance(gemini, dict):
-        return
-    value = str(gemini.get("transcription_model", "")).strip()
-    replacement = DEPRECATED_GEMINI_TRANSCRIPTION_MODELS.get(value)
-    if replacement:
-        gemini["transcription_model"] = replacement
+    if isinstance(gemini, dict):
+        value = str(gemini.get("transcription_model", "")).strip()
+        replacement = DEPRECATED_GEMINI_TRANSCRIPTION_MODELS.get(value)
+        if replacement:
+            gemini["transcription_model"] = replacement
+    xai = data.get("xai")
+    if isinstance(xai, dict) and xai.get("transcription_model") == "xai-stt":
+        xai["transcription_model"] = "grok-voice-transcribe-2.0"

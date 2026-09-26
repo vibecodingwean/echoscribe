@@ -46,45 +46,31 @@ class ShareIntentController {
     }
 
     // Prefer explicit file attachments; fall back to text content
-    final List<SharedAttachment> attachments =
-        (media.attachments ?? const <SharedAttachment?>[])
-            .whereType<SharedAttachment>()
-            .toList();
+    final attachment =
+        media.attachments?.whereType<SharedAttachment>().firstOrNull;
 
     bool handled = false;
 
-    if (attachments.isNotEmpty) {
-      final SharedAttachment first = attachments.first;
-      final String path = first.path;
-      final String name =
-          path.split('/').isNotEmpty ? path.split('/').last : 'file';
-      final String lower = path.toLowerCase();
+    if (attachment != null) {
+      final path = attachment.path;
+      final name = path.split('/').last;
+      final dot = path.lastIndexOf('.');
+      final extension = dot < 0 ? '' : path.substring(dot).toLowerCase();
+      final inferredMime = switch (extension) {
+        '.m4a' => 'audio/m4a',
+        '.mp3' => 'audio/mpeg',
+        '.wav' => 'audio/wav',
+        '.webm' => 'audio/webm',
+        '.ogg' || '.opus' => 'audio/ogg',
+        '.aac' || '.mp4' => 'audio/mp4',
+        _ => null,
+      };
 
-      if (lower.endsWith('.m4a') ||
-          lower.endsWith('.mp3') ||
-          lower.endsWith('.wav') ||
-          lower.endsWith('.aac') ||
-          lower.endsWith('.webm') ||
-          lower.endsWith('.ogg') ||
-          lower.endsWith('.opus') ||
-          lower.endsWith('.mp4')) {
-        final inferredMime = lower.endsWith('.webm')
-            ? 'audio/webm'
-            : lower.endsWith('.m4a')
-                ? 'audio/m4a'
-                : lower.endsWith('.mp3')
-                    ? 'audio/mpeg'
-                    : lower.endsWith('.wav')
-                        ? 'audio/wav'
-                        : lower.endsWith('.ogg') || lower.endsWith('.opus')
-                            ? 'audio/ogg'
-                            : lower.endsWith('.mp4')
-                                ? 'audio/mp4'
-                                : 'audio/mp4';
+      if (inferredMime != null) {
         handled = await onAudioReceived(path, name, inferredMime);
-      } else if (lower.endsWith('.txt') ||
-          lower.endsWith('.md') ||
-          lower.endsWith('.rtf')) {
+      } else if (extension == '.txt' ||
+          extension == '.md' ||
+          extension == '.rtf') {
         try {
           final bytes = await File(path).readAsBytes();
           final content = utf8.decode(bytes, allowMalformed: true);
@@ -116,7 +102,7 @@ class ShareIntentController {
         settings.setLastSharedIntentId(currentId);
         await secureStorage.saveLastSharedIntentId(currentId);
       }
-    } else if (attachments.isEmpty && (media.content ?? '').trim().isEmpty) {
+    } else if (attachment == null && (media.content ?? '').trim().isEmpty) {
       // Only show error if we really have nothing to work with
       showError('Content type not supported');
     }

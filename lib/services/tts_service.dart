@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:echoscribe/services/debug_console.dart';
 
@@ -65,7 +64,6 @@ class TtsService {
     throw Exception(reason);
   }
 
-  // Gemini TTS streaming endpoint: returns WAV bytes (44-byte header + PCM data)
   Future<Uint8List> generateSpeechGemini({
     required String apiKey,
     required String text,
@@ -76,26 +74,27 @@ class TtsService {
     if (trimmed.isEmpty) return Uint8List(0);
 
     final uri = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/$model:streamGenerateContent?key=$apiKey');
-    final headers = {'Content-Type': 'application/json'};
+        'https://generativelanguage.googleapis.com/v1beta/interactions');
+    final headers = {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey,
+    };
     final body = json.encode({
-      'contents': [
+      'model': model,
+      'store': false,
+      'input': [
         {
-          'role': 'user',
-          'parts': [
-            {'text': trimmed}
+          'type': 'user_input',
+          'content': [
+            {'type': 'text', 'text': trimmed}
           ]
         }
       ],
-      'generationConfig': {
-        'responseModalities': ['AUDIO'],
-        'speechConfig': {
-          'voiceConfig': {
-            'prebuiltVoiceConfig': {
-              'voiceName': voice,
-            }
-          }
-        }
+      'response_format': {'type': 'audio'},
+      'generation_config': {
+        'speech_config': [
+          {'voice': voice}
+        ]
       }
     });
 
@@ -114,35 +113,24 @@ class TtsService {
         responseBytes: res.bodyBytes.length);
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
-      // streamGenerateContent returns multiple JSON chunks. Concatenate every
-      // inline audio block in response order before adding the WAV header.
-      final bodyStr = utf8.decode(res.bodyBytes);
-      List<int>? pcmBytes;
-      // Try strict JSON first
-      try {
-        pcmBytes = _extractInlineAudioBytes(json.decode(bodyStr));
-      } catch (_) {
-        // Fallback for newline-delimited/otherwise non-standard streaming JSON.
-        final reg = RegExp(r'"inlineData"\s*:\s*\{[^}]*"data"\s*:\s*"([^"]+)"',
-            multiLine: true);
-        final matches = reg.allMatches(bodyStr);
-        final chunks = <int>[];
-        for (final match in matches) {
-          final encoded = match.group(1);
-          if (encoded != null && encoded.isNotEmpty) {
-            chunks.addAll(base64.decode(encoded));
+      final payload =
+          json.decode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+      final steps = payload['steps'] as List<dynamic>? ?? [];
+      for (final step in steps.reversed) {
+        if (step is! Map<String, dynamic> || step['type'] != 'model_output') {
+          continue;
+        }
+        final content = step['content'] as List<dynamic>? ?? [];
+        for (final block in content.reversed) {
+          if (block is Map<String, dynamic> && block['type'] == 'audio') {
+            final encoded = block['data'];
+            if (encoded is String && encoded.isNotEmpty) {
+              return base64.decode(encoded);
+            }
           }
         }
-        if (chunks.isNotEmpty) pcmBytes = chunks;
       }
-      if (pcmBytes == null || pcmBytes.isEmpty) {
-        debugPrint(
-            'Gemini TTS: inlineData not found; response length=${bodyStr.length}');
-        throw Exception('No audio data in Gemini response');
-      }
-      final wav = _addWavHeader(pcmBytes,
-          sampleRate: 24000, numChannels: 1, bitsPerSample: 16);
-      return Uint8List.fromList(wav);
+      throw Exception('No audio data in Gemini response');
     }
 
     String reason = 'Gemini TTS failed (${res.statusCode})';
@@ -266,70 +254,5 @@ class TtsService {
       }
     } catch (_) {}
     throw Exception(reason);
-  }
-
-  // Build a minimal WAV header for PCM L16 data
-  List<int> _addWavHeader(
-    List<int> pcmData, {
-    required int sampleRate,
-    required int numChannels,
-    required int bitsPerSample,
-  }) {
-    final byteRate = sampleRate * numChannels * (bitsPerSample ~/ 8);
-    final blockAlign = numChannels * (bitsPerSample ~/ 8);
-    final dataSize = pcmData.length;
-    final chunkSize = 36 + dataSize;
-
-    final bytes = BytesBuilder();
-    void writeString(String s) => bytes.add(utf8.encode(s));
-    void writeUint32(int v) => bytes.add(_le32(v));
-    void writeUint16(int v) => bytes.add(_le16(v));
-
-    writeString('RIFF');
-    writeUint32(chunkSize);
-    writeString('WAVE');
-    writeString('fmt ');
-    writeUint32(16); // subchunk1 size for PCM
-    writeUint16(1); // audio format PCM
-    writeUint16(numChannels);
-    writeUint32(sampleRate);
-    writeUint32(byteRate);
-    writeUint16(blockAlign);
-    writeUint16(bitsPerSample);
-    writeString('data');
-    writeUint32(dataSize);
-    bytes.add(pcmData);
-
-    return bytes.takeBytes();
-  }
-
-  List<int> _le16(int v) => [v & 0xFF, (v >> 8) & 0xFF];
-  List<int> _le32(int v) =>
-      [v & 0xFF, (v >> 8) & 0xFF, (v >> 16) & 0xFF, (v >> 24) & 0xFF];
-
-  List<int>? _extractInlineAudioBytes(dynamic root) {
-    final chunks = <int>[];
-
-    void visit(dynamic node) {
-      if (node is Map<String, dynamic>) {
-        final inline = node['inlineData'] ?? node['inline_data'];
-        if (inline is Map<String, dynamic>) {
-          final data = inline['data'];
-          if (data is String && data.isNotEmpty) {
-            chunks.addAll(base64.decode(data));
-          }
-        }
-        for (final value in node.values) {
-          visit(value);
-        }
-      } else if (node is List<dynamic>) {
-        for (final value in node) {
-          visit(value);
-        }
-      }
-    }
-
-    visit(root);
-    return chunks.isEmpty ? null : chunks;
   }
 }

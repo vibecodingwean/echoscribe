@@ -6,7 +6,9 @@ const DEPRECATED_MODELS = Object.freeze({
   'gemini-3.6-flash': 'gemini-3.8-flash',
   'gemini-3.7-flash': 'gemini-3.8-flash',
   'grok-4.5': 'grok-4.6',
-  'gpt-5.6-sol': 'gpt-6-astra'
+  'gpt-5.6-sol': 'gpt-6-astra',
+  'gpt-5.6-terra': 'gpt-6-luna',
+  'claude-opus-5': 'claude-opus-5-5'
 });
 
 export function defaultSettings() {

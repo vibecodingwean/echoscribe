@@ -1,11 +1,11 @@
 {
   "openai": {
     "summary": {
-      "fast": "gpt-5.6-terra",
+      "fast": "gpt-6-luna",
       "pro": "gpt-6-astra"
     },
     "translation": {
-      "fast": "gpt-5.6-terra",
+      "fast": "gpt-6-luna",
       "pro": "gpt-6-astra"
     },
     "transcription": {
@@ -39,7 +39,7 @@
       "fast": "gemini-3.1-flash-image",
       "pro": "gemini-3-pro-image"
     },
-    "tts": "gemini-3.1-flash-tts-preview",
+    "tts": "gemini-3.8-flash-tts",
     "realtime": {
       "transcription": "gemini-3.5-transcribe-live"
     }
@@ -47,11 +47,11 @@
   "anthropic": {
     "summary": {
       "fast": "claude-sonnet-5",
-      "pro": "claude-opus-5"
+      "pro": "claude-opus-5-5"
     },
     "translation": {
       "fast": "claude-sonnet-5",
-      "pro": "claude-opus-5"
+      "pro": "claude-opus-5-5"
     }
   },
   "xai": {
@@ -64,8 +64,8 @@
       "pro": "grok-4.6"
     },
     "transcription": {
-      "fast": "xai-stt",
-      "pro": "xai-stt"
+      "fast": "grok-voice-transcribe-2.0",
+      "pro": "grok-voice-transcribe-2.0"
     },
     "image": {
       "fast": "grok-imagine-image",

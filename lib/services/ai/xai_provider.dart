@@ -66,6 +66,7 @@ class XaiProvider implements AiProvider {
     required String model,
   }) {
     return _speech.transcribe(
+      model: model,
       apiKey: apiKey,
       filePath: filePath,
       fileName: fileName,

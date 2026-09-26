@@ -1,11 +1,11 @@
 export const PROVIDERS = Object.freeze({
   openai: {
-    label: 'OpenAI', defaultModel: 'gpt-5.6-terra',
-    models: [{ id: 'gpt-5.6-terra', tier: 'Fast' }, { id: 'gpt-6-astra', tier: 'Pro' }]
+    label: 'OpenAI', defaultModel: 'gpt-6-luna',
+    models: [{ id: 'gpt-6-luna', tier: 'Fast' }, { id: 'gpt-6-astra', tier: 'Pro' }]
   },
   anthropic: {
     label: 'Anthropic', defaultModel: 'claude-sonnet-5',
-    models: [{ id: 'claude-sonnet-5', tier: 'Fast' }, { id: 'claude-opus-5', tier: 'Pro' }]
+    models: [{ id: 'claude-sonnet-5', tier: 'Fast' }, { id: 'claude-opus-5-5', tier: 'Pro' }]
   },
   gemini: {
     label: 'Google Gemini', defaultModel: 'gemini-3.8-flash',

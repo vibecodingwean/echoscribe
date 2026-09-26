@@ -4,8 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('AI model defaults', () {
     test('OpenAI preserves fast and pro reasoning roles', () {
-      expect(AiModelConfig.openAiSummary(pro: false), 'gpt-5.6-terra');
+      expect(AiModelConfig.openAiSummary(pro: false), 'gpt-6-luna');
       expect(AiModelConfig.openAiSummary(pro: true), 'gpt-6-astra');
+      expect(AiModelConfig.openAiTranslation(pro: true), 'gpt-6-astra');
       expect(
         AiModelConfig.openAiTranscription(pro: false),
         'gpt-4o-mini-transcribe',
@@ -46,13 +47,14 @@ void main() {
         AiModelConfig.geminiRealtimeTranscription,
         'gemini-3.5-transcribe-live',
       );
+      expect(AiModelConfig.geminiTts, 'gemini-3.8-flash-tts');
       expect(AiModelConfig.anthropicSummary(pro: false), 'claude-sonnet-5');
-      expect(AiModelConfig.anthropicSummary(pro: true), 'claude-opus-5');
+      expect(AiModelConfig.anthropicSummary(pro: true), 'claude-opus-5-5');
       expect(
         AiModelConfig.anthropicTranslation(pro: false),
         'claude-sonnet-5',
       );
-      expect(AiModelConfig.anthropicTranslation(pro: true), 'claude-opus-5');
+      expect(AiModelConfig.anthropicTranslation(pro: true), 'claude-opus-5-5');
     });
 
     test('xAI keeps distinct fast and pro tiers', () {
@@ -60,6 +62,10 @@ void main() {
       expect(AiModelConfig.xaiSummary(pro: true), 'grok-4.6');
       expect(AiModelConfig.xaiImage(pro: false), 'grok-imagine-image');
       expect(AiModelConfig.xaiImage(pro: true), 'grok-imagine-image-2.0');
+      expect(AiModelConfig.xaiTranscription(pro: false),
+          'grok-voice-transcribe-2.0');
+      expect(AiModelConfig.xaiTranscription(pro: true),
+          'grok-voice-transcribe-2.0');
       expect(AiModelConfig.xaiReasoningEffort(pro: false), 'none');
       expect(AiModelConfig.xaiReasoningEffort(pro: true), 'medium');
     });

@@ -1,5 +1,5 @@
 class WhatsNewCopy {
-  static const int releaseVersionCode = 109;
+  static const int releaseVersionCode = 113;
 
   static const String welcomeTitle = 'Welcome to Echo Scribe';
   static const String welcomeButton = 'Got it';
@@ -12,8 +12,8 @@ class WhatsNewCopy {
   static const String whatsNewTitle = "What's new";
   static const String whatsNewButton = 'OK';
   static const List<String> whatsNewBullets = [
-    'OpenAI Pro is now GPT-6 Astra for summary and translation.',
-    'Keys sit slightly high in a larger tap cell.',
-    'Clipboard history keeps the last 5 items.',
+    'OpenAI Fast now uses GPT-6 Luna; Pro remains GPT-6 Astra. Claude Pro now uses Opus 5.5.',
+    'Gemini 3.8 Flash TTS and Grok Voice Transcribe 2.0 for batch audio are here.',
+    'Sharing and real-time transcription fixes make both flows more reliable.',
   ];
 }

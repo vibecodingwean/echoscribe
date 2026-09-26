@@ -1,0 +1,79 @@
+package com.echoscribe.app
+
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.InputStream
+import java.net.HttpURLConnection
+import java.net.URL
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Assert.assertThrows
+import org.junit.Test
+
+class NativeDictationApiClientTest {
+    @Test
+    fun xaiMultipartRequestIncludesSelectedModel() {
+        assertXaiMultipartModel("selected-xai-model", "selected-xai-model")
+    }
+
+    @Test
+    fun xaiMultipartRequestUsesCurrentModelWhenNativeConfigIsBlank() {
+        assertXaiMultipartModel("", "grok-voice-transcribe-2.0")
+    }
+
+    @Test
+    fun xaiMultipartRequestMigratesPersistedLegacyModel() {
+        assertXaiMultipartModel("xai-stt", "grok-voice-transcribe-2.0")
+    }
+
+    private fun assertXaiMultipartModel(configModel: String, expectedModel: String) {
+        val audio = File.createTempFile("echoscribe-native-stt-", ".m4a")
+        try {
+            audio.writeBytes(byteArrayOf(1, 2, 3))
+            lateinit var request: CapturingConnection
+            val client = NativeDictationApiClient(xaiConfig(configModel)) { url ->
+                request = CapturingConnection(url)
+                request
+            }
+            assertThrows(IllegalStateException::class.java) { client.transcribe(audio) }
+
+            assertEquals("https://api.x.ai/v1/stt", request.url.toString())
+            assertEquals("POST", request.requestMethod)
+            assertEquals("Bearer unit-test-key", request.getRequestProperty("Authorization"))
+            val body = request.body.toString(Charsets.UTF_8.name())
+            assertTrue(body.contains("name=\"model\"\r\n\r\n$expectedModel\r\n"))
+            assertTrue(body.contains("name=\"format\"\r\n\r\nfalse\r\n"))
+            assertTrue(body.contains("name=\"file\"; filename=\"${audio.name}\""))
+        } finally {
+            audio.delete()
+        }
+    }
+
+    private fun xaiConfig(model: String) = NativeDictationConfig(
+        enabled = true,
+        floatingEnabled = false,
+        provider = "xai",
+        brandName = "Grok",
+        apiKey = "unit-test-key",
+        targetLanguageCode = "auto",
+        dictationPrompt = "",
+        transcriptionModel = model,
+        formattingModel = "",
+        reasoningEffort = "none",
+        supportsDictation = true,
+        localAiLlmUrl = "",
+        localAiWhisperUrl = "",
+    )
+
+    private class CapturingConnection(url: URL) : HttpURLConnection(url) {
+        val body = ByteArrayOutputStream()
+
+        override fun connect() = Unit
+        override fun disconnect() = Unit
+        override fun usingProxy() = false
+        override fun getOutputStream() = body
+        override fun getResponseCode() = 400
+        override fun getErrorStream(): InputStream = ByteArrayInputStream("synthetic error".toByteArray())
+    }
+}

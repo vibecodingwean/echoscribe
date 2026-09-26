@@ -8,7 +8,8 @@ class AnthropicService {
     required String apiKey,
     required String model,
     required String prompt,
-    String systemPrompt = 'You are a precise assistant. Output only the requested content.',
+    String systemPrompt =
+        'You are a precise assistant. Output only the requested content.',
     int maxTokens = 1024,
   }) async {
     final uri = Uri.parse('https://api.anthropic.com/v1/messages');
@@ -30,20 +31,39 @@ class AnthropicService {
     });
 
     final sw = Stopwatch()..start();
-    DebugConsole.logApiStart(method: 'POST', url: uri, requestBytes: utf8.encode(body).length, note: 'Anthropic text generation');
-    DebugConsole.logApiRequest(method: 'POST', url: uri, headers: headers, body: body);
-    
+    DebugConsole.logApiStart(
+        method: 'POST',
+        url: uri,
+        requestBytes: utf8.encode(body).length,
+        note: 'Anthropic text generation');
+    DebugConsole.logApiRequest(
+        method: 'POST', url: uri, headers: headers, body: body);
+
     final res = await http.post(uri, headers: headers, body: body);
     sw.stop();
-    
-    DebugConsole.logApiEnd(status: res.statusCode, elapsedMs: sw.elapsedMilliseconds, responseBytes: res.bodyBytes.length);
-    DebugConsole.logApiResponse(status: res.statusCode, headers: res.headers, body: res.body, title: 'API response (Anthropic)');
+
+    DebugConsole.logApiEnd(
+        status: res.statusCode,
+        elapsedMs: sw.elapsedMilliseconds,
+        responseBytes: res.bodyBytes.length);
+    DebugConsole.logApiResponse(
+        status: res.statusCode,
+        headers: res.headers,
+        body: res.body,
+        title: 'API response (Anthropic)');
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
       final data = json.decode(res.body) as Map<String, dynamic>;
       final content = data['content'] as List<dynamic>?;
-      if (content != null && content.isNotEmpty) {
-        return (content.first['text'] ?? '').toString().trim();
+      if (content != null) {
+        final text = content
+            .whereType<Map>()
+            .where(
+                (block) => block['type'] == 'text' && block['text'] is String)
+            .map((block) => (block['text'] as String).trim())
+            .where((text) => text.isNotEmpty)
+            .join('\n');
+        if (text.isNotEmpty) return text;
       }
       throw const EmptyResultException('Empty response from Claude');
     }
@@ -54,6 +74,7 @@ class AnthropicService {
       final msg = err['error']?['message'];
       if (msg is String && msg.isNotEmpty) apiMessage = msg;
     } catch (_) {}
-    throw AppException.fromHttp(res.statusCode, apiMessage: apiMessage, fallback: 'Claude request failed');
+    throw AppException.fromHttp(res.statusCode,
+        apiMessage: apiMessage, fallback: 'Claude request failed');
   }
 }

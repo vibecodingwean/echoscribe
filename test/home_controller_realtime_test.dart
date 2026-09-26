@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:echoscribe/config/prompts.dart';
 import 'package:echoscribe/controllers/home_controller.dart';
 import 'package:echoscribe/models/enums.dart';
 import 'package:echoscribe/services/ai/ai_provider.dart';
@@ -69,6 +70,40 @@ void main() {
       expect(client.sentChunks, isEmpty);
     },
   );
+
+  for (final code in ['', '  ', 'unknown', 'auto', 'de']) {
+    test('OpenAI realtime uses the selected language for ${code.codeUnits}',
+        () async {
+      final client = FakeRealtimeClient(transcript: 'hello world');
+      final content = ContentState();
+      final errors = <String>[];
+      final controller = buildController(
+        settings: SettingsState()
+          ..setOpenAiKey('session-key')
+          ..setOpenAiRealtime(true)
+          ..setTargetLanguageCode(code),
+        content: content,
+        recorder: FakeRecorder(),
+        realtimeClient: client,
+        errors: errors,
+      );
+      addTearDown(controller.dispose);
+
+      await controller.startRecording();
+      final translation = code == 'de';
+      expect(client.lastTargetLanguageCode, translation ? 'de' : 'auto');
+      expect(
+          client.lastModel,
+          translation
+              ? AiModelConfig.openAiRealtimeTranslation
+              : AiModelConfig.openAiRealtimeTranscription);
+      client.completeTranscript('hello world');
+      await controller.stopAndTranscribe();
+      expect(content.currentTranscriptValue, 'hello world');
+      expect(content.isRecording, isFalse);
+      expect(errors, isEmpty);
+    });
+  }
 
   test('ElevenLabs microphone uses Scribe v2 Realtime', () async {
     final client = FakeRealtimeClient(transcript: 'hello');
@@ -930,6 +965,8 @@ class FakeRealtimeClient implements RealtimeTranscriptionClient {
   int finishAudioCalls = 0;
   int closeCalls = 0;
   String? lastModel;
+  String? lastTargetLanguageCode;
+  ValueChanged<String>? _onTranscriptCompleted;
 
   @override
   Future<void> connect({
@@ -944,12 +981,16 @@ class FakeRealtimeClient implements RealtimeTranscriptionClient {
   }) async {
     connectCalls++;
     lastModel = model;
+    lastTargetLanguageCode = targetLanguageCode;
+    _onTranscriptCompleted = onTranscriptCompleted;
     if (!connectEntered.isCompleted) connectEntered.complete();
     if (pauseConnect) await _allowConnect.future;
     _onDisconnected = onDisconnected;
     onConnected();
     if (transcript.isNotEmpty) onTranscriptCompleted(transcript);
   }
+
+  void completeTranscript(String text) => _onTranscriptCompleted?.call(text);
 
   void completeConnect() {
     if (!_allowConnect.isCompleted) _allowConnect.complete();

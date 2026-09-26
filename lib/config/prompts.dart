@@ -46,7 +46,7 @@ const String kDefaultDictationPrompt =
 /// Centralized AI model configuration. Update these values to change defaults app-wide.
 class AiModelConfig {
   // ---------- OpenAI ----------
-  // Pro models (July 2026)
+  // Pro models
   static const String openAiSummaryPro = 'gpt-6-astra';
   static const String openAiTranslationPro = 'gpt-6-astra';
   static const String openAiTranscriptionPro = 'gpt-transcribe';
@@ -54,8 +54,8 @@ class AiModelConfig {
   static const String openAiReasoningEffortPro = 'medium';
 
   // Fast models
-  static const String openAiSummaryFast = 'gpt-5.6-terra';
-  static const String openAiTranslationFast = 'gpt-5.6-terra';
+  static const String openAiSummaryFast = 'gpt-6-luna';
+  static const String openAiTranslationFast = 'gpt-6-luna';
   static const String openAiTranscriptionFast = 'gpt-4o-mini-transcribe';
   static const String openAiImageFast = 'gpt-image-1-mini';
   static const String openAiTts = 'gpt-4o-mini-tts';
@@ -81,7 +81,7 @@ class AiModelConfig {
   static const String geminiTranscriptionFast = 'gemini-3.5-transcribe';
   static const String geminiTranslationFast = 'gemini-3.8-flash';
   static const String geminiImageFast = 'gemini-3.1-flash-image';
-  static const String geminiTts = 'gemini-3.1-flash-tts-preview';
+  static const String geminiTts = 'gemini-3.8-flash-tts';
   static const String geminiRealtimeTranscription = 'gemini-3.5-transcribe-live';
 
   // Helper methods to get the right model based on 'Pro' toggle
@@ -102,8 +102,8 @@ class AiModelConfig {
       pro ? geminiTranscriptionPro : geminiTranscriptionFast;
 
   // ---------- Anthropic (Claude) ----------
-  static const String anthropicSummaryPro = 'claude-opus-5';
-  static const String anthropicTranslationPro = 'claude-opus-5';
+  static const String anthropicSummaryPro = 'claude-opus-5-5';
+  static const String anthropicTranslationPro = 'claude-opus-5-5';
 
   static const String anthropicSummaryFast = 'claude-sonnet-5';
   static const String anthropicTranslationFast = 'claude-sonnet-5';
@@ -116,13 +116,13 @@ class AiModelConfig {
   // ---------- xAI (Grok) ----------
   static const String xaiSummaryPro = 'grok-4.6';
   static const String xaiTranslationPro = 'grok-4.6';
-  static const String xaiTranscriptionPro = 'xai-stt';
+  static const String xaiTranscriptionPro = 'grok-voice-transcribe-2.0';
   static const String xaiImagePro = 'grok-imagine-image-2.0';
   static const String xaiReasoningEffortPro = 'medium';
 
   static const String xaiSummaryFast = 'grok-4.3';
   static const String xaiTranslationFast = 'grok-4.3';
-  static const String xaiTranscriptionFast = 'xai-stt';
+  static const String xaiTranscriptionFast = 'grok-voice-transcribe-2.0';
   static const String xaiImageFast = 'grok-imagine-image';
   static const String xaiReasoningEffortFast = 'none';
 

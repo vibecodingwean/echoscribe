@@ -21,7 +21,7 @@ target_language = "auto"
 [xai]
 api_key = ""
 api_key_env = "XAI_API_KEY"
-transcription_model = "xai-stt"
+transcription_model = "grok-voice-transcribe-2.0"
 target_language = "auto"
 # If true, xAI STT applies inverse text normalization; language should then be set.
 stt_format = false

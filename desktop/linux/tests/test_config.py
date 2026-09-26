@@ -96,6 +96,16 @@ class ConfigTests(unittest.TestCase):
                         "gemini-3.5-transcribe",
                     )
 
+    def test_xai_batch_stt_default_and_legacy_migration(self) -> None:
+        self.assertEqual(DEFAULTS["xai"]["transcription_model"], "grok-voice-transcribe-2.0")
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            config = root / "config.toml"
+            config.write_text('[xai]\ntranscription_model = "xai-stt"\n', encoding="utf-8")
+            with patch.dict(os.environ, {"ECHOSCRIBE_CONFIG": str(config)}, clear=False):
+                loaded = load_config(root)
+            self.assertEqual(loaded.data["xai"]["transcription_model"], "grok-voice-transcribe-2.0")
+
     def test_summary_only_provider_is_no_longer_supported(self) -> None:
         with self.assertRaisesRegex(ValueError, "Unsupported API provider"):
             normalize_provider("anthropic")

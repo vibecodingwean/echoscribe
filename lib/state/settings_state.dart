@@ -374,7 +374,11 @@ class SettingsState extends ChangeNotifier {
 
   String get targetLanguageCode => _targetLanguageCode;
   void setTargetLanguageCode(String code) {
-    _targetLanguageCode = _provider.supportsTranslation ? code : 'auto';
+    final normalized = code.trim().toLowerCase();
+    _targetLanguageCode = _provider.supportsTranslation &&
+            kTargetLanguageNames.containsKey(normalized)
+        ? normalized
+        : 'auto';
     notifyListeners();
   }
 

@@ -185,15 +185,14 @@ class XAIProvider:
     def transcribe(
         self,
         audio_path: Path,
-        model: str = "xai-stt",
+        model: str = "grok-voice-transcribe-2.0",
         language: str = "auto",
         stt_format: bool = False,
         **_: Any,
     ) -> str:
-        del model
         if not self.api_key:
             raise ApiError("XAI_API_KEY is not configured")
-        data: dict[str, str] = {"format": "true" if stt_format else "false"}
+        data: dict[str, str] = {"model": model, "format": "true" if stt_format else "false"}
         if stt_format and (not language or language == "auto"):
             raise ApiError("xAI STT format=true requires target_language, for example de or en")
         if language and language != "auto":
