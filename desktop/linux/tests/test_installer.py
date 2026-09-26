@@ -76,6 +76,25 @@ class InstallerTests(unittest.TestCase):
             (self.home / ".local/share/gnome-shell/extensions/echoscribe@wean.de/schemas/gschemas.compiled").is_file()
         )
 
+    def test_install_preserves_other_gnome_extensions(self) -> None:
+        other = self.home / ".local/share/gnome-shell/extensions/legacy-addon@example.org"
+        other.mkdir(parents=True)
+        marker = other / "keep-me"
+        marker.write_text("untouched", encoding="utf-8")
+        command_log = self.root / "gnome-extensions.log"
+        self.env["GNOME_EXTENSIONS_TEST_LOG"] = str(command_log)
+        self._write_command(
+            "gnome-extensions",
+            '#!/bin/sh\nprintf "%s\\n" "$*" >>"$GNOME_EXTENSIONS_TEST_LOG"\n'
+            'if [ "$1" = info ]; then echo "  State: ACTIVE"; fi\nexit 0\n',
+        )
+
+        result = self.install()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(marker.read_text(encoding="utf-8"), "untouched")
+        self.assertNotIn("legacy-addon@example.org", command_log.read_text(encoding="utf-8"))
+
     def test_install_removes_legacy_browser_native_host_manifests(self) -> None:
         relative_paths = (
             ".config/google-chrome/NativeMessagingHosts/de.echoscribe.nativehost.json",

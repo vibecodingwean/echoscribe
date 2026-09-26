@@ -4,7 +4,6 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 uuid="echoscribe@wean.de"
-old_uuid="legacy-addon@example.org"
 app_dir="$(pwd)"
 source_dir="$app_dir/gnome-extension/$uuid"
 target_dir="${XDG_DATA_HOME:-$HOME/.local/share}/gnome-shell/extensions/$uuid"
@@ -64,11 +63,6 @@ if ! mv "$stage" "$target_dir"; then
   exit 1
 fi
 rm -rf "$backup"
-
-if command -v gnome-extensions >/dev/null 2>&1; then
-  gnome-extensions disable "$old_uuid" >/dev/null 2>&1 || true
-fi
-rm -rf "${XDG_DATA_HOME:-$HOME/.local/share}/gnome-shell/extensions/$old_uuid"
 
 python_path="$(command -v python3)"
 if [ "$skip_settings" != "yes" ] && command -v gsettings >/dev/null 2>&1; then
