@@ -1,17 +1,28 @@
-# 🎙️ EchoScribe: Your API Key & Data
+# ✍️ EchoScribe: Share a link. Get the summary.
 
-**Summarize voice, messages, and URLs. Your API Key — Your Data!**
+**Share websites, URLs and text for clear summaries. Your API key. Your choice of AI.**
 
-EchoScribe is a privacy-first, zero-backend Flutter application designed for users who want full control over their AI experience. By using your own API keys (BYOK), you ensure that your data stays between you and the AI provider. No subscriptions, no tracking, no middleman.
+EchoScribe turns shared articles, URLs and text into summaries you can read, translate, listen to and share. Use the share action in your browser or another app to send content to EchoScribe, then choose the AI provider you want to use. Recording, transcription and audio import give you more ways to bring in content.
+
+Requests go directly from your device to your selected AI provider using your own API key (BYOK). EchoScribe has no AI backend, advertising or tracking. There is no EchoScribe subscription; provider API charges apply.
 
 ---
 
 ## 🔒 Privacy & Security (BYOK)
 - **No EchoScribe Backend:** Processing happens directly between your device and the selected AI provider. Provider-side processing and retention follow that provider's terms and privacy policy.
-- **Secure Storage:** API keys are stored using hardware-backed encryption (Android Keystore).
+- **Secure Storage:** API keys use Android Keystore on Android and Keychain on iPhone.
 - **Transparency:** Built for privacy-focused needs. No ads, no tracking, no hidden costs.
 
 ## ✨ Key Features
+
+### ✍️ Smart Summarization
+- **Websites, URLs & Text:** Share an article or text from another app and turn it into a readable summary.
+- **Read, Translate & Listen:** Double-tap for full-screen reading, choose a target language, or play the result as speech.
+- **Share Sheet:** Browser links, text and audio can enter through the platform share sheet. iPhone support is being prepared for App Store release.
+- **Webpage Text Extraction:** EchoScribe extracts accessible article text for summarization. Website restrictions and provider capabilities may affect which pages can be processed.
+- **Local AI Provider:** The Flutter app can use an Ollama-compatible `/api/chat` endpoint for summaries/translations. The Linux companion can use an OpenAI-compatible Whisper endpoint for local speech-to-text; it does not install or configure summary models.
+- **Custom Prompts:** Fine-tune how your summaries look and feel in the settings.
+
 
 ### 🎙️ Audio & Transcription
 - **On-Device Recording:** Capture high-quality audio with live amplitude feedback.
@@ -35,11 +46,6 @@ EchoScribe is a privacy-first, zero-backend Flutter application designed for use
 - **Explicit Insert:** EchoScribe records only after you tap the floating button, shows a preview, and inserts text only after you tap Insert.
 - **Safety Guards:** The floating button hides in password, PIN, credit-card, phone-pad, banking, and payment fields.
 
-### ✍️ Smart Summarization
-- **Audio • Text • URL:** Summarize everything in one tap.
-- **Local URL Extraction:** A privacy-first mechanism extracts web content directly on your device, bypassing paywalls and bot-detection while keeping your browsing private. Mandatory for Claude 🦀 and Grok 𝕏.
-- **Local AI Provider:** The Flutter app can use an Ollama-compatible `/api/chat` endpoint for summaries/translations. The Linux companion can use an OpenAI-compatible Whisper endpoint for local speech-to-text; it does not install or configure summary models.
-- **Custom Prompts:** Fine-tune how your summaries look and feel in the settings.
 
 ### 🚀 Pro Mode & Models
 Access the world's most powerful AI models with a single toggle:
