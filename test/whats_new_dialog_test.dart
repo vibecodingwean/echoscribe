@@ -33,6 +33,8 @@ void main() {
     for (final bullet in WhatsNewCopy.welcomeBullets) {
       expect(bullet.contains('\n'), isFalse);
     }
+    expect(
+        WhatsNewCopy.iosWelcomeBullets.join(' '), isNot(contains('keyboard')));
   });
 
   testWidgets('whats new dialog shows three single-line bullets',

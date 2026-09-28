@@ -1,5 +1,6 @@
 import "dart:async";
 import "package:flutter/material.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/services.dart";
 import "package:share_handler/share_handler.dart";
 
@@ -35,7 +36,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final _sl = ServiceLocator();
 
   final SettingsState _settings = SettingsState();
@@ -54,6 +55,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     _controller = HomeController(
       settings: _settings,
@@ -61,6 +63,7 @@ class _HomePageState extends State<HomePage> {
       playback: _playback,
       recorder: _sl.recorder,
       aiFactory: _sl.aiProviderFactory,
+      consent: _sl.providerConsent,
       showError: _showError,
       showSuccess: _showSuccess,
     );
@@ -75,6 +78,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _progressText.dispose();
     _controller.dispose();
     _sl.recorder.dispose();
@@ -82,6 +86,24 @@ class _HomePageState extends State<HomePage> {
     _content.dispose();
     _playback.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (defaultTargetPlatform != TargetPlatform.iOS) return;
+    if (state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused) {
+      unawaited(_stopRecordingOnBackground());
+    }
+  }
+
+  Future<void> _stopRecordingOnBackground() async {
+    try {
+      await _controller.stopRecordingForAppInactivity();
+    } catch (error) {
+      debugPrint(
+          'Could not finalize recording after app backgrounding: $error');
+    }
   }
 
   Future<void> _bootstrap() async {
@@ -265,14 +287,20 @@ class _HomePageState extends State<HomePage> {
     final confirmed = await showLaunchOverlayDialog(
       context: context,
       title: isWelcome ? WhatsNewCopy.welcomeTitle : WhatsNewCopy.whatsNewTitle,
-      bullets:
-          isWelcome ? WhatsNewCopy.welcomeBullets : WhatsNewCopy.whatsNewBullets,
+      bullets: isWelcome
+          ? (defaultTargetPlatform == TargetPlatform.iOS
+              ? WhatsNewCopy.iosWelcomeBullets
+              : WhatsNewCopy.welcomeBullets)
+          : WhatsNewCopy.whatsNewBullets,
       buttonLabel:
           isWelcome ? WhatsNewCopy.welcomeButton : WhatsNewCopy.whatsNewButton,
     );
     if (!confirmed) return;
     if (isWelcome) {
       await secure.saveWelcomeSeen(true);
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        await secure.saveWhatsNewVersionCode(WhatsNewCopy.releaseVersionCode);
+      }
     } else {
       await secure.saveWhatsNewVersionCode(WhatsNewCopy.releaseVersionCode);
     }

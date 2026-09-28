@@ -1,11 +1,13 @@
 import 'dart:io';
 
 import 'package:echoscribe/controllers/share_intent_controller.dart';
+import 'package:echoscribe/models/enums.dart';
 import 'package:echoscribe/services/ai/ai_provider_factory.dart';
 import 'package:echoscribe/services/secure_storage_service.dart';
 import 'package:echoscribe/state/content_state.dart';
 import 'package:echoscribe/state/settings_state.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:share_handler/share_handler.dart';
 
@@ -87,11 +89,60 @@ void main() {
             content: 'plain text',
           )));
       expect(harness.audio, isEmpty);
-      expect(harness.text, isEmpty);
+      expect(harness.text, ['plain text']);
       expect(harness.errors, isEmpty);
-      expect(harness.storage.savedIds, isEmpty);
+      expect(harness.storage.savedIds, ['10_plain text_$path']);
     });
   }
+
+  testWidgets('imports plain shared text exactly once', (tester) async {
+    final harness = await _Harness.mount(tester);
+    final media = SharedMedia(content: '  Shared note  ');
+
+    await tester.runAsync(() async {
+      await harness.handle(media);
+      await harness.handle(media);
+    });
+
+    expect(harness.text, ['Shared note']);
+    expect(harness.storage.savedIds, ['11_Shared note_']);
+  });
+
+  testWidgets('separate iOS shares of similar text both run', (tester) async {
+    final harness = await _Harness.mount(tester);
+    final first = SharedMedia(
+      content: 'A message with tail 2',
+      senderIdentifier: 'echoscribe-share-event-one',
+    );
+    final second = SharedMedia(
+      content: 'A message with tail 3',
+      senderIdentifier: 'echoscribe-share-event-two',
+    );
+    await tester.runAsync(() async {
+      await harness.handle(first);
+      await harness.handle(first);
+      await harness.handle(second);
+    });
+    expect(harness.storage.savedIds,
+        ['echoscribe-share-event-one', 'echoscribe-share-event-two']);
+    expect(harness.text, ['A message with tail 2', 'A message with tail 3']);
+  });
+
+  testWidgets('failed URL share can be retried without becoming plain text',
+      (tester) async {
+    final harness = await _Harness.mount(tester);
+    harness.settings.setProvider(AiProviderType.elevenLabs);
+    final media = SharedMedia(content: 'https://example.com/article');
+
+    await tester.runAsync(() async {
+      await harness.handle(media);
+      await harness.handle(media);
+    });
+
+    expect(harness.text, isEmpty);
+    expect(harness.storage.savedIds, isEmpty);
+    expect(harness.errors, hasLength(2));
+  });
 
   testWidgets('unhandled audio can be retried without saving its identity',
       (tester) async {
@@ -104,6 +155,35 @@ void main() {
     expect(harness.audio, hasLength(2));
     expect(harness.storage.savedIds, isEmpty);
     expect(harness.errors, isEmpty);
+  });
+
+  testWidgets('iOS managed audio copy is removed after a failed import',
+      (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      final harness = await _Harness.mount(tester, acceptAudio: false);
+      await tester.runAsync(() async {
+        final directory =
+            await Directory.systemTemp.createTemp('share-cleanup-');
+        try {
+          final imports = Directory('${directory.path}/ShareImports');
+          await imports.create();
+          final file = File(
+              '${imports.path}/123e4567-e89b-12d3-a456-426614174000_recording.mp3');
+          await file.writeAsBytes([1, 2, 3]);
+          await harness.handle(SharedMedia(
+            attachments: [_attachment(file.path)],
+            senderIdentifier: 'echoscribe-share-cleanup-test',
+          ));
+          expect(await file.exists(), isFalse);
+          expect(harness.storage.savedIds, isEmpty);
+        } finally {
+          await directory.delete(recursive: true);
+        }
+      });
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 
   testWidgets('missing text file reports the existing read error',

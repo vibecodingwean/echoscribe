@@ -8,6 +8,7 @@ import 'package:echoscribe/services/secure_storage_service.dart';
 import 'package:echoscribe/services/image_service.dart';
 import 'package:echoscribe/services/xai_speech_service.dart';
 import 'package:echoscribe/services/ai/ai_provider_factory.dart';
+import 'package:echoscribe/services/provider_consent_service.dart';
 
 class ServiceLocator {
   static final ServiceLocator _instance = ServiceLocator._();
@@ -18,6 +19,7 @@ class ServiceLocator {
   late final TtsService tts;
   late final SecureStorageService secureStorage;
   late final AiProviderFactory aiProviderFactory;
+  late final ProviderConsentService providerConsent;
 
   void init() {
     final whisper = WhisperService();
@@ -28,7 +30,8 @@ class ServiceLocator {
     final xaiSpeech = XaiSpeechService();
 
     recorder = RecorderService();
-    tts = TtsService();
+    providerConsent = ProviderConsentService();
+    tts = TtsService(consent: providerConsent);
     secureStorage = SecureStorageService();
 
     aiProviderFactory = AiProviderFactory(
@@ -38,6 +41,7 @@ class ServiceLocator {
       translation: translation,
       image: image,
       xaiSpeech: xaiSpeech,
+      consent: providerConsent,
     );
   }
 }

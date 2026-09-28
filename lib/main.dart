@@ -20,6 +20,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: ServiceLocator().providerConsent.navigatorKey,
       title: 'EchoScribe',
       debugShowCheckedModeBanner: false,
       theme: lightTheme,

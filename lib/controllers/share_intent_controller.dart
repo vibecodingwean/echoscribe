@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:share_handler/share_handler.dart';
 import 'package:echoscribe/state/settings_state.dart';
 import 'package:echoscribe/state/content_state.dart';
@@ -49,66 +50,100 @@ class ShareIntentController {
     final attachment =
         media.attachments?.whereType<SharedAttachment>().firstOrNull;
 
-    bool handled = false;
+    try {
+      bool handled = false;
 
-    if (attachment != null) {
-      final path = attachment.path;
-      final name = path.split('/').last;
-      final dot = path.lastIndexOf('.');
-      final extension = dot < 0 ? '' : path.substring(dot).toLowerCase();
-      final inferredMime = switch (extension) {
-        '.m4a' => 'audio/m4a',
-        '.mp3' => 'audio/mpeg',
-        '.wav' => 'audio/wav',
-        '.webm' => 'audio/webm',
-        '.ogg' || '.opus' => 'audio/ogg',
-        '.aac' || '.mp4' => 'audio/mp4',
-        _ => null,
-      };
+      if (attachment != null) {
+        final path = attachment.path;
+        final name = path.split('/').last;
+        final dot = path.lastIndexOf('.');
+        final extension = dot < 0 ? '' : path.substring(dot).toLowerCase();
+        final inferredMime = switch (extension) {
+          '.m4a' => 'audio/m4a',
+          '.mp3' => 'audio/mpeg',
+          '.wav' => 'audio/wav',
+          '.webm' => 'audio/webm',
+          '.ogg' || '.opus' => 'audio/ogg',
+          '.aac' || '.mp4' => 'audio/mp4',
+          _ => null,
+        };
 
-      if (inferredMime != null) {
-        handled = await onAudioReceived(path, name, inferredMime);
-      } else if (extension == '.txt' ||
-          extension == '.md' ||
-          extension == '.rtf') {
-        try {
-          final bytes = await File(path).readAsBytes();
-          final content = utf8.decode(bytes, allowMalformed: true);
-          handled = await onTextReceived(content);
-        } catch (e) {
-          showError('Failed to read shared text');
+        if (inferredMime != null) {
+          handled = await onAudioReceived(path, name, inferredMime);
+        } else if (extension == '.txt' ||
+            extension == '.md' ||
+            extension == '.rtf') {
+          try {
+            final bytes = await File(path).readAsBytes();
+            final content = utf8.decode(bytes, allowMalformed: true);
+            handled = await onTextReceived(content);
+          } catch (e) {
+            showError('Failed to read shared text');
+          }
         }
       }
-    }
 
-    if (!handled) {
-      final mediaContent = (media.content ?? '').trim();
-      if (mediaContent.isNotEmpty && context.mounted) {
-        handled =
-            await share_handler_service.ShareIntentHandler.tryHandleSharedText(
-          context: context,
-          textContent: mediaContent,
-          settings: settings,
-          content: content,
-          aiFactory: aiFactory,
-          showError: showError,
-          showSuccess: showSuccess,
-        );
+      if (!handled) {
+        final mediaContent = (media.content ?? '').trim();
+        if (mediaContent.isNotEmpty && context.mounted) {
+          if (share_handler_service.ShareIntentHandler.extractFirstHttpUrl(
+                  mediaContent) !=
+              null) {
+            handled = await share_handler_service.ShareIntentHandler
+                .tryHandleSharedText(
+              context: context,
+              textContent: mediaContent,
+              settings: settings,
+              content: content,
+              aiFactory: aiFactory,
+              showError: showError,
+              showSuccess: showSuccess,
+            );
+          } else {
+            handled = await onTextReceived(mediaContent);
+          }
+        }
       }
-    }
 
-    if (handled) {
-      if (currentId.isNotEmpty) {
-        settings.setLastSharedIntentId(currentId);
-        await secureStorage.saveLastSharedIntentId(currentId);
+      if (handled) {
+        if (currentId.isNotEmpty) {
+          settings.setLastSharedIntentId(currentId);
+          await secureStorage.saveLastSharedIntentId(currentId);
+        }
+      } else if (attachment == null && (media.content ?? '').trim().isEmpty) {
+        // Only show error if we really have nothing to work with
+        showError('Content type not supported');
       }
-    } else if (attachment == null && (media.content ?? '').trim().isEmpty) {
-      // Only show error if we really have nothing to work with
-      showError('Content type not supported');
+    } finally {
+      await _removeManagedShareFile(media, attachment);
+    }
+  }
+
+  Future<void> _removeManagedShareFile(
+      SharedMedia media, SharedAttachment? attachment) async {
+    if (defaultTargetPlatform != TargetPlatform.iOS ||
+        media.senderIdentifier?.startsWith('echoscribe-share-') != true ||
+        attachment == null) {
+      return;
+    }
+    final file = File(attachment.path);
+    final managedName =
+        RegExp(r'^[0-9a-fA-F-]{36}_').hasMatch(file.uri.pathSegments.last);
+    if (!managedName || !file.parent.path.endsWith('/ShareImports')) return;
+    try {
+      await file.delete();
+    } on FileSystemException {
+      // A previous delivery may already have cleaned the same import.
     }
   }
 
   String _getMediaIdentifier(SharedMedia media) {
+    // The iOS extension assigns a fresh identifier to every user share. This
+    // prevents a later share of the same content from being dropped forever.
+    final eventId = media.senderIdentifier;
+    if (eventId != null && eventId.startsWith('echoscribe-share-')) {
+      return eventId;
+    }
     // Create a reasonably unique string for this media object
     final content = (media.content ?? '').trim();
     final firstPath = (media.attachments?.isNotEmpty ?? false)

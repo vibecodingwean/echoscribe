@@ -15,6 +15,7 @@ import 'package:echoscribe/models/enums.dart';
 import 'package:echoscribe/models/app_exception.dart';
 import 'package:echoscribe/models/recording_session.dart';
 import 'package:echoscribe/services/local_ai_health_service.dart';
+import 'package:echoscribe/services/provider_consent_service.dart';
 
 import 'package:echoscribe/services/ai/openai_realtime_client.dart';
 import 'package:echoscribe/services/ai/elevenlabs_realtime_client.dart';
@@ -27,6 +28,7 @@ class HomeController extends ChangeNotifier {
   final PlaybackState playback;
   final RecorderService recorder;
   final AiProviderFactory aiFactory;
+  final ProviderConsentService? consent;
 
   final void Function(String) showError;
   final void Function(String) showSuccess;
@@ -68,6 +70,7 @@ class HomeController extends ChangeNotifier {
     required this.playback,
     required this.recorder,
     required this.aiFactory,
+    this.consent,
     required this.showError,
     required this.showSuccess,
     RealtimeTranscriptionClient Function(AiProviderType provider)?
@@ -99,11 +102,23 @@ class HomeController extends ChangeNotifier {
             waitForRealtimeFinalization ?? Future<void>.delayed,
         _localAiWhisperCheck =
             localAiWhisperCheck ?? LocalAiHealthService.checkWhisper,
-        _localAiLlmCheck = localAiLlmCheck ?? LocalAiHealthService.checkLlm;
+        _localAiLlmCheck = localAiLlmCheck ?? LocalAiHealthService.checkLlm {
+    consent?.addListener(_onConsentChanged);
+  }
+
+  void _onConsentChanged() {
+    final session = _activeRecordingSession;
+    final guard = consent;
+    if (session == null || guard == null || !session.metadata.isRealtime) return;
+    if (!guard.canTransferNow(session.metadata.provider)) {
+      unawaited(_handleRealtimeFailure('AI sharing permission withdrawn', session));
+    }
+  }
 
   @override
   void dispose() {
     _disposed = true;
+    consent?.removeListener(_onConsentChanged);
     final session = _activeRecordingSession;
     _activeRecordingSession = null;
     _startInProgressSession = null;
@@ -827,6 +842,13 @@ class HomeController extends ChangeNotifier {
         );
         updateDisplayWithLogs("");
 
+        await consent?.ensure(
+          initialProvider,
+          dataType: 'live microphone audio',
+          purpose: 'live transcription',
+        );
+        _requireCurrentRecordingSession(session);
+
         final realtimeClient = _realtimeClientFactory(initialProvider);
         _realtimeClient = realtimeClient;
         String finalizedTextAccumulated = "";
@@ -923,7 +945,11 @@ class HomeController extends ChangeNotifier {
         _audioStreamSub = stream.listen((chunk) {
           if (identical(_activeRecordingSession, session) &&
               session.canStreamMicrophone) {
-            realtimeClient.sendAudioChunk(chunk);
+            if (consent != null && !consent!.canTransferNow(initialProvider)) {
+              unawaited(_handleRealtimeFailure('AI sharing permission withdrawn', session));
+            } else {
+              realtimeClient.sendAudioChunk(chunk);
+            }
           }
         });
 
@@ -1050,6 +1076,21 @@ class HomeController extends ChangeNotifier {
     _recordingFinalization = completion.future;
     unawaited(_finalizeRecordingSession(session, completion));
     return completion.future;
+  }
+
+  /// iOS v1 does not record audio while the app is in the background.
+  Future<void> stopRecordingForAppInactivity() async {
+    final starting = _startInProgressSession;
+    if (starting != null && !content.isRecording) {
+      starting.markStopping();
+      if (identical(_activeRecordingSession, starting)) {
+        _activeRecordingSession = null;
+      }
+      return;
+    }
+    if (content.isRecording) {
+      await stopAndTranscribe();
+    }
   }
 
   Future<void> _stopRecordingWithoutSession() async {

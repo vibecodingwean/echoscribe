@@ -2,13 +2,18 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:echoscribe/services/debug_console.dart';
+import 'package:echoscribe/models/enums.dart';
+import 'package:echoscribe/services/provider_consent_service.dart';
 
 import 'package:echoscribe/config/prompts.dart';
 
 class TtsService {
   final http.Client _client;
+  final ProviderConsentService? _consent;
 
-  TtsService({http.Client? client}) : _client = client ?? http.Client();
+  TtsService({http.Client? client, ProviderConsentService? consent})
+      : _client = client ?? http.Client(),
+        _consent = consent;
 
   // OpenAI TTS: returns MP3 bytes
   Future<Uint8List> generateSpeechOpenAI({
@@ -20,6 +25,8 @@ class TtsService {
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return Uint8List(0);
+    await _consent?.ensure(AiProviderType.openai,
+        dataType: 'text from a transcript or summary', purpose: 'speech generation');
 
     final uri = Uri.parse('https://api.openai.com/v1/audio/speech');
     final headers = {
@@ -72,6 +79,8 @@ class TtsService {
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return Uint8List(0);
+    await _consent?.ensure(AiProviderType.gemini,
+        dataType: 'text from a transcript or summary', purpose: 'speech generation');
 
     final uri = Uri.parse(
         'https://generativelanguage.googleapis.com/v1beta/interactions');
@@ -152,6 +161,8 @@ class TtsService {
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return Uint8List(0);
+    await _consent?.ensure(AiProviderType.xai,
+        dataType: 'text from a transcript or summary', purpose: 'speech generation');
 
     final uri = Uri.parse('https://api.x.ai/v1/tts');
     final headers = {
@@ -200,6 +211,8 @@ class TtsService {
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return Uint8List(0);
+    await _consent?.ensure(AiProviderType.elevenLabs,
+        dataType: 'text from a transcript or summary', purpose: 'speech generation');
 
     final uri = Uri.parse(
       'https://api.elevenlabs.io/v1/text-to-speech/${Uri.encodeComponent(voiceId)}',

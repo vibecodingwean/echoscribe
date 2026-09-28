@@ -47,7 +47,7 @@ class ShareIntentHandler {
   }
 
   /// For share-intent text: try to extract a URL and process it via UrlHandler.
-  /// Returns true if handled as URL; false if no valid URL could be extracted.
+  /// Returns true only when the URL was processed successfully.
   static Future<bool> tryHandleSharedText({
     required BuildContext context,
     required String textContent,
@@ -60,7 +60,7 @@ class ShareIntentHandler {
     final url = extractFirstHttpUrl(textContent.trim());
     if (url == null) return false;
 
-    await UrlHandler.processUrl(
+    return UrlHandler.processUrl(
       context: context,
       settings: settings,
       content: content,
@@ -69,6 +69,5 @@ class ShareIntentHandler {
       showError: showError,
       showSuccess: showSuccess,
     );
-    return true;
   }
 }

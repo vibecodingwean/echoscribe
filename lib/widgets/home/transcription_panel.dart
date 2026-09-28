@@ -134,18 +134,25 @@ class TranscriptionPanelState extends State<TranscriptionPanel> {
             ),
             ListTile(
               leading: const Icon(Icons.save_alt),
-              title: const Text('Save to device'),
+              title: Text(Platform.isIOS ? 'Save to Files…' : 'Save to device'),
               onTap: () async {
                 Navigator.pop(context);
                 try {
+                  if (Platform.isIOS) {
+                    final tempDir = await getTemporaryDirectory();
+                    final file = File(
+                      '${tempDir.path}/EchoScribe_${DateTime.now().millisecondsSinceEpoch}.png',
+                    );
+                    await file.writeAsBytes(bytes);
+                    await SharePlus.instance.share(
+                      ShareParams(files: [XFile(file.path, mimeType: 'image/png')]),
+                    );
+                    return;
+                  }
                   Directory? dir;
-                  if (Platform.isAndroid) {
-                    dir = Directory('/storage/emulated/0/Download');
-                    if (!await dir.exists()) {
-                      dir = await getExternalStorageDirectory();
-                    }
-                  } else {
-                    dir = await getApplicationDocumentsDirectory();
+                  dir = Directory('/storage/emulated/0/Download');
+                  if (!await dir.exists()) {
+                    dir = await getExternalStorageDirectory();
                   }
 
                   final fileName =

@@ -689,12 +689,11 @@ packages:
     source: hosted
     version: "0.0.11"
   share_handler_ios:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: share_handler_ios
-      sha256: cdc21f88f336a944157a8e9ceb191525cee3b082d6eb6c2082488e4f09dc3ece
-      url: "https://pub.dev"
-    source: hosted
+      path: "third_party/share_handler_ios"
+      relative: true
+    source: path
     version: "0.0.15"
   share_handler_platform_interface:
     dependency: transitive

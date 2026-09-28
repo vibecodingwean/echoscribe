@@ -6,7 +6,9 @@ import 'package:echoscribe/state/settings_state.dart';
 import 'package:echoscribe/models/enums.dart';
 import 'package:echoscribe/models/app_exception.dart';
 import 'package:echoscribe/services/local_ai_health_service.dart';
+import 'package:echoscribe/services/service_locator.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -22,6 +24,7 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage>
     with WidgetsBindingObserver, TickerProviderStateMixin {
+  bool get _isIOS => defaultTargetPlatform == TargetPlatform.iOS;
   final _openAiFormKey = GlobalKey<FormState>();
   final _geminiFormKey = GlobalKey<FormState>();
   final _anthropicFormKey = GlobalKey<FormState>();
@@ -71,7 +74,7 @@ class _SettingsPageState extends State<SettingsPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: _isIOS ? 1 : 2, vsync: this);
     _openAiCtrl = TextEditingController(text: widget.settings.openAiKey);
     _geminiCtrl = TextEditingController(text: widget.settings.geminiKey);
     _anthropicCtrl = TextEditingController(text: widget.settings.anthropicKey);
@@ -105,13 +108,15 @@ class _SettingsPageState extends State<SettingsPage>
     _anthropicPro = widget.settings.anthropicPro;
     _xaiPro = widget.settings.xaiPro;
     _tabController.addListener(() {
-      if (_tabController.index == 1) {
+      if (!_isIOS && _tabController.index == 1) {
         _refreshImeStatusBurst();
         _refreshFloatingStatusOnly();
       }
     });
-    unawaited(_refreshKeyboardStatusOnly());
-    unawaited(_refreshFloatingStatusOnly());
+    if (!_isIOS) {
+      unawaited(_refreshKeyboardStatusOnly());
+      unawaited(_refreshFloatingStatusOnly());
+    }
   }
 
   @override
@@ -141,7 +146,7 @@ class _SettingsPageState extends State<SettingsPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    if (!_isIOS && state == AppLifecycleState.resumed) {
       _refreshImeStatusBurst();
       _refreshFloatingStatusOnly();
     }
@@ -264,7 +269,8 @@ class _SettingsPageState extends State<SettingsPage>
       _storage.saveAutoCapitalizeEnabled(widget.settings.autoCapitalizeEnabled),
       _storage.saveHapticFeedbackEnabled(widget.settings.hapticFeedbackEnabled),
       _storage.saveSoundFeedbackEnabled(widget.settings.soundFeedbackEnabled),
-      _storage.saveOpticalFeedbackEnabled(widget.settings.opticalFeedbackEnabled),
+      _storage
+          .saveOpticalFeedbackEnabled(widget.settings.opticalFeedbackEnabled),
       _storage.saveCustomTones(widget.settings.customTones),
       _storage.saveCustomGrammar(widget.settings.customGrammar),
       _storage.saveCustomAssistants(widget.settings.customAssistants),
@@ -623,7 +629,8 @@ class _SettingsPageState extends State<SettingsPage>
                         onPressed: () {
                           unawaited(
                             launchUrl(
-                              Uri.parse(AiModelConfig.elevenLabsVoiceLibraryUrl),
+                              Uri.parse(
+                                  AiModelConfig.elevenLabsVoiceLibraryUrl),
                               mode: LaunchMode.externalApplication,
                             ),
                           );
@@ -641,11 +648,11 @@ class _SettingsPageState extends State<SettingsPage>
                 ),
               ),
             if (widget.settings.provider == AiProviderType.elevenLabs)
-              const Padding(
-                padding: EdgeInsets.fromLTRB(12, 8, 12, 0),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
                 child: Text(
-                  'Realtime uses Scribe v2 Realtime for the microphone. Off uses Scribe v2 file transcription, including Keyboard STT. Text-to-speech uses the Voice ID above, or the default if empty. Summary, image generation, and translation are unavailable.',
-                  style: TextStyle(fontSize: 12),
+                  'Realtime uses Scribe v2 Realtime for the microphone. Off uses Scribe v2 file transcription${_isIOS ? '' : ', including Keyboard STT'}. Text-to-speech uses the Voice ID above, or the default if empty. Summary, image generation, and translation are unavailable.',
+                  style: const TextStyle(fontSize: 12),
                 ),
               ),
             if (widget.settings.provider == AiProviderType.gemini)
@@ -860,6 +867,71 @@ class _SettingsPageState extends State<SettingsPage>
                 ],
               ),
             ),
+            if (_isIOS) ...[
+              const SizedBox(height: 12),
+              Text('AI data sharing',
+                  style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 6),
+              Card(
+                margin: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(12, 12, 12, 4),
+                      child: Text(
+                        'You choose whether EchoScribe may send content to each provider. Withdraw a choice here to stop future transfers. Content already sent cannot be recalled.',
+                      ),
+                    ),
+                    for (final provider in AiProviderType.values)
+                      FutureBuilder<bool>(
+                        future: ServiceLocator().providerConsent.hasGrant(
+                              provider,
+                              localEndpoint: provider == AiProviderType.localAi
+                                  ? '${widget.settings.localAiLlmUrl}|${widget.settings.localAiWhisperUrl}'
+                                  : null,
+                            ),
+                        builder: (context, snapshot) => ListTile(
+                          dense: true,
+                          title: Text(provider.brandName),
+                          subtitle: Text(snapshot.data == true
+                              ? 'Allowed'
+                              : 'Not allowed'),
+                          trailing: snapshot.data == true
+                              ? TextButton(
+                                  onPressed: () async {
+                                    try {
+                                      await ServiceLocator()
+                                          .providerConsent
+                                          .revoke(provider);
+                                    } on AppException catch (error) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content: Text(error.userMessage)),
+                                        );
+                                      }
+                                    }
+                                    if (mounted) setState(() {});
+                                  },
+                                  child: const Text('Withdraw'),
+                                )
+                              : null,
+                        ),
+                      ),
+                    TextButton.icon(
+                      onPressed: () => launchUrl(
+                        Uri.parse(
+                            'https://app.wean.de/echoscribe/privacy.html'),
+                        mode: LaunchMode.externalApplication,
+                      ),
+                      icon: const Icon(Icons.privacy_tip_outlined),
+                      label: const Text('Privacy policy'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -892,7 +964,8 @@ class _SettingsPageState extends State<SettingsPage>
               return ListTile(
                 contentPadding: EdgeInsets.zero,
                 visualDensity: VisualDensity.compact,
-                title: Text(item['name'] ?? '', style: const TextStyle(fontSize: 13)),
+                title: Text(item['name'] ?? '',
+                    style: const TextStyle(fontSize: 13)),
                 subtitle: Text(
                   item[valueKey] ?? '',
                   maxLines: 2,
@@ -1487,9 +1560,9 @@ class _SettingsPageState extends State<SettingsPage>
           ),
           bottom: TabBar(
             controller: _tabController,
-            tabs: const [
-              Tab(text: 'App'),
-              Tab(text: 'Keyboard'),
+            tabs: [
+              const Tab(text: 'App'),
+              if (!_isIOS) const Tab(text: 'Keyboard'),
             ],
           ),
         ),
@@ -1497,7 +1570,7 @@ class _SettingsPageState extends State<SettingsPage>
           controller: _tabController,
           children: [
             _buildAppTab(context),
-            _buildKeyboardTab(context),
+            if (!_isIOS) _buildKeyboardTab(context),
           ],
         ),
       ),

@@ -87,7 +87,7 @@ class UrlHandler {
   }
 
   /// Centralized flow to process a URL: show in transcript, call LLM summarizer, update state & history, copy to clipboard.
-  static Future<void> processUrl({
+  static Future<bool> processUrl({
     required BuildContext context,
     required SettingsState settings,
     required ContentState content,
@@ -121,7 +121,7 @@ class UrlHandler {
     if (!settings.provider.supportsSummary) {
       showError0(
           '${settings.provider.brandName} does not support URL summaries');
-      return;
+      return false;
     }
 
     if (!settings.hasActiveApiKey) {
@@ -129,13 +129,12 @@ class UrlHandler {
       await Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => SettingsPage(settings: settings)),
       );
-      if (!context.mounted) return;
-      return;
+      return false;
     }
 
     if (!looksLikeSingleUrl(url)) {
       showError0('Invalid URL');
-      return;
+      return false;
     }
 
     content.clearTranscription();
@@ -297,12 +296,15 @@ class UrlHandler {
         }
         showInfo('Summary ready (copy to clipboard failed).');
       }
+      return true;
     } on AppException catch (e) {
       content.appendLogLine('⚠️ ${e.userMessage}');
       showError0(e.userMessage);
+      return false;
     } catch (e) {
       content.appendLogLine('⚠️ $e');
       showError0('URL could not be processed');
+      return false;
     } finally {
       content.setTranscribing(false);
     }

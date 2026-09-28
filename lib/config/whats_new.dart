@@ -8,6 +8,11 @@ class WhatsNewCopy {
     'Record, share audio or text into the app, or use the keyboard.',
     'Gemini 3.5 Transcribe is available for file STT with speakers, plus optional live.',
   ];
+  static const List<String> iosWelcomeBullets = [
+    'Your API key, your data.',
+    'Record or share audio, text and links into the app.',
+    'Gemini 3.5 Transcribe is available for file STT with speakers, plus optional live.',
+  ];
 
   static const String whatsNewTitle = "What's new";
   static const String whatsNewButton = 'OK';

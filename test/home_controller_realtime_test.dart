@@ -11,6 +11,7 @@ import 'package:echoscribe/services/gemini_service.dart';
 import 'package:echoscribe/services/image_service.dart';
 import 'package:echoscribe/services/local_ai_health_service.dart';
 import 'package:echoscribe/services/recorder_service.dart';
+import 'package:echoscribe/services/provider_consent_service.dart';
 import 'package:echoscribe/services/summary_service.dart';
 import 'package:echoscribe/services/translation_service.dart';
 import 'package:echoscribe/services/whisper_service.dart';
@@ -19,6 +20,7 @@ import 'package:echoscribe/state/content_state.dart';
 import 'package:echoscribe/state/playback_state.dart';
 import 'package:echoscribe/state/settings_state.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -39,6 +41,66 @@ void main() {
         (_) async => null,
       );
     }
+  });
+
+  test('iOS denies realtime connection before provider consent', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final client = FakeRealtimeClient();
+    final recorder = FakeRecorder();
+    final errors = <String>[];
+    final controller = buildController(
+      settings: SettingsState()
+        ..setOpenAiKey('session-key')
+        ..setOpenAiRealtime(true),
+      content: ContentState(),
+      recorder: recorder,
+      realtimeClient: client,
+      consent: ProviderConsentService(requestPermission: (_) async => false),
+      errors: errors,
+    );
+    addTearDown(controller.dispose);
+
+    await controller.startRecording();
+
+    expect(client.connectCalls, 0);
+    expect(recorder.startAudioStreamCalls, 0);
+    expect(errors, contains('AI sharing permission was not granted.'));
+  });
+
+  test('iOS withdrawal stops live audio before another chunk is sent',
+      () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final consent =
+        ProviderConsentService(requestPermission: (_) async => true);
+    final client = FakeRealtimeClient();
+    final recorder = FakeRecorder();
+    final content = ContentState();
+    final controller = buildController(
+      settings: SettingsState()
+        ..setOpenAiKey('session-key')
+        ..setOpenAiRealtime(true),
+      content: content,
+      recorder: recorder,
+      realtimeClient: client,
+      consent: consent,
+    );
+    addTearDown(controller.dispose);
+
+    await controller.startRecording();
+    expect(client.connectCalls, 1);
+    recorder.emitAudio(<int>[1]);
+    await pumpEventQueue();
+    expect(client.sentChunks, hasLength(1));
+
+    await consent.revoke(AiProviderType.openai);
+    recorder.emitAudio(<int>[2]);
+    await pumpEventQueue();
+    expect(client.sentChunks, hasLength(1));
+    expect(content.isRecording, isFalse);
   });
 
   test(
@@ -789,6 +851,7 @@ HomeController buildController({
   Future<void> Function(Duration)? waitForRealtimeFinalization,
   List<String>? errors,
   AiProviderFactory? aiFactory,
+  ProviderConsentService? consent,
   Future<LocalAiCheckResult> Function({
     required String endpoint,
     required String model,
@@ -812,6 +875,7 @@ HomeController buildController({
           image: ImageService(),
           xaiSpeech: XaiSpeechService(),
         ),
+    consent: consent,
     showError: (message) => errors?.add(message),
     showSuccess: (_) {},
     realtimeClientFactory: (_) => realtimeClient,

@@ -6,6 +6,7 @@ import "package:echoscribe/config/prompts.dart";
 import "package:echoscribe/services/tts_service.dart";
 import "package:echoscribe/utils/cross_audio_player.dart";
 import "package:echoscribe/models/enums.dart";
+import "package:echoscribe/models/app_exception.dart";
 
 class PlaybackState extends ChangeNotifier {
   final CrossAudioPlayer _audio = CrossAudioPlayer();
@@ -135,6 +136,9 @@ class PlaybackState extends ChangeNotifier {
   }) async {
     final t = text.trim();
     if (t.isEmpty || _isAudioLoading) return;
+    if (!provider.supportsTts) {
+      throw AppException('${provider.brandName} does not support speech generation.');
+    }
     final voice = _voiceForProvider(
       provider,
       openAiVoice: openAiVoice,
