@@ -1,0 +1,106 @@
+{
+  "version": "2026-09-28-v4",
+  "duration": 377.3333333333333,
+  "fps": 30,
+  "video": "/echoscribe/assets/tutorial-20260928-v4.mp4",
+  "captions": "/echoscribe/assets/tutorial-20260928-v4.vtt",
+  "sha256": "896bacef61186ed6e954d4c81a528cbfb73e125541060cfeb875f18099ff598c",
+  "chapters": [
+    {
+      "n": 1,
+      "title": "Why I Built EchoScribe",
+      "start": 0,
+      "end": 23.833333333333332
+    },
+    {
+      "n": 2,
+      "title": "Set Up Your Provider",
+      "start": 23.833333333333332,
+      "end": 52.666666666666664
+    },
+    {
+      "n": 3,
+      "title": "An Article on Android",
+      "start": 52.666666666666664,
+      "end": 89.19999999999999
+    },
+    {
+      "n": 4,
+      "title": "The Same Task on iPhone",
+      "start": 89.19999999999999,
+      "end": 137.0
+    },
+    {
+      "n": 5,
+      "title": "Put the Text to Work",
+      "start": 137.0,
+      "end": 175.96666666666667
+    },
+    {
+      "n": 6,
+      "title": "Start with Your Voice",
+      "start": 175.96666666666667,
+      "end": 210.2
+    },
+    {
+      "n": 7,
+      "title": "A Spoken Idea Becomes a Picture",
+      "start": 210.2,
+      "end": 247.43333333333334
+    },
+    {
+      "n": 8,
+      "title": "Shape the Result",
+      "start": 247.43333333333334,
+      "end": 295.23333333333335
+    },
+    {
+      "n": 9,
+      "title": "Dictate into Other Apps \u2014 Android Only",
+      "start": 295.23333333333335,
+      "end": 346.1333333333333
+    },
+    {
+      "n": 10,
+      "title": "Keep It Useful",
+      "start": 346.1333333333333,
+      "end": 370.3333333333333
+    }
+  ],
+  "featureChapters": {
+    "basics": 1,
+    "providers": 2,
+    "articles": 3,
+    "iphone": 4,
+    "translation": 5,
+    "history": 5,
+    "recording": 6,
+    "imports": 7,
+    "images": 7,
+    "summaries": 8,
+    "keyboard": 9,
+    "floating": 9
+  },
+  "originalTutorialFeatures": {
+    "realtime": {
+      "file": "tutorial-original-realtime-20260928.mp4",
+      "captions": "tutorial-original-realtime-20260928.vtt",
+      "duration": 23.7,
+      "sha256": "b54257b7cbdd932d6933baf682bcf9b2ad2d5d6b552da20e0c72428f6958f92b",
+      "sourceChapter": 8
+    },
+    "local-ai": {
+      "file": "tutorial-original-local-ai-20260928.mp4",
+      "captions": "tutorial-original-local-ai-20260928.vtt",
+      "duration": 22.033333,
+      "sha256": "04e477ccf8d9d539830267ccc9300886ab3627194c86bb43830e98be18f44757",
+      "sourceChapter": 13
+    }
+  },
+  "music": {
+    "title": "Clear Air",
+    "artist": "Kevin MacLeod",
+    "license": "CC BY 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"
+  }
+}

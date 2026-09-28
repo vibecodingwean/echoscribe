@@ -1,0 +1,364 @@
+WEBVTT
+
+00:00:02.500 --> 00:00:06.034
+EchoScribe started as my personal
+vibe coding project.
+
+00:00:06.396 --> 00:00:08.963
+I wanted a tool for my own everyday
+use,
+
+00:00:09.092 --> 00:00:10.898
+without another app subscription.
+
+00:00:11.323 --> 00:00:13.117
+Then I kept adding things I needed,
+
+00:00:13.220 --> 00:00:14.097
+and it grew.
+
+00:00:14.458 --> 00:00:17.941
+The job I return to most is simple:
+take an
+
+00:00:17.980 --> 00:00:19.837
+article or a piece of text,
+
+00:00:19.967 --> 00:00:20.933
+get the main points,
+
+00:00:20.960 --> 00:00:22.830
+and do something useful with them.
+
+00:00:26.333 --> 00:00:27.649
+Before the first summary,
+
+00:00:27.752 --> 00:00:30.216
+open Settings and choose your
+provider.
+
+00:00:30.577 --> 00:00:32.047
+For this iPhone example,
+
+00:00:32.215 --> 00:00:36.692
+choose OpenAI and use its API key in
+the OpenAI field.
+
+00:00:37.117 --> 00:00:38.226
+Keep the key hidden,
+
+00:00:38.304 --> 00:00:39.594
+then return to the app.
+
+00:00:39.904 --> 00:00:41.955
+There is no EchoScribe subscription;
+
+00:00:42.149 --> 00:00:45.102
+your provider bills API usage
+separately.
+
+00:00:45.876 --> 00:00:48.482
+EchoScribe connects directly to that
+provider,
+
+00:00:48.521 --> 00:00:51.669
+whose processing and retention
+policies apply.
+
+00:00:55.167 --> 00:00:57.244
+Let's start with an article on
+Android.
+
+00:00:57.669 --> 00:00:58.340
+In Chrome,
+
+00:00:58.469 --> 00:00:59.488
+open the menu,
+
+00:00:59.656 --> 00:01:00.481
+choose Share,
+
+00:01:00.610 --> 00:01:02.261
+and select EchoScribe.
+
+00:01:02.688 --> 00:01:04.365
+The link arrives in the app.
+
+00:01:05.268 --> 00:01:08.260
+EchoScribe retrieves the article text
+and sends it to
+
+00:01:08.325 --> 00:01:09.911
+the provider for a summary.
+
+00:01:10.583 --> 00:01:12.066
+Now the result is ready.
+
+00:01:15.634 --> 00:01:16.975
+Read the main points here,
+
+00:01:17.104 --> 00:01:19.813
+or double-tap the summary to open the
+reading view.
+
+00:01:20.380 --> 00:01:23.193
+Scroll through the rest before moving
+on.
+
+00:01:31.700 --> 00:01:32.307
+On iPhone,
+
+00:01:32.332 --> 00:01:33.532
+the task is the same,
+
+00:01:33.661 --> 00:01:36.214
+but the handoff uses Apple's share
+menu.
+
+00:01:37.660 --> 00:01:39.337
+Open the article in Safari,
+
+00:01:39.466 --> 00:01:40.291
+choose Share,
+
+00:01:40.343 --> 00:01:41.774
+and tap EchoScribe.
+
+00:01:44.220 --> 00:01:47.419
+The native Share Extension brings the
+link into the app.
+
+00:01:48.193 --> 00:01:51.301
+Before sending content to a provider
+for the first time,
+
+00:01:51.533 --> 00:01:54.720
+EchoScribe asks for your permission
+on iPhone.
+
+00:01:55.210 --> 00:01:55.997
+Read the notice,
+
+00:01:59.023 --> 00:02:01.461
+then choose Allow and remember to
+continue.
+
+00:02:04.887 --> 00:02:08.034
+The app processes the article and
+displays the summary.
+
+00:02:13.396 --> 00:02:16.001
+Your choice is remembered for that
+provider.
+
+00:02:19.500 --> 00:02:21.190
+Let's keep working with this article.
+
+00:02:21.616 --> 00:02:23.873
+Choose a target language for the
+result.
+
+00:02:25.318 --> 00:02:27.666
+EchoScribe translates the source text
+and
+
+00:02:27.730 --> 00:02:29.407
+creates the summary in German.
+
+00:02:32.769 --> 00:02:36.226
+Play reads the current text aloud
+through your voice provider.
+
+00:02:40.651 --> 00:02:44.482
+Open Share to see the available text
+and audio options.
+
+00:02:47.720 --> 00:02:49.642
+History keeps your saved results.
+
+00:02:52.068 --> 00:02:54.958
+Reopen this article to continue where
+you left off.
+
+00:02:58.467 --> 00:03:00.273
+You do not have to start with a link.
+
+00:03:00.699 --> 00:03:01.873
+Tap the microphone,
+
+00:03:02.015 --> 00:03:02.711
+speak,
+
+00:03:03.767 --> 00:03:05.767
+Please check the mobile layout by
+Friday.
+
+00:03:06.905 --> 00:03:08.763
+and tap again to finish.
+
+00:03:10.207 --> 00:03:10.685
+Here,
+
+00:03:10.814 --> 00:03:13.238
+the spoken reminder becomes text.
+
+00:03:16.013 --> 00:03:18.450
+Switch to Summary to turn that
+recording
+
+00:03:18.540 --> 00:03:20.283
+into a short action item.
+
+00:03:24.727 --> 00:03:26.210
+Once the text is in the app,
+
+00:03:26.249 --> 00:03:29.190
+the same reading and sharing tools
+are available.
+
+00:03:32.700 --> 00:03:34.570
+A spoken idea can become a picture,
+
+00:03:34.597 --> 00:03:35.073
+too.
+
+00:03:35.848 --> 00:03:37.770
+Here is a recorded description of a
+friendly
+
+00:03:37.834 --> 00:03:39.433
+paper rocket above the Earth.
+
+00:03:40.879 --> 00:03:44.593
+Share the audio with EchoScribe and
+let it transcribe the words.
+
+00:03:47.826 --> 00:03:49.051
+Check the transcript,
+
+00:03:49.219 --> 00:03:50.406
+then choose Image.
+
+00:03:51.851 --> 00:03:53.592
+The waiting time is sped up here.
+
+00:04:00.019 --> 00:04:01.231
+When the picture is ready,
+
+00:04:01.399 --> 00:04:03.424
+open it to take a closer look.
+
+00:04:09.933 --> 00:04:12.564
+You can shape the result with your
+own prompts.
+
+00:04:13.467 --> 00:04:15.647
+Let's reuse the same spoken idea.
+
+00:04:16.705 --> 00:04:17.983
+Copy the transcript,
+
+00:04:18.086 --> 00:04:20.446
+then open Audio Prompt in Settings.
+
+00:04:23.891 --> 00:04:27.567
+Ask for three English bullet points:
+subject,
+
+00:04:27.735 --> 00:04:28.329
+style,
+
+00:04:28.354 --> 00:04:29.542
+and constraints.
+
+00:04:33.986 --> 00:04:35.031
+Save the prompt.
+
+00:04:37.805 --> 00:04:38.695
+Back in the app,
+
+00:04:38.785 --> 00:04:41.559
+clear the view and paste the copied
+text.
+
+00:04:45.049 --> 00:04:48.867
+EchoScribe processes it again using
+your instructions.
+
+00:04:51.229 --> 00:04:54.234
+The new summary follows the format
+you chose.
+
+00:04:57.733 --> 00:04:58.649
+On Android,
+
+00:04:58.713 --> 00:05:02.016
+two extra tools bring dictation into
+other apps.
+
+00:05:02.325 --> 00:05:04.583
+With the EchoScribe keyboard enabled
+and
+
+00:05:04.661 --> 00:05:06.209
+selected in a text field,
+
+00:05:06.337 --> 00:05:07.924
+dictate with its microphone.
+
+00:05:13.285 --> 00:05:15.194
+The result appears where you are
+writing.
+
+00:05:18.555 --> 00:05:20.582
+Floating Dictation is another option.
+
+00:05:20.891 --> 00:05:23.110
+After granting its required
+permissions,
+
+00:05:23.252 --> 00:05:25.574
+tap the floating microphone and
+speak.
+
+00:05:34.935 --> 00:05:36.561
+Review the returned text,
+
+00:05:36.637 --> 00:05:37.566
+then insert it.
+
+00:05:39.992 --> 00:05:42.804
+The EchoScribe keyboard and Floating
+Dictation
+
+00:05:43.036 --> 00:05:45.113
+are Android-only features.
+
+00:05:48.633 --> 00:05:49.420
+On iPhone,
+
+00:05:49.587 --> 00:05:51.561
+you can withdraw a provider's
+permission in
+
+00:05:51.652 --> 00:05:53.574
+Settings to stop future sharing.
+
+00:05:56.632 --> 00:05:58.515
+That is the path I built EchoScribe
+
+00:05:58.541 --> 00:06:00.799
+around: bring in information,
+
+00:06:00.927 --> 00:06:02.307
+make it easier to use,
+
+00:06:02.436 --> 00:06:04.372
+and carry the result into your day.
+
+00:06:04.797 --> 00:06:06.449
+The project is open source,
+
+00:06:06.539 --> 00:06:09.312
+with code and setup instructions on
+GitHub.

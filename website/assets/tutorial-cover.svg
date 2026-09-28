@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500" role="img" aria-labelledby="title desc">
+  <title id="title">EchoScribe — Share a link. Get the summary.</title>
+  <desc id="desc">Android and iPhone walkthrough, with an actual iPhone article summary.</desc>
+  <rect width="1024" height="500" fill="#eae7f5"/>
+  <g fill="#20212b" font-family="Arial, sans-serif">
+    <image href="logo.png" x="48" y="40" width="46" height="46"/>
+    <text x="108" y="72" font-size="29" font-weight="700">EchoScribe</text>
+    <text x="48" y="177" font-size="61" letter-spacing="-2">Share a link.</text>
+    <text x="48" y="246" font-size="61" letter-spacing="-2">Get the <tspan fill="#6253a0">summary.</tspan></text>
+    <text x="50" y="311" font-size="22" fill="#656772">Read. Translate. Listen.</text>
+    <text x="50" y="402" font-size="17" fill="#6253a0">THE ANDROID + IPHONE WALKTHROUGH</text>
+  </g>
+  <defs><clipPath id="screen"><rect x="767" y="39" width="194" height="422" rx="23"/></clipPath></defs>
+  <rect x="760" y="32" width="208" height="436" rx="30" fill="#292b32"/>
+  <image href="iphone-summary.png" x="767" y="39" width="194" height="422" clip-path="url(#screen)"/>
+</svg>

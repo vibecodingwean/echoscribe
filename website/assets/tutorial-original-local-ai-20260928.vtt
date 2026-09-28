@@ -1,0 +1,26 @@
+WEBVTT
+
+00:02.500 --> 00:06.202
+Local AI connects EchoScribe to
+services you run yourself.
+
+00:06.977 --> 00:09.608
+Configure an Ollama compatible
+language model and a
+
+00:09.660 --> 00:11.866
+Whisper compatible transcription
+endpoint,
+
+00:11.994 --> 00:13.646
+then test both connections.
+
+00:14.136 --> 00:16.136
+Processing happens on that computer.
+
+00:16.703 --> 00:19.786
+It is an experimental option for a
+trusted local network
+
+00:19.863 --> 00:21.024
+or VPN.
