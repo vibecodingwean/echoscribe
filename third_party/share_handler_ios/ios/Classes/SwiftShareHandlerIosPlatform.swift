@@ -213,8 +213,11 @@ public class SwiftShareHandlerIosPlatform: NSObject, FlutterPlugin, FlutterStrea
     }
 
     private func getAbsolutePath(for identifier: String) -> String? {
-        if (identifier.starts(with: "file://") || identifier.starts(with: "/var/mobile/Media") || identifier.starts(with: "/private/var/mobile")) {
-            return identifier.replacingOccurrences(of: "file://", with: "")
+        if identifier.hasPrefix("/") {
+            return identifier
+        }
+        if let fileURL = URL(string: identifier), fileURL.isFileURL {
+            return fileURL.path
         }
         let phAsset = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: .none).firstObject
         if(phAsset == nil) {
