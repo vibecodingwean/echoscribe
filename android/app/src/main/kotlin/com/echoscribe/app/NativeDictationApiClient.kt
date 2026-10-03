@@ -9,10 +9,33 @@ import java.net.URL
 
 class NativeDictationApiClient(
     private val config: NativeDictationConfig,
-    private val multipartConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection },
+    private val connectionFactory: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection },
 ) {
-    private companion object {
+    internal companion object {
         const val DEFAULT_LOCAL_AI_FORMATTING_MODEL = "qwen2.5:7b"
+
+        fun buildGeminiFormattingRequest(model: String, systemPrompt: String, userPrompt: String): JSONObject {
+            val body = JSONObject()
+                .put(
+                    "systemInstruction",
+                    JSONObject().put("parts", JSONArray().put(JSONObject().put("text", systemPrompt))),
+                )
+                .put(
+                    "contents",
+                    JSONArray().put(
+                        JSONObject()
+                            .put("role", "user")
+                            .put("parts", JSONArray().put(JSONObject().put("text", userPrompt))),
+                    ),
+                )
+            if (model != "gemini-3.1-pro-preview") {
+                body.put(
+                    "generationConfig",
+                    JSONObject().put("thinkingConfig", JSONObject().put("thinkingBudget", 0)),
+                )
+            }
+            return body
+        }
     }
 
     fun preflightLocalAi() {
@@ -387,27 +410,8 @@ class NativeDictationApiClient(
     }
 
     private fun chatGemini(systemPrompt: String, userPrompt: String): String {
-        val body = JSONObject()
-            .put(
-                "systemInstruction",
-                JSONObject().put("parts", JSONArray().put(JSONObject().put("text", systemPrompt))),
-            )
-            .put(
-                "contents",
-                JSONArray().put(
-                    JSONObject()
-                        .put("role", "user")
-                        .put("parts", JSONArray().put(JSONObject().put("text", userPrompt))),
-                ),
-            )
-            .put(
-                "generationConfig",
-                JSONObject().put(
-                    "thinkingConfig",
-                    JSONObject().put("thinkingBudget", 0),
-                ),
-            )
         val model = config.formattingModel.ifBlank { "gemini-3.8-flash" }
+        val body = buildGeminiFormattingRequest(model, systemPrompt, userPrompt)
         val json = postJson(
             endpoint = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=${config.apiKey}",
             headers = mapOf("Content-Type" to "application/json"),
@@ -441,7 +445,7 @@ class NativeDictationApiClient(
         connectTimeoutMs: Int,
         readTimeoutMs: Int,
     ): JSONObject {
-        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+        val connection = connectionFactory(URL(endpoint)).apply {
             requestMethod = method
             connectTimeout = connectTimeoutMs
             readTimeout = readTimeoutMs
@@ -502,7 +506,7 @@ class NativeDictationApiClient(
         readTimeoutMs: Int = 180_000,
     ): JSONObject {
         val boundary = "EchoScribeBoundary${System.currentTimeMillis()}"
-        val connection = multipartConnection(URL(endpoint)).apply {
+        val connection = connectionFactory(URL(endpoint)).apply {
             requestMethod = "POST"
             connectTimeout = connectTimeoutMs
             readTimeout = readTimeoutMs

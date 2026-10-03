@@ -39,11 +39,11 @@ void main() {
 
   testWidgets('whats new dialog shows three single-line bullets',
       (tester) async {
-    expect(WhatsNewCopy.releaseVersionCode, 113);
+    expect(WhatsNewCopy.releaseVersionCode, 115);
     expect(WhatsNewCopy.whatsNewBullets, [
       'OpenAI Fast now uses GPT-6 Luna; Pro remains GPT-6 Astra. Claude Pro now uses Opus 5.5.',
       'Gemini 3.8 Flash TTS and Grok Voice Transcribe 2.0 for batch audio are here.',
-      'Sharing and real-time transcription fixes make both flows more reliable.',
+      'Gemini Pro summaries, translations, and keyboard rewrites now work with model-aware thinking settings.',
     ]);
     await tester.pumpWidget(
       MaterialApp(

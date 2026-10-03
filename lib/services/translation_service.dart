@@ -121,7 +121,7 @@ class TranslationService {
           ],
         },
       ],
-      'generationConfig': GeminiContentText.thinkingOffConfig(),
+      ...GeminiContentText.generationConfigForModel(model),
     });
 
     final sw = Stopwatch()..start();
@@ -147,7 +147,9 @@ class TranslationService {
     DebugConsole.logApiResponse(
       status: res.statusCode,
       headers: res.headers,
-      body: res.body,
+      body: DebugConsole.enabled
+          ? GeminiContentText.sanitizeResponseForDebug(res.body)
+          : null,
       title: 'API response (Gemini translate)',
     );
 

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class GeminiContentText {
   const GeminiContentText._();
 
@@ -26,9 +28,32 @@ class GeminiContentText {
     return joined;
   }
 
+  static String sanitizeResponseForDebug(String body) {
+    try {
+      final data = json.decode(body);
+      if (data is! Map) return '[Gemini response body omitted]';
+      return json.encode(_withoutThoughts(data));
+    } catch (_) {
+      return '[Gemini response body omitted]';
+    }
+  }
+
+  static dynamic _withoutThoughts(dynamic value) {
+    if (value is Map) {
+      if (value['thought'] == true) return null;
+      return value.map((key, entry) => MapEntry(key, _withoutThoughts(entry)));
+    }
+    if (value is List) {
+      return value
+          .where((entry) => entry is! Map || entry['thought'] != true)
+          .map(_withoutThoughts)
+          .toList();
+    }
+    return value;
+  }
+
   static bool looksLikeApiEnvelope(String text) {
-    return text.contains('"finishReason"') &&
-        text.contains('"usageMetadata"');
+    return text.contains('"finishReason"') && text.contains('"usageMetadata"');
   }
 
   static Map<String, dynamic> thinkingOffConfig() {
@@ -38,4 +63,9 @@ class GeminiContentText {
       },
     };
   }
+
+  static Map<String, dynamic> generationConfigForModel(String model) =>
+      model == 'gemini-3.1-pro-preview'
+          ? <String, dynamic>{}
+          : {'generationConfig': thinkingOffConfig()};
 }
