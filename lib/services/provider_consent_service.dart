@@ -31,6 +31,9 @@ class ProviderConsentService extends ChangeNotifier {
       'ai_provider_consent_v1_${provider.name}';
 
   static String _scope(AiProviderType provider, {String? localEndpoint}) {
+    if (provider == AiProviderType.gemini) {
+      return '$disclosureVersion:gemini-adult-paid-2026-03';
+    }
     if (provider != AiProviderType.localAi) return disclosureVersion;
     final endpoint = (localEndpoint ?? '').trim();
     return '$disclosureVersion:${sha256.convert(utf8.encode(endpoint))}';
@@ -165,32 +168,55 @@ class ProviderConsentService extends ChangeNotifier {
     if (context == null || !context.mounted) {
       throw const AppException('AI sharing permission cannot be shown.');
     }
+    var geminiEligible = false;
     return await showDialog<bool>(
           context: context,
           barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            title: Text('Share with ${request.destination}?'),
-            content: SingleChildScrollView(
-              child: Text(
-                'For this request, EchoScribe will send ${request.dataType} '
-                'to ${request.destination} for ${request.purpose}.\n\n'
-                '${request.disclosure}\n\n'
-                'If you allow this provider, EchoScribe will remember your choice. '
-                'You can withdraw it in Settings before future requests. '
-                'Withdrawal cannot recall content already sent.',
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Not now'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Allow & remember'),
-              ),
-            ],
-          ),
+          builder: (context) => StatefulBuilder(
+              builder: (context, setState) => AlertDialog(
+                    title: Text('Share with ${request.destination}?'),
+                    content: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'For this request, EchoScribe will send ${request.dataType} '
+                            'to ${request.destination} for ${request.purpose}.\n\n'
+                            '${request.disclosure}\n\n'
+                            'If you allow this provider, EchoScribe will remember your choice. '
+                            'You can withdraw it in Settings before future requests. '
+                            'Withdrawal cannot recall content already sent.',
+                          ),
+                          if (request.provider == AiProviderType.gemini)
+                            CheckboxListTile(
+                              contentPadding: EdgeInsets.zero,
+                              controlAffinity: ListTileControlAffinity.leading,
+                              title: const Text(
+                                'I am 18 or older. If I use Gemini from the EEA, '
+                                'Switzerland or the UK, my API key is for Gemini Paid Services.',
+                              ),
+                              value: geminiEligible,
+                              onChanged: (value) => setState(() {
+                                geminiEligible = value ?? false;
+                              }),
+                            ),
+                        ],
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('Not now'),
+                      ),
+                      FilledButton(
+                        onPressed: request.provider == AiProviderType.gemini &&
+                                !geminiEligible
+                            ? null
+                            : () => Navigator.of(context).pop(true),
+                        child: const Text('Allow & remember'),
+                      ),
+                    ],
+                  )),
         ) ??
         false;
   }

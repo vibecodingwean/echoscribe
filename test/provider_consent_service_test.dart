@@ -7,6 +7,7 @@ import 'package:echoscribe/services/ai/consent_aware_provider.dart';
 import 'package:echoscribe/services/provider_consent_service.dart';
 import 'package:echoscribe/services/tts_service.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -131,6 +132,55 @@ void main() {
     await consent.ensure(AiProviderType.localAi,
         dataType: 'text', purpose: 'summary', localEndpoint: 'https://b.test');
     expect(prompts, 2);
+  });
+
+  testWidgets('Gemini requires adult and paid-service confirmation on iOS',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'ai_provider_consent_v1_gemini': ProviderConsentService.disclosureVersion,
+    });
+    final consent = ProviderConsentService();
+    expect(await consent.hasGrant(AiProviderType.gemini), isFalse);
+
+    await tester.pumpWidget(MaterialApp(
+      navigatorKey: consent.navigatorKey,
+      home: const Scaffold(body: SizedBox()),
+    ));
+    final request = consent.ensure(
+      AiProviderType.gemini,
+      dataType: 'text',
+      purpose: 'summary',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('18 or older'), findsOneWidget);
+    expect(find.textContaining('Paid Services'), findsOneWidget);
+    expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(
+              FilledButton,
+              'Allow & remember',
+            ))
+            .onPressed,
+        isNull);
+
+    await tester.ensureVisible(find.byType(CheckboxListTile));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.pump();
+    expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(
+              FilledButton,
+              'Allow & remember',
+            ))
+            .onPressed,
+        isNotNull);
+    await tester.tap(find.widgetWithText(FilledButton, 'Allow & remember'));
+    await tester.pumpAndSettle();
+    await request;
+    expect(await consent.hasGrant(AiProviderType.gemini), isTrue);
+    debugDefaultTargetPlatformOverride = null;
   });
 }
 
