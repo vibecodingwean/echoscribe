@@ -3,7 +3,7 @@ import { PROVIDERS } from '../src/shared/constants.js';
 
 const expected = {
   openai: ['gpt-6-luna', 'gpt-6-astra'],
-  anthropic: ['claude-sonnet-5', 'claude-opus-5-5'],
+  anthropic: ['claude-sonnet-5-5', 'claude-opus-5-5'],
   gemini: ['gemini-3.8-flash', 'gemini-3.1-pro-preview'],
   xai: ['grok-4.3', 'grok-4.6']
 };

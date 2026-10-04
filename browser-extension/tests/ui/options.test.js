@@ -15,7 +15,7 @@ function setup() {
   const settings = {
     provider: 'gemini',
     models: {
-      openai: 'gpt-6-luna', anthropic: 'claude-sonnet-5',
+      openai: 'gpt-6-luna', anthropic: 'claude-sonnet-5-5',
       gemini: 'gemini-3.1-pro-preview', xai: 'grok-4.3'
     },
     configuredProviders: { openai: false, anthropic: false, gemini: true, xai: false },

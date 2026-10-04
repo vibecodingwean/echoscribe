@@ -1,6 +1,6 @@
 {
   "name": "echoscribe-web-summary-extension",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "private": true,
   "description": "EchoScribe Chrome webpage and PDF summarizer",
   "type": "module",
@@ -14,6 +14,7 @@
     "build": "node scripts/build.mjs",
     "package": "python3 scripts/package.py",
     "validate": "python3 scripts/validate.py",
+    "smoke:chrome": "node scripts/smoke-chrome.mjs",
     "verify": "npm test && npm run lint && npm run build && npm run package && npm run validate"
   },
   "devDependencies": {
@@ -22,6 +23,7 @@
     "eslint": "^9.32.0",
     "jsdom": "^26.1.0",
     "pdfjs-dist": "6.2.108",
+    "playwright-core": "^1.60.0",
     "vitest": "^3.2.4"
   }
 }

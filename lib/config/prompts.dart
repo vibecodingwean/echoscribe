@@ -105,8 +105,8 @@ class AiModelConfig {
   static const String anthropicSummaryPro = 'claude-opus-5-5';
   static const String anthropicTranslationPro = 'claude-opus-5-5';
 
-  static const String anthropicSummaryFast = 'claude-sonnet-5';
-  static const String anthropicTranslationFast = 'claude-sonnet-5';
+  static const String anthropicSummaryFast = 'claude-sonnet-5-5';
+  static const String anthropicTranslationFast = 'claude-sonnet-5-5';
 
   static String anthropicSummary({required bool pro}) =>
       pro ? anthropicSummaryPro : anthropicSummaryFast;

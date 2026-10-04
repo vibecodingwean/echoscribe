@@ -4,8 +4,8 @@ export const PROVIDERS = Object.freeze({
     models: [{ id: 'gpt-6-luna', tier: 'Fast' }, { id: 'gpt-6-astra', tier: 'Pro' }]
   },
   anthropic: {
-    label: 'Anthropic', defaultModel: 'claude-sonnet-5',
-    models: [{ id: 'claude-sonnet-5', tier: 'Fast' }, { id: 'claude-opus-5-5', tier: 'Pro' }]
+    label: 'Anthropic', defaultModel: 'claude-sonnet-5-5',
+    models: [{ id: 'claude-sonnet-5-5', tier: 'Fast' }, { id: 'claude-opus-5-5', tier: 'Pro' }]
   },
   gemini: {
     label: 'Google Gemini', defaultModel: 'gemini-3.8-flash',

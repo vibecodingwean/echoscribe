@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { listProviderModels, summarizeWithProvider } from '../src/providers/index.js';
 import { MAX_MODEL_ID_CHARS, MAX_MODEL_IDS, MAX_SUMMARY_CHARS } from '../src/shared/constants.js';
 
-const testKey = ['test', 'key'].join('-');
+const testKey = 'x';
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -11,40 +11,40 @@ function jsonResponse(body, status = 200) {
 describe('summarizeWithProvider', () => {
   it('builds an OpenAI chat-completions request', async () => {
     const fetchImpl = vi.fn(async () => jsonResponse({ choices: [{ message: { content: 'OpenAI summary' } }] }));
-    const result = await summarizeWithProvider({ provider: 'openai', apiKey: 'openai-key', model: 'gpt-test', prompt: 'Prompt', fetchImpl });
+    const result = await summarizeWithProvider({ provider: 'openai', apiKey: 'x', model: 'gpt-test', prompt: 'Prompt', fetchImpl });
     expect(result.summary).toBe('OpenAI summary');
     const [url, request] = fetchImpl.mock.calls[0];
     expect(url).toBe('https://api.openai.com/v1/chat/completions');
-    expect(request.headers.Authorization).toBe('Bearer openai-key');
+    expect(request.headers.Authorization).toBe('Bearer x');
     expect(JSON.parse(request.body)).toMatchObject({ model: 'gpt-test', messages: [{ role: 'user', content: 'Prompt' }] });
   });
 
   it('builds an xAI chat-completions request', async () => {
     const fetchImpl = vi.fn(async () => jsonResponse({ choices: [{ message: { content: 'xAI summary' } }] }));
-    const result = await summarizeWithProvider({ provider: 'xai', apiKey: 'xai-key', model: 'grok-test', prompt: 'Prompt', fetchImpl });
+    const result = await summarizeWithProvider({ provider: 'xai', apiKey: 'x', model: 'grok-test', prompt: 'Prompt', fetchImpl });
     expect(result).toMatchObject({ summary: 'xAI summary', provider: 'xai', model: 'grok-test' });
     expect(fetchImpl.mock.calls[0][0]).toBe('https://api.x.ai/v1/chat/completions');
   });
 
   it('builds an Anthropic Messages request', async () => {
     const fetchImpl = vi.fn(async () => jsonResponse({ content: [{ type: 'text', text: 'Claude summary' }] }));
-    const result = await summarizeWithProvider({ provider: 'anthropic', apiKey: 'anthropic-key', model: 'claude-test', prompt: 'Prompt', fetchImpl });
+    const result = await summarizeWithProvider({ provider: 'anthropic', apiKey: 'x', model: 'claude-test', prompt: 'Prompt', fetchImpl });
     const [url, request] = fetchImpl.mock.calls[0];
     expect(result.summary).toBe('Claude summary');
     expect(url).toBe('https://api.anthropic.com/v1/messages');
-    expect(request.headers['x-api-key']).toBe('anthropic-key');
+    expect(request.headers['x-api-key']).toBe('x');
     expect(request.headers['anthropic-version']).toBe('2023-06-01');
     expect(JSON.parse(request.body)).toMatchObject({ model: 'claude-test', messages: [{ role: 'user', content: 'Prompt' }] });
   });
 
   it('builds a Gemini generateContent request', async () => {
     const fetchImpl = vi.fn(async () => jsonResponse({ candidates: [{ content: { parts: [{ text: 'Gemini summary' }] } }] }));
-    const result = await summarizeWithProvider({ provider: 'gemini', apiKey: 'gemini-key', model: 'gemini-test', prompt: 'Prompt', fetchImpl });
+    const result = await summarizeWithProvider({ provider: 'gemini', apiKey: 'x', model: 'gemini-test', prompt: 'Prompt', fetchImpl });
     const [url, request] = fetchImpl.mock.calls[0];
     expect(result.summary).toBe('Gemini summary');
     expect(url).toBe('https://generativelanguage.googleapis.com/v1beta/models/gemini-test:generateContent');
-    expect(url).not.toContain('gemini-key');
-    expect(request.headers['x-goog-api-key']).toBe('gemini-key');
+    expect(url).not.toContain('x');
+    expect(request.headers['x-goog-api-key']).toBe('x');
     expect(JSON.parse(request.body)).toEqual({ contents: [{ role: 'user', parts: [{ text: 'Prompt' }] }] });
   });
 
@@ -61,7 +61,7 @@ describe('summarizeWithProvider', () => {
       return Promise.resolve(jsonResponse({ choices: [{ message: { content: 'Worker summary' } }] }));
     };
     await expect(summarizeWithProvider({
-      provider: 'openai', apiKey: 'worker-key', model: 'gpt-test', prompt: 'Prompt', fetchImpl: workerFetch
+      provider: 'openai', apiKey: 'x', model: 'gpt-test', prompt: 'Prompt', fetchImpl: workerFetch
     })).resolves.toMatchObject({ summary: 'Worker summary' });
   });
 

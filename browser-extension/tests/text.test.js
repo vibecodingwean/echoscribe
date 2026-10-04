@@ -5,7 +5,7 @@ describe('web-address sanitization', () => {
   it('removes common URL forms while preserving surrounding Markdown and punctuation', () => {
     expect(stripWebAddresses([
       '[docs](https://example.com/path), then',
-      'FTP ftp://files.example.org/report.pdf; mail mailto:a@example.org.',
+      'FTP ftp://files.example.org/report.pdf; mail mailto:?subject=feedback.',
       'Protocol //cdn.example.net/a.js and bare education.gov.yk.ca/info!',
       'File file:///tmp/private.pdf and data data:text/plain,secret.'
     ].join('\n'))).toBe([

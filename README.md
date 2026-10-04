@@ -49,7 +49,7 @@ Requests go directly from your device to your selected AI provider using your ow
 
 ### 🚀 Pro Mode & Models
 Access the world's most powerful AI models with a single toggle:
-- **Standard (Fast):** GPT-6 Luna, Gemini 3.8 Flash, Claude Sonnet 5, Grok 4.3, or local `qwen2.5:7b`.
+- **Standard (Fast):** GPT-6 Luna, Gemini 3.8 Flash, Claude Sonnet 5.5, Grok 4.3, or local `qwen2.5:7b`.
 - **Pro Mode (Premium):** GPT-6 Astra, Gemini 3.1 Pro Preview, Claude Opus 5.5, Grok 4.6.
 - **Speech Models:** OpenAI Pro file transcription uses GPT Transcribe; OpenAI Realtime uses GPT Live Transcribe; xAI batch transcription uses Grok Voice Transcribe 2.0; ElevenLabs file transcription and Keyboard STT use Scribe v2; optional Realtime uses Scribe v2 Realtime.
 
