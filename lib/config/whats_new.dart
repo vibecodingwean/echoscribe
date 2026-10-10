@@ -18,7 +18,6 @@ class WhatsNewCopy {
   static const String whatsNewButton = 'OK';
   static const List<String> whatsNewBullets = [
     'Anthropic Fast summaries and translations now use Claude Haiku 5.5.',
-    'Audio summaries now use short topic headings when the recording covers several themes.',
     'Play reads either your transcript or its summary with your selected speech provider.',
     'Speech playback gives clearer feedback when a provider takes too long to respond.',
   ];

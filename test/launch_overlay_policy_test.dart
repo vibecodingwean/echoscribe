@@ -57,13 +57,14 @@ void main() {
     );
   });
 
-  test('existing +115 or +117 users see +118 whats new once', () {
-    expect(WhatsNewCopy.releaseVersionCode, 118);
+  test('existing +115, +117 and +118 users see +119 whats new once', () {
+    expect(WhatsNewCopy.releaseVersionCode, 119);
     for (final (previousVersion, shared, expected) in [
       (115, false, LaunchOverlayKind.whatsNew),
       (117, false, LaunchOverlayKind.whatsNew),
       (117, true, LaunchOverlayKind.none),
-      (118, false, LaunchOverlayKind.none),
+      (118, false, LaunchOverlayKind.whatsNew),
+      (119, false, LaunchOverlayKind.none),
     ]) {
       expect(
         decideLaunchOverlay(
