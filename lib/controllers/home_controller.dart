@@ -1396,10 +1396,8 @@ class HomeController extends ChangeNotifier {
     required void Function(String) replaceProgressToast,
     required void Function(String) showSuccess,
   }) async {
-    final playbackText = content.isSummaryMode
-        ? content.currentSummaryValue
-        : content.currentTranscriptValue;
-    if (playbackText.trim().isEmpty) return;
+    final playbackText = content.currentPlaybackText;
+    if (playbackText.isEmpty) return;
 
     if (playback.isPlaying) {
       await playback.pauseAudio();

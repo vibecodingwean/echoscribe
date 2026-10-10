@@ -356,10 +356,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   String _currentPlaybackText() {
-    return (_content.isSummaryMode
-            ? _content.currentSummaryValue
-            : _content.currentTranscriptValue)
-        .trim();
+    return _content.currentPlaybackText;
   }
 
   bool _canShareCurrent() {
@@ -678,16 +675,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         child: Builder(
                           builder: (context) {
                             final bool showTts =
-                                _settings.provider.supportsTts &&
-                                    (_content.isSummaryMode
-                                        ? _content.currentSummaryValue
-                                            .trim()
-                                            .isNotEmpty
-                                        : _settings.provider ==
-                                                AiProviderType.elevenLabs &&
-                                            _content.currentTranscriptValue
-                                                .trim()
-                                                .isNotEmpty);
+                                _content.canPlayTts(_settings.provider);
                             final bool showImage =
                                 _settings.provider.supportsImage &&
                                     !_content.isTranscribing &&

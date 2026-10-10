@@ -29,6 +29,11 @@ class ContentState extends ChangeNotifier {
   String get currentTranscriptValue => currentTranscript.value;
   String get sourceTranscriptValue => sourceTranscript.value;
   String get currentSummaryValue => currentSummary.value;
+  String get currentPlaybackText =>
+      (isSummaryMode ? currentSummaryValue : currentTranscriptValue).trim();
+
+  bool canPlayTts(AiProviderType provider) =>
+      provider.supportsTts && currentPlaybackText.isNotEmpty;
 
   String? _activeHistoryId;
   final List<TranscriptionItem> _history = <TranscriptionItem>[];
