@@ -48,11 +48,11 @@ void main() {
         'gemini-3.5-transcribe-live',
       );
       expect(AiModelConfig.geminiTts, 'gemini-3.8-flash-tts');
-      expect(AiModelConfig.anthropicSummary(pro: false), 'claude-sonnet-5-5');
+      expect(AiModelConfig.anthropicSummary(pro: false), 'claude-haiku-5-5');
       expect(AiModelConfig.anthropicSummary(pro: true), 'claude-opus-5-5');
       expect(
         AiModelConfig.anthropicTranslation(pro: false),
-        'claude-sonnet-5-5',
+        'claude-haiku-5-5',
       );
       expect(AiModelConfig.anthropicTranslation(pro: true), 'claude-opus-5-5');
     });

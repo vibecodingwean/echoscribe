@@ -46,11 +46,11 @@
   },
   "anthropic": {
     "summary": {
-      "fast": "claude-sonnet-5-5",
+      "fast": "claude-haiku-5-5",
       "pro": "claude-opus-5-5"
     },
     "translation": {
-      "fast": "claude-sonnet-5-5",
+      "fast": "claude-haiku-5-5",
       "pro": "claude-opus-5-5"
     }
   },
