@@ -22,6 +22,10 @@ class SummaryService {
     return 'You are a precise summarizer. Follow the language rule strictly.\n'
         '$langHint\n'
         'If no explicit target language is given, preserve the input language exactly.\n'
+        'The input is text, not acoustic evidence. Never infer a speaker’s gender or identity. '
+        'Unless the transcript explicitly identifies a speaker’s gender, use neutral wording. '
+        'For German summaries, omit speaker references or use "die sprechende Person"; '
+        'do not call someone "Sprecherin" or "Sprecher" without explicit evidence.\n'
         'Output only the summary, with no preface or labels.';
   }
 

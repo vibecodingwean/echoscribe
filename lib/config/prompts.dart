@@ -30,8 +30,10 @@ const String kPreviousDefaultSummaryPrompt =
     'Return only the summary content. Do not start with meta-phrases like "This transcript...".';
 
 const String kDefaultSummaryPrompt = '$kPreviousDefaultSummaryPrompt\n'
-    'Do not infer a speaker’s gender, identity, or voice from transcript text. '
-    'Use neutral references such as "the speaker" unless the transcript explicitly states otherwise.';
+    'A text transcript does not establish the speaker’s voice, gender, or identity. '
+    'Never assign a gendered speaker role unless the transcript explicitly identifies it. '
+    'In German, describe the facts directly or use "die sprechende Person"; '
+    'do not write "Sprecherin" or "Sprecher" without explicit evidence.';
 
 const String kDefaultUrlSummaryPrompt =
     'Summarize the provided webpage content.\n\n'

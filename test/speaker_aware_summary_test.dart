@@ -37,7 +37,8 @@ void main() {
       expect(kDefaultSummaryPrompt, contains('## <emoji> <1–3 word title>'));
       expect(kDefaultSummaryPrompt, contains('short paragraph'));
       expect(kDefaultSummaryPrompt, contains('Use only information'));
-      expect(kDefaultSummaryPrompt, contains('Do not infer a speaker’s gender'));
+      expect(kDefaultSummaryPrompt, contains('A text transcript does not establish'));
+      expect(kDefaultSummaryPrompt, contains('die sprechende Person'));
     });
 
     test('native speaker summary keeps attribution and thematic sections', () {
@@ -81,7 +82,7 @@ void main() {
         summaryPrompt: kPreviousDefaultSummaryPrompt,
       );
       expect(prompt, kNativeSpeakerSummaryPrompt);
-      expect(prompt, contains('Do not infer a speaker’s gender'));
+      expect(prompt, contains('die sprechende Person'));
     });
 
     test('uses native prompt when source is nativeApi even without labels', () {
