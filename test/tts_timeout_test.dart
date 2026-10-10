@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:echoscribe/models/app_exception.dart';
 import 'package:echoscribe/models/enums.dart';
@@ -101,5 +102,49 @@ void main() {
       isEmpty,
     );
     expect(calls, 3);
+  });
+
+  test('short OpenAI speech has a bounded wait without limiting long speech',
+      () async {
+    final atLimit = List.filled(200, 'x').join();
+    final aboveLimit = List.filled(201, 'x').join();
+    final abortedInputs = <String>[];
+    final shortRequestsAborted = Completer<void>();
+    final client = MockClient.streaming((request, _) async {
+      final input = (jsonDecode((request as http.AbortableRequest).body)
+          as Map<String, dynamic>)['input'] as String;
+      request.abortTrigger!.then((_) {
+        abortedInputs.add(input);
+        if (abortedInputs.length == 2) shortRequestsAborted.complete();
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      return http.StreamedResponse(const Stream.empty(), 204);
+    });
+    final service = TtsService(
+      client: client,
+      requestTimeout: const Duration(milliseconds: 250),
+      shortOpenAiRequestTimeout: const Duration(milliseconds: 20),
+    );
+
+    for (final input in ['Test, 1, 2, 3, 4', atLimit]) {
+      await expectLater(
+        service.generateSpeechOpenAI(apiKey: 'x', text: input),
+        throwsA(isA<NetworkException>().having(
+          (error) => error.userMessage,
+          'message',
+          contains('did not respond in time'),
+        )),
+      );
+    }
+    await shortRequestsAborted.future;
+    expect(abortedInputs, ['Test, 1, 2, 3, 4', atLimit]);
+    expect(
+      await service.generateSpeechOpenAI(
+        apiKey: 'x',
+        text: aboveLimit,
+      ),
+      isEmpty,
+    );
+    expect(abortedInputs, hasLength(2));
   });
 }

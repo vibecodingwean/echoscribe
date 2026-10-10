@@ -10,14 +10,18 @@ import 'package:echoscribe/services/provider_consent_service.dart';
 import 'package:echoscribe/config/prompts.dart';
 
 class TtsService {
+  static const _shortOpenAiMaxCharacters = 200;
+
   final http.Client _client;
   final ProviderConsentService? _consent;
   final Duration requestTimeout;
+  final Duration shortOpenAiRequestTimeout;
 
   TtsService({
     http.Client? client,
     ProviderConsentService? consent,
     this.requestTimeout = const Duration(seconds: 120),
+    this.shortOpenAiRequestTimeout = const Duration(seconds: 15),
   })  : _client = client ?? http.Client(),
         _consent = consent;
 
@@ -25,7 +29,10 @@ class TtsService {
     Uri uri, {
     required Map<String, String> headers,
     required String body,
+    Duration? timeout,
   }) async {
+    final effectiveTimeout =
+        timeout != null && timeout < requestTimeout ? timeout : requestTimeout;
     final abort = Completer<void>();
     final request = http.AbortableRequest(
       'POST',
@@ -39,7 +46,7 @@ class TtsService {
         final response = await _client.send(request);
         return http.Response.fromStream(response);
       })()
-          .timeout(requestTimeout);
+          .timeout(effectiveTimeout);
     } on TimeoutException {
       abort.complete();
       throw const NetworkException(
@@ -80,7 +87,14 @@ class TtsService {
         url: uri,
         requestBytes: utf8.encode(body).length,
         note: 'OpenAI TTS');
-    final res = await _post(uri, headers: headers, body: body);
+    final res = await _post(
+      uri,
+      headers: headers,
+      body: body,
+      timeout: trimmed.runes.length <= _shortOpenAiMaxCharacters
+          ? shortOpenAiRequestTimeout
+          : null,
+    );
     sw.stop();
     DebugConsole.logApiEnd(
         status: res.statusCode,
