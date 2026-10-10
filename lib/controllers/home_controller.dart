@@ -1420,33 +1420,39 @@ class HomeController extends ChangeNotifier {
         settings.provider,
         voice: settings.ttsVoice,
       );
-      if (cached) {
-        hideProgressToast();
-      } else {
+      Timer? waitTimer;
+      if (!cached) {
         showProgressToast(
           "Sending via API to ${settings.provider.brandName} TTS Service",
         );
-        Future.delayed(const Duration(milliseconds: 700)).then((_) {
+        final wait = Stopwatch()..start();
+        waitTimer = Timer.periodic(const Duration(seconds: 1), (_) {
           if (playback.isAudioLoading) {
-            replaceProgressToast("Waiting for Response");
+            replaceProgressToast(
+              "Waiting for speech response (${wait.elapsed.inSeconds}s)",
+            );
           }
         });
       }
       final lang = settings.targetLanguageCode == 'auto'
           ? 'en'
           : settings.targetLanguageCode;
-      await playback.playSummary(
-        tts: tts,
-        text: playbackText,
-        provider: settings.provider,
-        activeApiKey: settings.activeApiKey,
-        openAiVoice: "alloy",
-        geminiVoice: "Zephyr",
-        xaiVoice: "eve",
-        elevenLabsVoice: settings.ttsVoice,
-        languageCode: lang,
-      );
-      hideProgressToast();
+      try {
+        await playback.playSummary(
+          tts: tts,
+          text: playbackText,
+          provider: settings.provider,
+          activeApiKey: settings.activeApiKey,
+          openAiVoice: "alloy",
+          geminiVoice: "Zephyr",
+          xaiVoice: "eve",
+          elevenLabsVoice: settings.ttsVoice,
+          languageCode: lang,
+        );
+      } finally {
+        waitTimer?.cancel();
+        hideProgressToast();
+      }
     }
     final size = playback.cachedSummaryAudioSize(
       playbackText,

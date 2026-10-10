@@ -1,5 +1,5 @@
 class WhatsNewCopy {
-  static const int releaseVersionCode = 115;
+  static const int releaseVersionCode = 118;
 
   static const String welcomeTitle = 'Welcome to Echo Scribe';
   static const String welcomeButton = 'Got it';
@@ -17,8 +17,8 @@ class WhatsNewCopy {
   static const String whatsNewTitle = "What's new";
   static const String whatsNewButton = 'OK';
   static const List<String> whatsNewBullets = [
-    'OpenAI Fast now uses GPT-6 Luna; Pro remains GPT-6 Astra. Claude Pro now uses Opus 5.5.',
-    'Gemini 3.8 Flash TTS and Grok Voice Transcribe 2.0 for batch audio are here.',
-    'Gemini Pro summaries, translations, and keyboard rewrites now work with model-aware thinking settings.',
+    'Audio summaries now use short topic headings when the recording covers several themes.',
+    'Play reads either your transcript or its summary with your selected speech provider.',
+    'Speech playback gives clearer feedback when a provider takes too long to respond.',
   ];
 }

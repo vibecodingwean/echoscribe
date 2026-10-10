@@ -37,6 +37,7 @@ void main() {
       expect(kDefaultSummaryPrompt, contains('## <emoji> <1–3 word title>'));
       expect(kDefaultSummaryPrompt, contains('short paragraph'));
       expect(kDefaultSummaryPrompt, contains('Use only information'));
+      expect(kDefaultSummaryPrompt, contains('Do not infer a speaker’s gender'));
     });
 
     test('native speaker summary keeps attribution and thematic sections', () {
@@ -49,6 +50,8 @@ void main() {
     test('stored legacy default upgrades while custom prompt stays intact', () {
       final settings = SettingsState();
       settings.setSummaryPrompt(kLegacySummaryPrompt);
+      expect(settings.summaryPrompt, kDefaultSummaryPrompt);
+      settings.setSummaryPrompt(kPreviousDefaultSummaryPrompt);
       expect(settings.summaryPrompt, kDefaultSummaryPrompt);
       settings.setSummaryPrompt('Use exactly three bullets.');
       expect(settings.summaryPrompt, 'Use exactly three bullets.');
@@ -70,6 +73,15 @@ void main() {
       expect(prompt, kNativeSpeakerSummaryPrompt);
       expect(prompt.contains('PRESERVE'), isTrue);
       expect(prompt.toLowerCase().contains('do not invent extra speakers'), isTrue);
+    });
+
+    test('previous default uses neutral native preserve prompt', () {
+      final prompt = SpeakerAwareSummary.resolvePrompt(
+        text: 'Speaker 1: Hallo',
+        summaryPrompt: kPreviousDefaultSummaryPrompt,
+      );
+      expect(prompt, kNativeSpeakerSummaryPrompt);
+      expect(prompt, contains('Do not infer a speaker’s gender'));
     });
 
     test('uses native prompt when source is nativeApi even without labels', () {

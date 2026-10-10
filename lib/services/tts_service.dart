@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:echoscribe/services/debug_console.dart';
 import 'package:echoscribe/models/enums.dart';
+import 'package:echoscribe/models/app_exception.dart';
 import 'package:echoscribe/services/provider_consent_service.dart';
 
 import 'package:echoscribe/config/prompts.dart';
@@ -10,10 +12,30 @@ import 'package:echoscribe/config/prompts.dart';
 class TtsService {
   final http.Client _client;
   final ProviderConsentService? _consent;
+  final Duration requestTimeout;
 
-  TtsService({http.Client? client, ProviderConsentService? consent})
+  TtsService({
+    http.Client? client,
+    ProviderConsentService? consent,
+    this.requestTimeout = const Duration(seconds: 120),
+  })
       : _client = client ?? http.Client(),
         _consent = consent;
+
+  Future<http.Response> _post(
+    Uri uri, {
+    required Map<String, String> headers,
+    required String body,
+  }) async {
+    try {
+      return await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(requestTimeout);
+    } on TimeoutException {
+      throw const NetworkException(
+          'Speech service did not respond in time. Please try again.');
+    }
+  }
 
   // OpenAI TTS: returns MP3 bytes
   Future<Uint8List> generateSpeechOpenAI({
@@ -47,7 +69,7 @@ class TtsService {
         url: uri,
         requestBytes: utf8.encode(body).length,
         note: 'OpenAI TTS');
-    final res = await _client.post(uri, headers: headers, body: body);
+    final res = await _post(uri, headers: headers, body: body);
     sw.stop();
     DebugConsole.logApiEnd(
         status: res.statusCode,
@@ -114,7 +136,7 @@ class TtsService {
         requestBytes: utf8.encode(body).length,
         note: 'Gemini TTS');
     // Keep request body logging out to prevent panel spam; rely on concise lines
-    final res = await _client.post(uri, headers: headers, body: body);
+    final res = await _post(uri, headers: headers, body: body);
     sw.stop();
     DebugConsole.logApiEnd(
         status: res.statusCode,
@@ -181,7 +203,7 @@ class TtsService {
         url: uri,
         requestBytes: utf8.encode(body).length,
         note: 'xAI TTS');
-    final res = await _client.post(uri, headers: headers, body: body);
+    final res = await _post(uri, headers: headers, body: body);
     sw.stop();
     DebugConsole.logApiEnd(
         status: res.statusCode,
@@ -234,7 +256,7 @@ class TtsService {
       requestBytes: utf8.encode(body).length,
       note: 'ElevenLabs TTS',
     );
-    final res = await _client.post(uri, headers: headers, body: body);
+    final res = await _post(uri, headers: headers, body: body);
     sw.stop();
     DebugConsole.logApiEnd(
       status: res.statusCode,

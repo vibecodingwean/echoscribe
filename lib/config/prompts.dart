@@ -14,7 +14,7 @@ const String kLegacySummaryPrompt =
     '- Do not start with meta-phrases like "This transcript..." or "The text says...".\n'
     '- Return only the summary content.';
 
-const String kDefaultSummaryPrompt =
+const String kPreviousDefaultSummaryPrompt =
     'Summarize the following audio transcript concisely and neutrally.\n\n'
     'Rules:\n'
     '- Use only information present in the transcript; do not guess or invent details.\n'
@@ -28,6 +28,10 @@ const String kDefaultSummaryPrompt =
     '- Each section should contain one concise sentence or short paragraph. Avoid a bullet-only summary.\n'
     '- If the transcript covers one simple topic, write a short paragraph instead (1–3 sentences).\n\n'
     'Return only the summary content. Do not start with meta-phrases like "This transcript...".';
+
+const String kDefaultSummaryPrompt = '$kPreviousDefaultSummaryPrompt\n'
+    'Do not infer a speaker’s gender, identity, or voice from transcript text. '
+    'Use neutral references such as "the speaker" unless the transcript explicitly states otherwise.';
 
 const String kDefaultUrlSummaryPrompt =
     'Summarize the provided webpage content.\n\n'

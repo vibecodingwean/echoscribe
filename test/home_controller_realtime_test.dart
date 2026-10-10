@@ -14,6 +14,7 @@ import 'package:echoscribe/services/recorder_service.dart';
 import 'package:echoscribe/services/provider_consent_service.dart';
 import 'package:echoscribe/services/summary_service.dart';
 import 'package:echoscribe/services/translation_service.dart';
+import 'package:echoscribe/services/tts_service.dart';
 import 'package:echoscribe/services/whisper_service.dart';
 import 'package:echoscribe/services/xai_speech_service.dart';
 import 'package:echoscribe/state/content_state.dart';
@@ -835,6 +836,35 @@ void main() {
     expect(checkedEndpoints, isNot(contains(contains('changed-'))));
     expect(content.currentSummaryValue, 'summary');
   });
+  test('failed speech request clears the progress toast', () async {
+    final content = ContentState()..setCurrentTranscript('Read this text');
+    final playback = ThrowingPlaybackState();
+    final controller = buildController(
+      settings: SettingsState()..setOpenAiKey('unit-test-key'),
+      content: content,
+      recorder: FakeRecorder(),
+      realtimeClient: FakeRealtimeClient(),
+      playback: playback,
+    );
+    addTearDown(controller.dispose);
+    addTearDown(playback.dispose);
+    addTearDown(content.dispose);
+    var shown = 0;
+    var hidden = 0;
+
+    await expectLater(
+      controller.togglePlayback(
+        tts: TtsService(),
+        showProgressToast: (_) => shown++,
+        hideProgressToast: () => hidden++,
+        replaceProgressToast: (_) {},
+        showSuccess: (_) {},
+      ),
+      throwsStateError,
+    );
+    expect(shown, 1);
+    expect(hidden, 1);
+  });
 }
 
 SettingsState elevenLabsSettings({bool realtime = true}) => SettingsState()
@@ -1093,6 +1123,23 @@ class PausingPlaybackState extends PlaybackState {
 
   void completeStop() {
     if (!_allowStop.isCompleted) _allowStop.complete();
+  }
+}
+
+class ThrowingPlaybackState extends PlaybackState {
+  @override
+  Future<void> playSummary({
+    required TtsService tts,
+    required String text,
+    required AiProviderType provider,
+    required String activeApiKey,
+    String openAiVoice = 'alloy',
+    String geminiVoice = 'Zephyr',
+    String xaiVoice = 'eve',
+    String elevenLabsVoice = AiModelConfig.elevenLabsTtsVoice,
+    String languageCode = 'en',
+  }) async {
+    throw StateError('speech failed');
   }
 }
 

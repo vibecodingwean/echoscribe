@@ -32,6 +32,7 @@ class SpeakerAwareSummary {
     final trimmed = summaryPrompt?.trim() ?? '';
     final usingDefault = trimmed.isEmpty ||
         trimmed == kDefaultSummaryPrompt ||
+        trimmed == kPreviousDefaultSummaryPrompt ||
         trimmed == kLegacySummaryPrompt;
     final hasNative =
         source == SpeakerSource.nativeApi || hasNativeSpeakerLabels(text);

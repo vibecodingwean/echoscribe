@@ -57,12 +57,13 @@ void main() {
     );
   });
 
-  test('existing +114 users see +115 whats new once, but shares skip it', () {
-    expect(WhatsNewCopy.releaseVersionCode, 115);
+  test('existing +115 or +117 users see +118 whats new once', () {
+    expect(WhatsNewCopy.releaseVersionCode, 118);
     for (final (previousVersion, shared, expected) in [
-      (114, false, LaunchOverlayKind.whatsNew),
-      (114, true, LaunchOverlayKind.none),
-      (115, false, LaunchOverlayKind.none),
+      (115, false, LaunchOverlayKind.whatsNew),
+      (117, false, LaunchOverlayKind.whatsNew),
+      (117, true, LaunchOverlayKind.none),
+      (118, false, LaunchOverlayKind.none),
     ]) {
       expect(
         decideLaunchOverlay(
