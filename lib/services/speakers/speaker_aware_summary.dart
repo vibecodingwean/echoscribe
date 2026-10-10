@@ -19,6 +19,15 @@ class SpeakerAwareSummary {
   static bool hasNativeSpeakerLabels(String text) =>
       nativeSpeakerLine.hasMatch(text);
 
+  static bool usesDefaultPrompt(String? summaryPrompt) {
+    final trimmed = summaryPrompt?.trim() ?? '';
+    return trimmed.isEmpty ||
+        trimmed == kDefaultSummaryPrompt ||
+        trimmed == kPreviousGenderSafeSummaryPrompt ||
+        trimmed == kPreviousDefaultSummaryPrompt ||
+        trimmed == kLegacySummaryPrompt;
+  }
+
   /// Picks the summary prompt based on native speaker labels / source.
   ///
   /// - Default prompt + native labels → dedicated preserve-labels prompt
@@ -30,10 +39,7 @@ class SpeakerAwareSummary {
     SpeakerSource source = SpeakerSource.none,
   }) {
     final trimmed = summaryPrompt?.trim() ?? '';
-    final usingDefault = trimmed.isEmpty ||
-        trimmed == kDefaultSummaryPrompt ||
-        trimmed == kPreviousDefaultSummaryPrompt ||
-        trimmed == kLegacySummaryPrompt;
+    final usingDefault = usesDefaultPrompt(summaryPrompt);
     final hasNative =
         source == SpeakerSource.nativeApi || hasNativeSpeakerLabels(text);
 

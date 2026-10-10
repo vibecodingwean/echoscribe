@@ -29,7 +29,28 @@ const String kPreviousDefaultSummaryPrompt =
     '- If the transcript covers one simple topic, write a short paragraph instead (1–3 sentences).\n\n'
     'Return only the summary content. Do not start with meta-phrases like "This transcript...".';
 
-const String kDefaultSummaryPrompt = '$kPreviousDefaultSummaryPrompt\n'
+const String kPreviousGenderSafeSummaryPrompt =
+    '$kPreviousDefaultSummaryPrompt\n'
+    'A text transcript does not establish the speaker’s voice, gender, or identity. '
+    'Never assign a gendered speaker role unless the transcript explicitly identifies it. '
+    'In German, describe the facts directly or use "die sprechende Person"; '
+    'do not write "Sprecherin" or "Sprecher" without explicit evidence.';
+
+const String kDefaultSummaryPrompt =
+    'Summarize the following audio transcript concisely and neutrally.\n\n'
+    'Rules:\n'
+    '- Use only information present in the transcript; do not guess or invent details.\n'
+    '- Capture concrete facts, key viewpoints, outcomes, actions, and follow-ups when discussed.\n'
+    '- If multiple speakers are detected, identify them generically unless they are already labeled; preserve existing speaker labels when attributing viewpoints, questions, and decisions.\n'
+    '- For a personal note or monologue, focus on the core ideas, insights, or intentions.\n'
+    '- Skip filler words, small talk, and repetition.\n\n'
+    'Structure:\n'
+    '- Every substantive summary MUST begin with a topic-specific Markdown heading formatted exactly as "## <emoji> <1–3 word title>". Choose the title from the actual content, not a generic "Summary" label.\n'
+    '- If the transcript covers one topic, use one heading followed by a concise paragraph of 1–3 sentences.\n'
+    '- If it covers multiple distinct aspects, use 2–4 short sections with one fitting heading per aspect. Add sections only for aspects actually discussed; never invent themes to reach a count.\n'
+    '- Each section should contain one concise sentence or short paragraph. Avoid a bullet-only summary.\n'
+    '- If the transcript has no substantive content to summarize, state that briefly without inventing a topic.\n\n'
+    'Return only the summary content. Do not start with meta-phrases like "This transcript...".\n'
     'A text transcript does not establish the speaker’s voice, gender, or identity. '
     'Never assign a gendered speaker role unless the transcript explicitly identifies it. '
     'In German, describe the facts directly or use "die sprechende Person"; '
@@ -103,7 +124,8 @@ class AiModelConfig {
   static const String geminiTranslationFast = 'gemini-3.8-flash';
   static const String geminiImageFast = 'gemini-3.1-flash-image';
   static const String geminiTts = 'gemini-3.8-flash-tts';
-  static const String geminiRealtimeTranscription = 'gemini-3.5-transcribe-live';
+  static const String geminiRealtimeTranscription =
+      'gemini-3.5-transcribe-live';
 
   // Helper methods to get the right model based on 'Pro' toggle
   static String openAiSummary({required bool pro}) =>

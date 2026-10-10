@@ -17,8 +17,15 @@ class SummaryService {
   static const String _localAiFormattingRule =
       'For sectioned summaries, every heading MUST be formatted exactly as '
       '"## <emoji> <1-3 word title>". Never write a section heading without an emoji.';
+  static const String _defaultHeadingDirective =
+      'For a substantive audio summary, begin with a topic-specific Markdown '
+      '"## <emoji> <1–3 word title>" heading. Add further headings only for '
+      'distinct aspects actually present in the transcript.';
 
-  String _summarySystemPrompt(String langHint) {
+  String _summarySystemPrompt(String langHint, {String? summaryPrompt}) {
+    final headingRule = SpeakerAwareSummary.usesDefaultPrompt(summaryPrompt)
+        ? '$_defaultHeadingDirective\n'
+        : '';
     return 'You are a precise summarizer. Follow the language rule strictly.\n'
         '$langHint\n'
         'If no explicit target language is given, preserve the input language exactly.\n'
@@ -26,7 +33,8 @@ class SummaryService {
         'Unless the transcript explicitly identifies a speaker’s gender, use neutral wording. '
         'For German summaries, omit speaker references or use "die sprechende Person"; '
         'do not call someone "Sprecherin" or "Sprecher" without explicit evidence.\n'
-        'Output only the summary, with no preface or labels.';
+        '$headingRule'
+        'Output only the requested summary, without a preface or meta commentary.';
   }
 
   String _languageDirective(String code) {
@@ -87,7 +95,11 @@ class SummaryService {
     final payload = <String, dynamic>{
       'model': model,
       'messages': [
-        {'role': 'system', 'content': _summarySystemPrompt(langHint)},
+        {
+          'role': 'system',
+          'content':
+              _summarySystemPrompt(langHint, summaryPrompt: summaryPrompt)
+        },
         {'role': 'user', 'content': prompt},
       ],
     };
@@ -170,7 +182,11 @@ class SummaryService {
       langHint: langHint,
       text: trimmed,
     );
-    prompt = '$_localAiFormattingRule\n\n$prompt';
+    final useDefaultHeadings =
+        SpeakerAwareSummary.usesDefaultPrompt(summaryPrompt);
+    if (useDefaultHeadings) {
+      prompt = '$_localAiFormattingRule\n\n$prompt';
+    }
 
     final uri = Uri.parse(endpoint.trim());
     final headers = {
@@ -188,7 +204,9 @@ class SummaryService {
       'messages': [
         {
           'role': 'system',
-          'content': '${_summarySystemPrompt(langHint)} $_localAiFormattingRule',
+          'content':
+              _summarySystemPrompt(langHint, summaryPrompt: summaryPrompt) +
+                  (useDefaultHeadings ? ' $_localAiFormattingRule' : ''),
         },
         {'role': 'user', 'content': prompt},
       ],
@@ -406,7 +424,11 @@ class SummaryService {
     final payload = <String, dynamic>{
       'model': model,
       'messages': [
-        {'role': 'system', 'content': _summarySystemPrompt(langHint)},
+        {
+          'role': 'system',
+          'content':
+              _summarySystemPrompt(langHint, summaryPrompt: summaryPrompt)
+        },
         {'role': 'user', 'content': prompt},
       ],
     };
@@ -493,7 +515,7 @@ class SummaryService {
       model: model,
       prompt: prompt,
       systemPrompt:
-          'You are a precise summarizer. Follow the language rule strictly. Output only the summary, no preface or labels.',
+          _summarySystemPrompt(langHint, summaryPrompt: summaryPrompt),
     );
   }
 }

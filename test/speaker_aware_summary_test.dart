@@ -23,7 +23,8 @@ void main() {
     });
 
     test('normalizes spk labels to Speaker N', () {
-      expect(NativeSpeakerFormatter.normalizeSpeakerLabel('spk_3'), 'Speaker 3');
+      expect(
+          NativeSpeakerFormatter.normalizeSpeakerLabel('spk_3'), 'Speaker 3');
       expect(
         NativeSpeakerFormatter.normalizeSpeakerLabel('Speaker 4'),
         'Speaker 4',
@@ -32,12 +33,14 @@ void main() {
   });
 
   group('SpeakerAwareSummary', () {
-    test('default audio summary uses thematic sections for complex input', () {
+    test('default audio summary uses heading for one or more real topics', () {
+      expect(kDefaultSummaryPrompt, contains('one heading'));
       expect(kDefaultSummaryPrompt, contains('2–4 short sections'));
       expect(kDefaultSummaryPrompt, contains('## <emoji> <1–3 word title>'));
-      expect(kDefaultSummaryPrompt, contains('short paragraph'));
+      expect(kDefaultSummaryPrompt, isNot(contains('short paragraph instead')));
       expect(kDefaultSummaryPrompt, contains('Use only information'));
-      expect(kDefaultSummaryPrompt, contains('A text transcript does not establish'));
+      expect(kDefaultSummaryPrompt,
+          contains('A text transcript does not establish'));
       expect(kDefaultSummaryPrompt, contains('die sprechende Person'));
     });
 
@@ -53,6 +56,8 @@ void main() {
       settings.setSummaryPrompt(kLegacySummaryPrompt);
       expect(settings.summaryPrompt, kDefaultSummaryPrompt);
       settings.setSummaryPrompt(kPreviousDefaultSummaryPrompt);
+      expect(settings.summaryPrompt, kDefaultSummaryPrompt);
+      settings.setSummaryPrompt(kPreviousGenderSafeSummaryPrompt);
       expect(settings.summaryPrompt, kDefaultSummaryPrompt);
       settings.setSummaryPrompt('Use exactly three bullets.');
       expect(settings.summaryPrompt, 'Use exactly three bullets.');
@@ -73,7 +78,8 @@ void main() {
       );
       expect(prompt, kNativeSpeakerSummaryPrompt);
       expect(prompt.contains('PRESERVE'), isTrue);
-      expect(prompt.toLowerCase().contains('do not invent extra speakers'), isTrue);
+      expect(prompt.toLowerCase().contains('do not invent extra speakers'),
+          isTrue);
     });
 
     test('previous default uses neutral native preserve prompt', () {
@@ -83,6 +89,15 @@ void main() {
       );
       expect(prompt, kNativeSpeakerSummaryPrompt);
       expect(prompt, contains('die sprechende Person'));
+    });
+
+    test('Internal119 stored default uses new native heading prompt', () {
+      final prompt = SpeakerAwareSummary.resolvePrompt(
+        text: 'Speaker 1: Hallo',
+        summaryPrompt: kPreviousGenderSafeSummaryPrompt,
+      );
+      expect(prompt, kNativeSpeakerSummaryPrompt);
+      expect(prompt, contains('one heading'));
     });
 
     test('uses native prompt when source is nativeApi even without labels', () {

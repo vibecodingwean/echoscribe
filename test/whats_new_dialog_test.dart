@@ -39,11 +39,11 @@ void main() {
 
   testWidgets('whats new dialog shows three single-line bullets',
       (tester) async {
-    expect(WhatsNewCopy.releaseVersionCode, 119);
+    expect(WhatsNewCopy.releaseVersionCode, 120);
     expect(WhatsNewCopy.whatsNewBullets, [
-      'Anthropic Fast summaries and translations now use Claude Haiku 5.5.',
+      'Audio summaries now use clear topic headings, even for one topic.',
+      'Anthropic Fast summaries and translations use Claude Haiku 5.5.',
       'Play reads either your transcript or its summary with your selected speech provider.',
-      'Speech playback gives clearer feedback when a provider takes too long to respond.',
     ]);
     await tester.pumpWidget(
       MaterialApp(
