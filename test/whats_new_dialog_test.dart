@@ -39,7 +39,7 @@ void main() {
 
   testWidgets('whats new dialog shows three single-line bullets',
       (tester) async {
-    expect(WhatsNewCopy.releaseVersionCode, 120);
+    expect(WhatsNewCopy.releaseVersionCode, 121);
     expect(WhatsNewCopy.whatsNewBullets, [
       'Audio summaries now use clear topic headings, even for one topic.',
       'Anthropic Fast summaries and translations use Claude Haiku 5.5.',
