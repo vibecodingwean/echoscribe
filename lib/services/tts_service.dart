@@ -18,8 +18,7 @@ class TtsService {
     http.Client? client,
     ProviderConsentService? consent,
     this.requestTimeout = const Duration(seconds: 120),
-  })
-      : _client = client ?? http.Client(),
+  })  : _client = client ?? http.Client(),
         _consent = consent;
 
   Future<http.Response> _post(
@@ -27,11 +26,22 @@ class TtsService {
     required Map<String, String> headers,
     required String body,
   }) async {
+    final abort = Completer<void>();
+    final request = http.AbortableRequest(
+      'POST',
+      uri,
+      abortTrigger: abort.future,
+    )
+      ..headers.addAll(headers)
+      ..body = body;
     try {
-      return await _client
-          .post(uri, headers: headers, body: body)
+      return await (() async {
+        final response = await _client.send(request);
+        return http.Response.fromStream(response);
+      })()
           .timeout(requestTimeout);
     } on TimeoutException {
+      abort.complete();
       throw const NetworkException(
           'Speech service did not respond in time. Please try again.');
     }
@@ -48,7 +58,8 @@ class TtsService {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return Uint8List(0);
     await _consent?.ensure(AiProviderType.openai,
-        dataType: 'text from a transcript or summary', purpose: 'speech generation');
+        dataType: 'text from a transcript or summary',
+        purpose: 'speech generation');
 
     final uri = Uri.parse('https://api.openai.com/v1/audio/speech');
     final headers = {
@@ -102,7 +113,8 @@ class TtsService {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return Uint8List(0);
     await _consent?.ensure(AiProviderType.gemini,
-        dataType: 'text from a transcript or summary', purpose: 'speech generation');
+        dataType: 'text from a transcript or summary',
+        purpose: 'speech generation');
 
     final uri = Uri.parse(
         'https://generativelanguage.googleapis.com/v1beta/interactions');
@@ -184,7 +196,8 @@ class TtsService {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return Uint8List(0);
     await _consent?.ensure(AiProviderType.xai,
-        dataType: 'text from a transcript or summary', purpose: 'speech generation');
+        dataType: 'text from a transcript or summary',
+        purpose: 'speech generation');
 
     final uri = Uri.parse('https://api.x.ai/v1/tts');
     final headers = {
@@ -234,7 +247,8 @@ class TtsService {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return Uint8List(0);
     await _consent?.ensure(AiProviderType.elevenLabs,
-        dataType: 'text from a transcript or summary', purpose: 'speech generation');
+        dataType: 'text from a transcript or summary',
+        purpose: 'speech generation');
 
     final uri = Uri.parse(
       'https://api.elevenlabs.io/v1/text-to-speech/${Uri.encodeComponent(voiceId)}',

@@ -19,11 +19,13 @@ void main() {
       'xyz.luan/audioplayers.global',
       'xyz.luan/audioplayers',
     }) {
-      messenger.setMockMethodCallHandler(MethodChannel(channel), (_) async => null);
+      messenger.setMockMethodCallHandler(
+          MethodChannel(channel), (_) async => null);
     }
   });
 
-  test('an unresponsive speech request releases playback loading state', () async {
+  test('an unresponsive speech request releases playback loading state',
+      () async {
     final pending = Completer<http.Response>();
     final service = TtsService(
       client: MockClient((_) => pending.future),
@@ -47,5 +49,57 @@ void main() {
     );
     expect(playback.isAudioLoading, isFalse);
     expect(playback.isPlaying, isFalse);
+  });
+
+  test('timeout aborts pending headers and body while client stays reusable',
+      () async {
+    var calls = 0;
+    final headersAborted = Completer<void>();
+    final bodyAborted = Completer<void>();
+    final client = MockClient.streaming((request, _) async {
+      calls++;
+      final trigger = (request as http.AbortableRequest).abortTrigger!;
+      if (calls == 1) {
+        final pending = Completer<http.StreamedResponse>();
+        trigger.then((_) {
+          headersAborted.complete();
+          pending.complete(http.StreamedResponse(const Stream.empty(), 204));
+        });
+        return pending.future;
+      }
+      if (calls == 2) {
+        final body = StreamController<List<int>>();
+        trigger.then((_) {
+          bodyAborted.complete();
+          body.close();
+        });
+        return http.StreamedResponse(body.stream, 200);
+      }
+      return http.StreamedResponse(const Stream.empty(), 204);
+    });
+    final service = TtsService(
+      client: client,
+      requestTimeout: const Duration(milliseconds: 20),
+    );
+
+    for (var i = 0; i < 2; i++) {
+      await expectLater(
+        service.generateSpeechOpenAI(
+          apiKey: 'x',
+          text: 'Read this text',
+        ),
+        throwsA(isA<NetworkException>()),
+      );
+    }
+    await headersAborted.future;
+    await bodyAborted.future;
+    expect(
+      await service.generateSpeechOpenAI(
+        apiKey: 'x',
+        text: 'Read this text',
+      ),
+      isEmpty,
+    );
+    expect(calls, 3);
   });
 }
