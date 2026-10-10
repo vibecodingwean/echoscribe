@@ -384,7 +384,9 @@ class SettingsState extends ChangeNotifier {
 
   String get summaryPrompt => _summaryPrompt;
   void setSummaryPrompt(String prompt) {
-    _summaryPrompt = prompt.trim();
+    final trimmed = prompt.trim();
+    _summaryPrompt =
+        trimmed == kLegacySummaryPrompt ? kDefaultSummaryPrompt : trimmed;
     notifyListeners();
   }
 

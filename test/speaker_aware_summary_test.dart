@@ -2,6 +2,7 @@ import 'package:echoscribe/config/prompts.dart';
 import 'package:echoscribe/services/speakers/native_speaker_formatter.dart';
 import 'package:echoscribe/services/speakers/speaker_aware_summary.dart';
 import 'package:echoscribe/services/speakers/speaker_models.dart';
+import 'package:echoscribe/state/settings_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -31,6 +32,28 @@ void main() {
   });
 
   group('SpeakerAwareSummary', () {
+    test('default audio summary uses thematic sections for complex input', () {
+      expect(kDefaultSummaryPrompt, contains('2–4 short sections'));
+      expect(kDefaultSummaryPrompt, contains('## <emoji> <1–3 word title>'));
+      expect(kDefaultSummaryPrompt, contains('short paragraph'));
+      expect(kDefaultSummaryPrompt, contains('Use only information'));
+    });
+
+    test('native speaker summary keeps attribution and thematic sections', () {
+      expect(kNativeSpeakerSummaryPrompt, contains('2–4 short sections'));
+      expect(
+          kNativeSpeakerSummaryPrompt, contains('## <emoji> <1–3 word title>'));
+      expect(kNativeSpeakerSummaryPrompt, contains('PRESERVE'));
+    });
+
+    test('stored legacy default upgrades while custom prompt stays intact', () {
+      final settings = SettingsState();
+      settings.setSummaryPrompt(kLegacySummaryPrompt);
+      expect(settings.summaryPrompt, kDefaultSummaryPrompt);
+      settings.setSummaryPrompt('Use exactly three bullets.');
+      expect(settings.summaryPrompt, 'Use exactly three bullets.');
+    });
+
     test('keeps default synthetic prompt when no native labels', () {
       final prompt = SpeakerAwareSummary.resolvePrompt(
         text: 'Just a monologue without labels.',

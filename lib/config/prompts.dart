@@ -1,5 +1,5 @@
 // ignore_for_file: constant_identifier_names
-const String kDefaultSummaryPrompt =
+const String kLegacySummaryPrompt =
     'Summarize the following transcript into a structured, concise, and neutral summary.\n'
     '\n'
     'Guidelines:\n'
@@ -13,6 +13,21 @@ const String kDefaultSummaryPrompt =
     'Formatting:\n'
     '- Do not start with meta-phrases like "This transcript..." or "The text says...".\n'
     '- Return only the summary content.';
+
+const String kDefaultSummaryPrompt =
+    'Summarize the following audio transcript concisely and neutrally.\n\n'
+    'Rules:\n'
+    '- Use only information present in the transcript; do not guess or invent details.\n'
+    '- Capture concrete facts, key viewpoints, outcomes, actions, and follow-ups when discussed.\n'
+    '- If multiple speakers are detected, identify them generically unless they are already labeled; preserve existing speaker labels when attributing viewpoints, questions, and decisions.\n'
+    '- For a personal note or monologue, focus on the core ideas, insights, or intentions.\n'
+    '- Skip filler words, small talk, and repetition.\n\n'
+    'Structure:\n'
+    '- If the transcript contains multiple distinct themes, organize the summary into 2–4 short sections by topic.\n'
+    '- Each section heading MUST be formatted as "## <emoji> <1–3 word title>". Never write a heading without an emoji.\n'
+    '- Each section should contain one concise sentence or short paragraph. Avoid a bullet-only summary.\n'
+    '- If the transcript covers one simple topic, write a short paragraph instead (1–3 sentences).\n\n'
+    'Return only the summary content. Do not start with meta-phrases like "This transcript...".';
 
 const String kDefaultUrlSummaryPrompt =
     'Summarize the provided webpage content.\n\n'

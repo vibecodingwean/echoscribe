@@ -14,10 +14,6 @@ class SummaryService {
   static const int _localAiMaxInputChars = 1200;
   static const int _localAiMaxOutputTokens = 180;
   static const Duration _localAiSummaryTimeout = Duration(seconds: 75);
-  static const String _localAiSummaryPrompt =
-      'Summarize the following content in 2-4 concise sentences. '
-      'Use only facts present in the text. '
-      'Do not add headings, labels, or meta commentary.';
   static const String _localAiFormattingRule =
       'For sectioned summaries, every heading MUST be formatted exactly as '
       '"## <emoji> <1-3 word title>". Never write a section heading without an emoji.';
@@ -69,10 +65,10 @@ class SummaryService {
     if (trimmed.isEmpty) return trimmed;
 
     final langHint = _languageDirective(targetLanguageCode);
-    // OpenAI chat path historically used a short local-style default when unset.
-    final resolved = summaryPrompt?.trim().isNotEmpty == true
-        ? _resolveSummaryPrompt(text: trimmed, summaryPrompt: summaryPrompt)
-        : _localAiSummaryPrompt;
+    final resolved = _resolveSummaryPrompt(
+      text: trimmed,
+      summaryPrompt: summaryPrompt,
+    );
     final prompt = _buildPrompt(
       basePrompt: resolved,
       langHint: langHint,

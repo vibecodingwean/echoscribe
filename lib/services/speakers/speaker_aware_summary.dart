@@ -2,20 +2,11 @@ import 'package:echoscribe/config/prompts.dart';
 
 import 'speaker_models.dart';
 
-const String kNativeSpeakerSummaryPrompt =
-    'Summarize the following transcript into a structured, concise, and neutral summary.\n'
-    '\n'
-    'Guidelines:\n'
+const String kNativeSpeakerSummaryPrompt = '$kDefaultSummaryPrompt\n\n'
+    'Native speaker labels:\n'
     '- The transcript already contains native speaker labels in the form "Speaker N:".\n'
     '- PRESERVE those exact Speaker N labels when attributing viewpoints, questions, and decisions.\n'
-    '- Do NOT invent extra speakers or rename existing ones (no Speaker A/B unless already present).\n'
-    '- Capture key outcomes, actions, or follow-ups if discussed.\n'
-    '- If the text appears to be a personal note or monologue, focus only on the core ideas, insights, or intentions.\n'
-    '- Skip filler words, small talk, and redundant statements.\n'
-    '\n'
-    'Formatting:\n'
-    '- Do not start with meta-phrases like "This transcript..." or "The text says...".\n'
-    '- Return only the summary content.';
+    '- Do NOT invent extra speakers or rename existing ones (no Speaker A/B unless already present).';
 
 const String kNativeSpeakerInstruction =
     'The transcript already uses native "Speaker N:" labels. Preserve those labels; '
@@ -39,10 +30,11 @@ class SpeakerAwareSummary {
     SpeakerSource source = SpeakerSource.none,
   }) {
     final trimmed = summaryPrompt?.trim() ?? '';
-    final usingDefault =
-        trimmed.isEmpty || trimmed == kDefaultSummaryPrompt;
-    final hasNative = source == SpeakerSource.nativeApi ||
-        hasNativeSpeakerLabels(text);
+    final usingDefault = trimmed.isEmpty ||
+        trimmed == kDefaultSummaryPrompt ||
+        trimmed == kLegacySummaryPrompt;
+    final hasNative =
+        source == SpeakerSource.nativeApi || hasNativeSpeakerLabels(text);
 
     if (!hasNative) {
       return usingDefault ? kDefaultSummaryPrompt : trimmed;
