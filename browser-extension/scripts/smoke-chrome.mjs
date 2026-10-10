@@ -33,9 +33,9 @@ try {
   await page.locator('#provider').selectOption('anthropic');
   await page.locator('#model option').first().waitFor({ state: 'attached' });
   assert.deepEqual(await page.locator('#model option').allTextContents(), [
-    'Fast — claude-sonnet-5-5', 'Pro — claude-opus-5-5',
+    'Fast — claude-haiku-5-5', 'Pro — claude-opus-5-5',
   ]);
-  assert.equal(await page.locator('#model').inputValue(), 'claude-sonnet-5-5');
+  assert.equal(await page.locator('#model').inputValue(), 'claude-haiku-5-5');
 
   // The isolated browser profile has a placeholder key. No provider request
   // leaves the browser: its service-worker fetch is replaced before dispatch.
@@ -53,7 +53,7 @@ try {
     apiKey: { provider: 'anthropic', value: 'placeholder-only' },
   }));
   assert.equal(saved.ok, true);
-  assert.equal(saved.settings.models.anthropic, 'claude-sonnet-5-5');
+  assert.equal(saved.settings.models.anthropic, 'claude-haiku-5-5');
   const result = await page.evaluate(() => chrome.runtime.sendMessage({
     type: 'summarizePayload',
     page: { title: 'Fixture', text: 'A short synthetic sentence.' },
@@ -61,11 +61,11 @@ try {
   }));
   const request = await worker.evaluate(() => globalThis.__echoscribeSmoke || null);
   assert.equal(result.ok, true);
-  assert.equal(result.model, 'claude-sonnet-5-5');
+  assert.equal(result.model, 'claude-haiku-5-5');
   assert.equal(result.summary, 'Mocked provider summary.');
   assert.equal(request?.url, 'https://api.anthropic.com/v1/messages');
-  assert.equal(request?.body?.model, 'claude-sonnet-5-5');
-  console.log('chrome_smoke=PASS model=claude-sonnet-5-5');
+  assert.equal(request?.body?.model, 'claude-haiku-5-5');
+  console.log('chrome_smoke=PASS model=claude-haiku-5-5');
 } finally {
   await context?.close();
   await rm(profile, { recursive: true, force: true });

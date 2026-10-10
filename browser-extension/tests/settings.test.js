@@ -58,7 +58,8 @@ describe('normalizeSettings', () => {
   it('migrates retained Fast and Anthropic Pro choices without changing Astra', () => {
     expect(normalizeSettings({ models: { openai: 'gpt-5.6-terra' } }).models.openai).toBe('gpt-6-luna');
     expect(normalizeSettings({ models: { openai: 'gpt-6-astra' } }).models.openai).toBe('gpt-6-astra');
-    expect(normalizeSettings({ models: { anthropic: 'claude-sonnet-5' } }).models.anthropic).toBe('claude-sonnet-5-5');
+    expect(normalizeSettings({ models: { anthropic: 'claude-sonnet-5' } }).models.anthropic).toBe('claude-haiku-5-5');
+    expect(normalizeSettings({ models: { anthropic: 'claude-sonnet-5-5' } }).models.anthropic).toBe('claude-haiku-5-5');
     expect(normalizeSettings({ models: { anthropic: 'claude-user-choice' } }).models.anthropic).toBe('claude-user-choice');
     expect(normalizeSettings({ models: { anthropic: 'claude-opus-5' } }).models.anthropic).toBe('claude-opus-5-5');
   });
