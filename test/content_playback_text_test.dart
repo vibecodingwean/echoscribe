@@ -32,10 +32,46 @@ void main() {
     );
 
     expect(content.currentPlaybackText,
-        'Mehr dazu auf Morgen sprechen wir weiter.');
+        'Mehr dazu auf. Morgen sprechen wir weiter.');
     content.setCurrentTranscript('https://example.com/article');
     expect(content.currentPlaybackText, isEmpty);
     expect(content.canPlayTts(AiProviderType.openai), isFalse);
+  });
+
+  test('plain transcript preserves dates and comparisons', () {
+    final content = ContentState(historyWriter: (_) async {});
+    addTearDown(content.dispose);
+    content.setCurrentTranscript(
+      '10. Oktober 2026 war ein guter Tag. Der Wert ist <b und >a.',
+    );
+    expect(content.currentPlaybackText,
+        '10. Oktober 2026 war ein guter Tag. Der Wert ist <b und >a.');
+  });
+
+  test('full bracketed URL is omitted from transcript playback', () {
+    final content = ContentState(historyWriter: (_) async {});
+    addTearDown(content.dispose);
+    content.setCurrentTranscript(
+      'Siehe https://example.com/search?filter[year]=2026&token=secret.',
+    );
+    expect(content.currentPlaybackText, 'Siehe.');
+    content.setCurrentTranscript('https://[2001:db8::1]/article?token=secret');
+    expect(content.currentPlaybackText, isEmpty);
+    expect(content.canPlayTts(AiProviderType.openai), isFalse);
+    content.setCurrentTranscript('https://example.com/article.');
+    expect(content.currentPlaybackText, isEmpty);
+    expect(content.canPlayTts(AiProviderType.openai), isFalse);
+  });
+
+  test('plain summary preserves dates and comparisons', () {
+    final content = ContentState(historyWriter: (_) async {});
+    addTearDown(content.dispose);
+    content.setOutputMode(OutputMode.summary);
+    content.setCurrentSummary(
+      '10. Oktober 2026 war ein guter Tag. Der Wert ist <b und >a.',
+    );
+    expect(content.currentPlaybackText,
+        '10. Oktober 2026 war ein guter Tag. Der Wert ist <b und >a.');
   });
 
   test('summary playback speaks headings and content without markup', () {
@@ -43,12 +79,12 @@ void main() {
     addTearDown(content.dispose);
     content.setOutputMode(OutputMode.summary);
     content.setCurrentSummary('''## 🏠 Hausaufgaben
-**Mathe:** Aufgaben 1–3.
+**Mathe:** Aufgaben 1–3. 10. Oktober bleibt. Der Wert ist <b und >a.
 
 <h2>Weitere Schritte</h2>
 Besuche [die Kursseite](https://example.com/course) für Details.''');
 
     expect(content.currentPlaybackText,
-        '🏠 Hausaufgaben Mathe: Aufgaben 1–3. Weitere Schritte Besuche die Kursseite für Details.');
+        '🏠 Hausaufgaben Mathe: Aufgaben 1–3. 10. Oktober bleibt. Der Wert ist <b und >a. Weitere Schritte Besuche die Kursseite für Details.');
   });
 }

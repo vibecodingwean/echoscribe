@@ -30,9 +30,9 @@ class ContentState extends ChangeNotifier {
   String get currentTranscriptValue => currentTranscript.value;
   String get sourceTranscriptValue => sourceTranscript.value;
   String get currentSummaryValue => currentSummary.value;
-  String get currentPlaybackText => PlaybackTextFormatter.format(
-        isSummaryMode ? currentSummaryValue : currentTranscriptValue,
-      );
+  String get currentPlaybackText => isSummaryMode
+      ? PlaybackTextFormatter.summary(currentSummaryValue)
+      : PlaybackTextFormatter.transcript(currentTranscriptValue);
 
   bool canPlayTts(AiProviderType provider) =>
       provider.supportsTts && currentPlaybackText.isNotEmpty;
