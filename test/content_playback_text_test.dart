@@ -23,4 +23,32 @@ void main() {
     expect(content.canPlayTts(AiProviderType.openai), isFalse);
     expect(content.currentPlaybackText, isEmpty);
   });
+
+  test('transcript playback omits web addresses but keeps spoken words', () {
+    final content = ContentState(historyWriter: (_) async {});
+    addTearDown(content.dispose);
+    content.setCurrentTranscript(
+      'Mehr dazu auf https://example.com/article?q=1. Morgen sprechen wir weiter.',
+    );
+
+    expect(content.currentPlaybackText,
+        'Mehr dazu auf Morgen sprechen wir weiter.');
+    content.setCurrentTranscript('https://example.com/article');
+    expect(content.currentPlaybackText, isEmpty);
+    expect(content.canPlayTts(AiProviderType.openai), isFalse);
+  });
+
+  test('summary playback speaks headings and content without markup', () {
+    final content = ContentState(historyWriter: (_) async {});
+    addTearDown(content.dispose);
+    content.setOutputMode(OutputMode.summary);
+    content.setCurrentSummary('''## 🏠 Hausaufgaben
+**Mathe:** Aufgaben 1–3.
+
+<h2>Weitere Schritte</h2>
+Besuche [die Kursseite](https://example.com/course) für Details.''');
+
+    expect(content.currentPlaybackText,
+        '🏠 Hausaufgaben Mathe: Aufgaben 1–3. Weitere Schritte Besuche die Kursseite für Details.');
+  });
 }

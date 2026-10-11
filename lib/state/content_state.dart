@@ -6,6 +6,7 @@ import "package:shared_preferences/shared_preferences.dart";
 import "package:echoscribe/models/transcription_item.dart";
 import "package:echoscribe/models/enums.dart";
 import "package:echoscribe/services/url_content_service.dart";
+import "package:echoscribe/utils/playback_text_formatter.dart";
 
 typedef HistoryWriter = Future<void> Function(String encodedHistory);
 
@@ -29,8 +30,9 @@ class ContentState extends ChangeNotifier {
   String get currentTranscriptValue => currentTranscript.value;
   String get sourceTranscriptValue => sourceTranscript.value;
   String get currentSummaryValue => currentSummary.value;
-  String get currentPlaybackText =>
-      (isSummaryMode ? currentSummaryValue : currentTranscriptValue).trim();
+  String get currentPlaybackText => PlaybackTextFormatter.format(
+        isSummaryMode ? currentSummaryValue : currentTranscriptValue,
+      );
 
   bool canPlayTts(AiProviderType provider) =>
       provider.supportsTts && currentPlaybackText.isNotEmpty;
