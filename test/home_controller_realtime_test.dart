@@ -865,6 +865,47 @@ void main() {
     expect(shown, 1);
     expect(hidden, 1);
   });
+
+  test('play action sends cleaned transcript and summary to speech playback',
+      () async {
+    final content = ContentState()..setCurrentTranscript('''#### URL:
+[https://example.com/article?token=private](https://example.com/article?token=private)
+
+........................................
+
+#### EXTRACTED TEXT:
+
+> Der Artikeltext.''');
+    final playback = CapturingPlaybackState();
+    final controller = buildController(
+      settings: SettingsState()..setOpenAiKey('unit-test-key'),
+      content: content,
+      recorder: FakeRecorder(),
+      realtimeClient: FakeRealtimeClient(),
+      playback: playback,
+    );
+    addTearDown(controller.dispose);
+    addTearDown(playback.dispose);
+    addTearDown(content.dispose);
+
+    Future<void> play() => controller.togglePlayback(
+          tts: TtsService(),
+          showProgressToast: (_) {},
+          hideProgressToast: () {},
+          replaceProgressToast: (_) {},
+          showSuccess: (_) {},
+        );
+
+    await play();
+    content
+      ..setCurrentSummary(
+          '## Wichtig\n> [Die Kursseite](https://example.com) hilft.')
+      ..setOutputMode(OutputMode.summary);
+    await play();
+
+    expect(playback.spokenTexts,
+        ['Der Artikeltext.', 'Wichtig Die Kursseite hilft.']);
+  });
 }
 
 SettingsState elevenLabsSettings({bool realtime = true}) => SettingsState()
@@ -1140,6 +1181,25 @@ class ThrowingPlaybackState extends PlaybackState {
     String languageCode = 'en',
   }) async {
     throw StateError('speech failed');
+  }
+}
+
+class CapturingPlaybackState extends PlaybackState {
+  final List<String> spokenTexts = [];
+
+  @override
+  Future<void> playSummary({
+    required TtsService tts,
+    required String text,
+    required AiProviderType provider,
+    required String activeApiKey,
+    String openAiVoice = 'alloy',
+    String geminiVoice = 'Zephyr',
+    String xaiVoice = 'eve',
+    String elevenLabsVoice = AiModelConfig.elevenLabsTtsVoice,
+    String languageCode = 'en',
+  }) async {
+    spokenTexts.add(text);
   }
 }
 

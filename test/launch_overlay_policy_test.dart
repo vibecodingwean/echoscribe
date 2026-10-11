@@ -57,8 +57,8 @@ void main() {
     );
   });
 
-  test('existing +115 through +120 users see +121 whats new once', () {
-    expect(WhatsNewCopy.releaseVersionCode, 121);
+  test('existing +115 through +121 users see +122 whats new once', () {
+    expect(WhatsNewCopy.releaseVersionCode, 122);
     for (final (previousVersion, shared, expected) in [
       (115, false, LaunchOverlayKind.whatsNew),
       (117, false, LaunchOverlayKind.whatsNew),
@@ -66,7 +66,8 @@ void main() {
       (118, false, LaunchOverlayKind.whatsNew),
       (119, false, LaunchOverlayKind.whatsNew),
       (120, false, LaunchOverlayKind.whatsNew),
-      (121, false, LaunchOverlayKind.none),
+      (121, false, LaunchOverlayKind.whatsNew),
+      (122, false, LaunchOverlayKind.none),
     ]) {
       expect(
         decideLaunchOverlay(

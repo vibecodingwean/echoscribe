@@ -39,11 +39,11 @@ void main() {
 
   testWidgets('whats new dialog shows three single-line bullets',
       (tester) async {
-    expect(WhatsNewCopy.releaseVersionCode, 121);
+    expect(WhatsNewCopy.releaseVersionCode, 122);
     expect(WhatsNewCopy.whatsNewBullets, [
-      'Audio summaries now use clear topic headings, even for one topic.',
-      'Anthropic Fast summaries and translations use Claude Haiku 5.5.',
-      'Play reads either your transcript or its summary with your selected speech provider.',
+      'Transcripts read aloud without web addresses.',
+      'Extracted web articles read their text without URL or section labels.',
+      'Summaries speak headings, quotes, and link names without formatting marks.',
     ]);
     await tester.pumpWidget(
       MaterialApp(

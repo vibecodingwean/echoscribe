@@ -1,5 +1,5 @@
 class WhatsNewCopy {
-  static const int releaseVersionCode = 121;
+  static const int releaseVersionCode = 122;
 
   static const String welcomeTitle = 'Welcome to Echo Scribe';
   static const String welcomeButton = 'Got it';
@@ -17,8 +17,8 @@ class WhatsNewCopy {
   static const String whatsNewTitle = "What's new";
   static const String whatsNewButton = 'OK';
   static const List<String> whatsNewBullets = [
-    'Audio summaries now use clear topic headings, even for one topic.',
-    'Anthropic Fast summaries and translations use Claude Haiku 5.5.',
-    'Play reads either your transcript or its summary with your selected speech provider.',
+    'Transcripts read aloud without web addresses.',
+    'Extracted web articles read their text without URL or section labels.',
+    'Summaries speak headings, quotes, and link names without formatting marks.',
   ];
 }
