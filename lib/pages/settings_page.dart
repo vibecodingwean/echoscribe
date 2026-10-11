@@ -615,7 +615,9 @@ class _SettingsPageState extends State<SettingsPage>
                         decoration: const InputDecoration(
                           isDense: true,
                           labelText: 'TTS Voice ID',
-                          hintText: 'Q0Co3mt4NHZCSmKqCMMo',
+                          hintText: AiModelConfig.elevenLabsTtsVoice,
+                          helperText: 'Empty uses the tutorial narrator, Lara. '
+                              'Add her voice to your ElevenLabs account or enter another Voice ID.',
                           prefixIcon: Icon(Icons.record_voice_over, size: 18),
                         ),
                         onChanged: (_) => _scheduleAutoSaveImmediate(),

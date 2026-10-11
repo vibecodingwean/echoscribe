@@ -26,8 +26,8 @@ void main() {
         AiModelConfig.elevenLabsVoiceLibraryUrl,
         'https://elevenlabs.io/app/voice-library',
       );
-      expect(AiModelConfig.elevenLabsTts, 'eleven_flash_v2_5');
-      expect(AiModelConfig.elevenLabsTtsVoice, 'JBFqnCBsd6RMkjVDRZzb');
+      expect(AiModelConfig.elevenLabsTts, 'eleven_multilingual_v2');
+      expect(AiModelConfig.elevenLabsTtsVoice, 'vChnJZ1Cu89g2XXumPfT');
       expect(AiModelConfig.openAiReasoningEffort(pro: false), 'none');
       expect(AiModelConfig.openAiReasoningEffort(pro: true), 'medium');
     });

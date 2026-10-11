@@ -254,6 +254,10 @@ class SettingsState extends ChangeNotifier {
     }
   }
 
+  String get ttsCacheVoice => _provider == AiProviderType.elevenLabs
+      ? AiModelConfig.elevenLabsTtsCacheVoice(_elevenLabsVoiceId)
+      : ttsVoice;
+
   void setOpenAiPro(bool enabled) {
     _openAiPro = enabled;
     notifyListeners();

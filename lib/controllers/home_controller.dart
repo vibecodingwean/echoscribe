@@ -1411,14 +1411,14 @@ class HomeController extends ChangeNotifier {
       openAiVoice: "alloy",
       geminiVoice: "Zephyr",
       xaiVoice: "eve",
-      elevenLabsVoice: settings.ttsVoice,
+      elevenLabsVoice: settings.elevenLabsVoiceId,
     )) {
       await playback.resumeAudio();
     } else {
       final cached = playback.hasCachedSummaryAudio(
         playbackText,
         settings.provider,
-        voice: settings.ttsVoice,
+        voice: settings.ttsCacheVoice,
       );
       Timer? waitTimer;
       if (!cached) {
@@ -1446,7 +1446,7 @@ class HomeController extends ChangeNotifier {
           openAiVoice: "alloy",
           geminiVoice: "Zephyr",
           xaiVoice: "eve",
-          elevenLabsVoice: settings.ttsVoice,
+          elevenLabsVoice: settings.elevenLabsVoiceId,
           languageCode: lang,
         );
       } finally {
@@ -1460,7 +1460,7 @@ class HomeController extends ChangeNotifier {
       openAiVoice: "alloy",
       geminiVoice: "Zephyr",
       xaiVoice: "eve",
-      elevenLabsVoice: settings.ttsVoice,
+      elevenLabsVoice: settings.elevenLabsVoiceId,
     );
     if (size != null && size > 0) {
       final mb = size / (1024 * 1024);

@@ -105,8 +105,16 @@ class AiModelConfig {
   static const String openAiRealtimeTranslation = 'gpt-realtime-translate';
   static const String elevenLabsTranscription = 'scribe_v2';
   static const String elevenLabsRealtimeTranscription = 'scribe_v2_realtime';
-  static const String elevenLabsTts = 'eleven_flash_v2_5';
-  static const String elevenLabsTtsVoice = 'JBFqnCBsd6RMkjVDRZzb';
+  // Empty saved Voice ID uses the published tutorial narrator profile.
+  static const String elevenLabsTts = 'eleven_multilingual_v2';
+  static const String elevenLabsTtsVoice = 'vChnJZ1Cu89g2XXumPfT';
+  // Explicitly saved voice IDs keep the previous app TTS model.
+  static const String elevenLabsCustomTts = 'eleven_flash_v2_5';
+  static String elevenLabsTtsCacheVoice(String savedVoiceId) {
+    final selected = savedVoiceId.trim();
+    return selected.isEmpty ? '$elevenLabsTtsVoice@$elevenLabsTts' : selected;
+  }
+
   static const String elevenLabsVoiceLibraryUrl =
       'https://elevenlabs.io/app/voice-library';
   static const String openAiReasoningEffortFast = 'none';

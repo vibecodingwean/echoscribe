@@ -255,17 +255,21 @@ class TtsService {
   Future<Uint8List> generateSpeechElevenLabs({
     required String apiKey,
     required String text,
-    String model = AiModelConfig.elevenLabsTts,
-    String voiceId = AiModelConfig.elevenLabsTtsVoice,
+    String? model,
+    String voiceId = '',
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return Uint8List(0);
+    final customVoiceId = voiceId.trim();
+    final usesTutorialVoice = customVoiceId.isEmpty;
+    final resolvedVoiceId =
+        usesTutorialVoice ? AiModelConfig.elevenLabsTtsVoice : customVoiceId;
     await _consent?.ensure(AiProviderType.elevenLabs,
         dataType: 'text from a transcript or summary',
         purpose: 'speech generation');
 
     final uri = Uri.parse(
-      'https://api.elevenlabs.io/v1/text-to-speech/${Uri.encodeComponent(voiceId)}',
+      'https://api.elevenlabs.io/v1/text-to-speech/${Uri.encodeComponent(resolvedVoiceId)}',
     ).replace(queryParameters: const {'output_format': 'mp3_44100_128'});
     final headers = {
       'xi-api-key': apiKey,
@@ -274,7 +278,17 @@ class TtsService {
     };
     final body = json.encode({
       'text': trimmed,
-      'model_id': model,
+      'model_id': model ??
+          (usesTutorialVoice
+              ? AiModelConfig.elevenLabsTts
+              : AiModelConfig.elevenLabsCustomTts),
+      if (usesTutorialVoice && model == null)
+        'voice_settings': {
+          'stability': 0.45,
+          'similarity_boost': 0.8,
+          'style': 0,
+          'use_speaker_boost': true,
+        },
     });
 
     final sw = Stopwatch()..start();
@@ -316,6 +330,14 @@ class TtsService {
         reason = detail;
       }
     } catch (_) {}
+    if (res.statusCode == 404 ||
+        ((res.statusCode == 403 || res.statusCode == 422) &&
+            reason.toLowerCase().contains('voice'))) {
+      throw AppException(
+        '$reason. This Voice ID may not be available to your ElevenLabs account. '
+        'Add it from the Voice Library or choose a different TTS Voice ID in Settings.',
+      );
+    }
     throw Exception(reason);
   }
 }

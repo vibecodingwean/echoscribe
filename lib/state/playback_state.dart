@@ -52,7 +52,7 @@ class PlaybackState extends ChangeNotifier {
     String openAiVoice = "alloy",
     String geminiVoice = "Zephyr",
     String xaiVoice = "eve",
-    String elevenLabsVoice = AiModelConfig.elevenLabsTtsVoice,
+    String elevenLabsVoice = "",
   }) {
     switch (provider) {
       case AiProviderType.gemini:
@@ -60,7 +60,7 @@ class PlaybackState extends ChangeNotifier {
       case AiProviderType.xai:
         return xaiVoice;
       case AiProviderType.elevenLabs:
-        return elevenLabsVoice;
+        return AiModelConfig.elevenLabsTtsCacheVoice(elevenLabsVoice);
       default:
         return openAiVoice;
     }
@@ -72,7 +72,7 @@ class PlaybackState extends ChangeNotifier {
     String openAiVoice = "alloy",
     String geminiVoice = "Zephyr",
     String xaiVoice = "eve",
-    String elevenLabsVoice = AiModelConfig.elevenLabsTtsVoice,
+    String elevenLabsVoice = "",
   }) {
     final voice = _voiceForProvider(
       provider,
@@ -108,7 +108,7 @@ class PlaybackState extends ChangeNotifier {
     String openAiVoice = "alloy",
     String geminiVoice = "Zephyr",
     String xaiVoice = "eve",
-    String elevenLabsVoice = AiModelConfig.elevenLabsTtsVoice,
+    String elevenLabsVoice = "",
   }) {
     final voice = _voiceForProvider(
       provider,
@@ -131,13 +131,14 @@ class PlaybackState extends ChangeNotifier {
     String openAiVoice = "alloy",
     String geminiVoice = "Zephyr",
     String xaiVoice = "eve",
-    String elevenLabsVoice = AiModelConfig.elevenLabsTtsVoice,
+    String elevenLabsVoice = "",
     String languageCode = "en",
   }) async {
     final t = text.trim();
     if (t.isEmpty || _isAudioLoading) return;
     if (!provider.supportsTts) {
-      throw AppException('${provider.brandName} does not support speech generation.');
+      throw AppException(
+          '${provider.brandName} does not support speech generation.');
     }
     final voice = _voiceForProvider(
       provider,

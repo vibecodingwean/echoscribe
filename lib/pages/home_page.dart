@@ -365,7 +365,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       hasAudio: _playback.cachedAudioBytes(
             _currentPlaybackText(),
             _settings.provider,
-            voice: _settings.ttsVoice,
+            voice: _settings.ttsCacheVoice,
           ) !=
           null,
       hasImage: _content.currentImageBytes.value?.isNotEmpty == true,
@@ -380,7 +380,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       audioBytes: _playback.cachedAudioBytes(
         _currentPlaybackText(),
         _settings.provider,
-        voice: _settings.ttsVoice,
+        voice: _settings.ttsCacheVoice,
       ),
       audioMimeType: _playback.cachedAudioMimeType(_settings.provider),
       imageBytes: _content.currentImageBytes.value,

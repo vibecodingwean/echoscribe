@@ -41,8 +41,11 @@ void main() {
       expect(settings.hasActiveApiKey, isTrue);
       expect(settings.elevenLabsRealtime, isFalse);
       expect(settings.realtimeEnabled, isFalse);
-      expect(settings.transcriptionModel, AiModelConfig.elevenLabsTranscription);
+      expect(
+          settings.transcriptionModel, AiModelConfig.elevenLabsTranscription);
       expect(settings.ttsVoice, AiModelConfig.elevenLabsTtsVoice);
+      expect(settings.ttsCacheVoice,
+          '${AiModelConfig.elevenLabsTtsVoice}@${AiModelConfig.elevenLabsTts}');
 
       settings.setElevenLabsRealtime(true);
       expect(settings.realtimeEnabled, isTrue);
@@ -55,9 +58,19 @@ void main() {
 
       expect(settings.elevenLabsVoiceId, 'Q0Co3mt4NHZCSmKqCMMo');
       expect(settings.ttsVoice, 'Q0Co3mt4NHZCSmKqCMMo');
+      expect(settings.ttsCacheVoice, 'Q0Co3mt4NHZCSmKqCMMo');
 
       settings.setElevenLabsVoiceId('  ');
       expect(settings.ttsVoice, AiModelConfig.elevenLabsTtsVoice);
+      final tutorialCacheKey = settings.ttsCacheVoice;
+
+      settings.setElevenLabsVoiceId(AiModelConfig.elevenLabsTtsVoice);
+      expect(settings.ttsCacheVoice, AiModelConfig.elevenLabsTtsVoice);
+      expect(settings.ttsCacheVoice, isNot(tutorialCacheKey));
+
+      settings.setElevenLabsVoiceId(' JBFqnCBsd6RMkjVDRZzb ');
+      expect(settings.elevenLabsVoiceId, 'JBFqnCBsd6RMkjVDRZzb');
+      expect(settings.ttsVoice, 'JBFqnCBsd6RMkjVDRZzb');
     });
 
     test('forces auto language because realtime translation is unsupported',
