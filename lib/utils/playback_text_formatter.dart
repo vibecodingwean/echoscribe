@@ -10,6 +10,11 @@ class PlaybackTextFormatter {
   static final _trailingPunctuation = RegExp(r'[.,;!?]+$');
   static final _spaceBeforePunctuation = RegExp(r'\s+([.,;!?])');
   static final _whitespace = RegExp(r'\s+');
+  static final _markdownUrlLink = RegExp(
+    r'\[([^\]\n]+)\]\((?:https?://|www\.)[^\s)]+\)',
+    caseSensitive: false,
+  );
+  static final _extractedTextQuote = RegExp(r'^[ \t]*>[ \t]?');
   static final _numberedLine = RegExp(r'^(\s*\d+)\.(?=\s)', multiLine: true);
   static final _htmlTag = RegExp(
     r'''</?(?:h[1-6]|p|div|li|ul|ol|br|blockquote|pre|strong|em|b|i|a)(?:\s+[a-z][\w:-]*\s*=\s*(?:"[^"]*"|'[^']*'))*\s*/?>''',
@@ -32,8 +37,26 @@ class PlaybackTextFormatter {
     'pre',
   };
 
-  /// A transcript can be ordinary prose, including dates and comparisons.
-  static String transcript(String text) => _removeUrls(text);
+  /// Keep ordinary prose intact. URL extraction has a known display wrapper.
+  static String transcript(String text) {
+    final lines = text.trim().split('\n');
+    if (lines.first.trim() == '#### URL:') {
+      final extractedAt =
+          lines.indexWhere((line) => line.trim() == '#### EXTRACTED TEXT:');
+      if (extractedAt > 0) {
+        final extractedText = lines
+            .skip(extractedAt + 1)
+            .map((line) => line.replaceFirst(_extractedTextQuote, ''))
+            .join('\n');
+        return _removeUrls(extractedText);
+      }
+    }
+    final withLinkLabels = text.replaceAllMapped(
+      _markdownUrlLink,
+      (match) => match.group(1)!,
+    );
+    return _removeUrls(withLinkLabels);
+  }
 
   /// Summaries may contain Markdown and HTML headings, emphasis, and links.
   static String summary(String text) {
@@ -45,11 +68,10 @@ class PlaybackTextFormatter {
           .toLowerCase();
       return _blockTags.contains(tag) ? '\n\n' : '';
     });
-    // Preserve literal comparisons: the HTML parser must not treat <b und >
-    // as a tag. Also retain leading dates such as "10. Oktober" in Markdown.
+    // Only '<' can open an HTML tag. Leave '>' intact for Markdown blockquotes
+    // and preserve leading dates such as "10. Oktober".
     final markdownText = withoutTags
         .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
         .replaceAllMapped(_numberedLine, (match) => '${match.group(1)}\\.');
     final html = markdown.markdownToHtml(
       markdownText,

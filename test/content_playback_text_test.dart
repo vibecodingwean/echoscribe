@@ -63,6 +63,33 @@ void main() {
     expect(content.canPlayTts(AiProviderType.openai), isFalse);
   });
 
+  test('extracted URL transcript speaks article text without generated labels',
+      () {
+    final content = ContentState(historyWriter: (_) async {});
+    addTearDown(content.dispose);
+    content.setCurrentTranscript('''#### URL:
+[https://example.com/search?filter[year]=2026&token=secret](https://example.com/search?filter[year]=2026&token=secret)
+
+........................................
+
+#### EXTRACTED TEXT:
+
+> Der Artikeltext. 10. Oktober 2026 war ein guter Tag.
+> Der Wert ist <b und >a.''');
+
+    expect(content.currentPlaybackText,
+        'Der Artikeltext. 10. Oktober 2026 war ein guter Tag. Der Wert ist <b und >a.');
+  });
+
+  test('transcript Markdown link speaks its label without URL artefacts', () {
+    final content = ContentState(historyWriter: (_) async {});
+    addTearDown(content.dispose);
+    content.setCurrentTranscript(
+      'Besuche [die Kursseite](https://example.com/course) für Details.',
+    );
+    expect(content.currentPlaybackText, 'Besuche die Kursseite für Details.');
+  });
+
   test('plain summary preserves dates and comparisons', () {
     final content = ContentState(historyWriter: (_) async {});
     addTearDown(content.dispose);
@@ -86,5 +113,16 @@ Besuche [die Kursseite](https://example.com/course) für Details.''');
 
     expect(content.currentPlaybackText,
         '🏠 Hausaufgaben Mathe: Aufgaben 1–3. 10. Oktober bleibt. Der Wert ist <b und >a. Weitere Schritte Besuche die Kursseite für Details.');
+  });
+
+  test('summary blockquote speaks words without the quote marker', () {
+    final content = ContentState(historyWriter: (_) async {});
+    addTearDown(content.dispose);
+    content.setOutputMode(OutputMode.summary);
+    content.setCurrentSummary('''## Ergebnis
+> Wichtiger Hinweis
+Der Wert ist <b und >a.''');
+    expect(content.currentPlaybackText,
+        'Ergebnis Wichtiger Hinweis Der Wert ist <b und >a.');
   });
 }
