@@ -98,7 +98,7 @@ class AiModelConfig {
   // Fast models
   static const String openAiSummaryFast = 'gpt-6-luna';
   static const String openAiTranslationFast = 'gpt-6-luna';
-  static const String openAiTranscriptionFast = 'gpt-4o-mini-transcribe';
+  static const String openAiTranscriptionFast = 'gpt-transcribe';
   static const String openAiImageFast = 'gpt-image-1-mini';
   static const String openAiTts = 'gpt-4o-mini-tts';
   static const String openAiRealtimeTranscription = 'gpt-live-transcribe';

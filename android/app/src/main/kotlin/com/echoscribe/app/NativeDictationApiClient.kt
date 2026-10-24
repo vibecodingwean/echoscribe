@@ -148,7 +148,7 @@ class NativeDictationApiClient(
             endpoint = "https://api.openai.com/v1/audio/transcriptions",
             headers = mapOf("Authorization" to "Bearer ${config.apiKey}"),
             fields = linkedMapOf(
-                "model" to config.transcriptionModel.ifBlank { "gpt-4o-mini-transcribe" },
+                "model" to config.transcriptionModel.ifBlank { "gpt-transcribe" },
                 "response_format" to "json",
             ),
             fileField = "file",

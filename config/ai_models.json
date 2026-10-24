@@ -9,7 +9,7 @@
       "pro": "gpt-6-astra"
     },
     "transcription": {
-      "fast": "gpt-4o-mini-transcribe",
+      "fast": "gpt-transcribe",
       "pro": "gpt-transcribe"
     },
     "image": {

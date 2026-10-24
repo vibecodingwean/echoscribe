@@ -9,7 +9,7 @@ void main() {
       expect(AiModelConfig.openAiTranslation(pro: true), 'gpt-6-astra');
       expect(
         AiModelConfig.openAiTranscription(pro: false),
-        'gpt-4o-mini-transcribe',
+        'gpt-transcribe',
       );
       expect(AiModelConfig.openAiTranscription(pro: true), 'gpt-transcribe');
       expect(AiModelConfig.openAiRealtimeTranscription, 'gpt-live-transcribe');
