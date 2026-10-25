@@ -343,7 +343,7 @@ class SummaryService {
       );
       if (res.statusCode >= 200 && res.statusCode < 300) {
         final data = json.decode(res.body) as Map<String, dynamic>;
-        final out = GeminiContentText.extract(data);
+        final out = GeminiContentText.extractForModel(data, model);
         if (out.trim().isEmpty) {
           throw const EmptyResultException('Empty summary result');
         }

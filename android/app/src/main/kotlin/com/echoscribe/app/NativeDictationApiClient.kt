@@ -14,6 +14,13 @@ class NativeDictationApiClient(
     internal companion object {
         const val DEFAULT_LOCAL_AI_FORMATTING_MODEL = "qwen2.5:7b"
 
+        fun effectiveGeminiFormattingModel(model: String): String = when (model) {
+            // Retained native settings can be used before Flutter next syncs them.
+            "gemini-3.1-pro-preview" -> "gemini-4-argon"
+            "" -> "gemini-3.8-flash"
+            else -> model
+        }
+
         fun buildGeminiFormattingRequest(model: String, systemPrompt: String, userPrompt: String): JSONObject {
             val body = JSONObject()
                 .put(
@@ -28,7 +35,14 @@ class NativeDictationApiClient(
                             .put("parts", JSONArray().put(JSONObject().put("text", userPrompt))),
                     ),
                 )
-            if (model != "gemini-3.1-pro-preview") {
+            if (model == "gemini-4-argon") {
+                body.put(
+                    "generationConfig",
+                    JSONObject().put("maxOutputTokens", 32768).put(
+                        "thinkingConfig", JSONObject().put("thinkingLevel", "low"),
+                    ),
+                )
+            } else if (model != "gemini-3.1-pro-preview") {
                 body.put(
                     "generationConfig",
                     JSONObject().put("thinkingConfig", JSONObject().put("thinkingBudget", 0)),
@@ -410,14 +424,19 @@ class NativeDictationApiClient(
     }
 
     private fun chatGemini(systemPrompt: String, userPrompt: String): String {
-        val model = config.formattingModel.ifBlank { "gemini-3.8-flash" }
+        val model = effectiveGeminiFormattingModel(config.formattingModel)
         val body = buildGeminiFormattingRequest(model, systemPrompt, userPrompt)
         val json = postJson(
             endpoint = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=${config.apiKey}",
             headers = mapOf("Content-Type" to "application/json"),
             body = body,
         )
-        val text = extractGeminiText(json).trim()
+        if (model == "gemini-4-argon" &&
+            json.optJSONArray("candidates")?.optJSONObject(0)?.optString("finishReason") != "STOP"
+        ) {
+            throw IllegalStateException("Gemini did not complete the answer. No partial result was used.")
+        }
+        val text = extractGeminiText(json, allParts = model == "gemini-4-argon").trim()
         if (text.isBlank()) throw IllegalStateException("AI rewrite returned empty text")
         return text
     }
@@ -568,17 +587,21 @@ class NativeDictationApiClient(
         }
     }
 
-    private fun extractGeminiText(json: JSONObject): String {
+    private fun extractGeminiText(json: JSONObject, allParts: Boolean = false): String {
         val candidates = json.optJSONArray("candidates") ?: return ""
         val content = candidates.optJSONObject(0)?.optJSONObject("content") ?: return ""
         val parts = content.optJSONArray("parts") ?: return ""
+        val chunks = mutableListOf<String>()
         for (i in 0 until parts.length()) {
             val part = parts.optJSONObject(i) ?: continue
             if (part.has("thought") && part.optBoolean("thought")) continue
             val text = part.optString("text").trim()
-            if (text.isNotEmpty()) return text
+            if (text.isNotEmpty()) {
+                if (!allParts) return text
+                chunks.add(text)
+            }
         }
-        return ""
+        return chunks.joinToString("\n")
     }
 
     private fun mimeType(file: File): String {

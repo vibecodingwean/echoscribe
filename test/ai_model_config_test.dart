@@ -1,7 +1,22 @@
 import 'package:echoscribe/config/prompts.dart';
+import 'package:echoscribe/state/settings_state.dart';
+import 'package:echoscribe/models/enums.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test(
+      'retained Gemini Pro flag selects Argon without changing dedicated models',
+      () {
+    final settings = SettingsState()
+      ..setProvider(AiProviderType.gemini)
+      ..setGeminiPro(true);
+    expect(settings.summaryModel, 'gemini-4-argon');
+    expect(settings.translationModel, 'gemini-4-argon');
+    expect(settings.transcriptionModel, 'gemini-3.5-transcribe');
+    settings.setGeminiPro(false);
+    expect(settings.summaryModel, 'gemini-3.8-flash');
+    expect(settings.translationModel, 'gemini-3.8-flash');
+  });
   group('AI model defaults', () {
     test('OpenAI preserves fast and pro reasoning roles', () {
       expect(AiModelConfig.openAiSummary(pro: false), 'gpt-6-luna');
@@ -33,6 +48,8 @@ void main() {
     });
 
     test('Gemini and Anthropic preserve fast and pro roles', () {
+      expect(AiModelConfig.geminiSummary(pro: true), 'gemini-4-argon');
+      expect(AiModelConfig.geminiTranslation(pro: true), 'gemini-4-argon');
       expect(AiModelConfig.geminiSummary(pro: false), 'gemini-3.8-flash');
       expect(AiModelConfig.geminiTranslation(pro: false), 'gemini-3.8-flash');
       expect(

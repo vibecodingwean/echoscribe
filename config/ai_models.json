@@ -25,11 +25,11 @@
   "gemini": {
     "summary": {
       "fast": "gemini-3.8-flash",
-      "pro": "gemini-3.1-pro-preview"
+      "pro": "gemini-4-argon"
     },
     "translation": {
       "fast": "gemini-3.8-flash",
-      "pro": "gemini-3.1-pro-preview"
+      "pro": "gemini-4-argon"
     },
     "transcription": {
       "fast": "gemini-3.5-transcribe",

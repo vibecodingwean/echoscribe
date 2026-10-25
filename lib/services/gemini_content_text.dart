@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import '../models/app_exception.dart';
+
 class GeminiContentText {
   const GeminiContentText._();
 
@@ -26,6 +28,22 @@ class GeminiContentText {
     final joined = chunks.join('\n').trim();
     if (looksLikeApiEnvelope(joined)) return '';
     return joined;
+  }
+
+  /// Argon REST is a single bounded response; never display a partial answer.
+  static String extractForModel(Map<String, dynamic> data, String model) {
+    if (model == 'gemini-4-argon') {
+      final candidates = data['candidates'];
+      final first =
+          candidates is List && candidates.isNotEmpty ? candidates.first : null;
+      final reason = first is Map ? first['finishReason'] : null;
+      if (reason != 'STOP') {
+        throw const AppException(
+          'Gemini did not complete the answer. No partial result was used.',
+        );
+      }
+    }
+    return extract(data);
   }
 
   static String sanitizeResponseForDebug(String body) {
@@ -64,8 +82,19 @@ class GeminiContentText {
     };
   }
 
-  static Map<String, dynamic> generationConfigForModel(String model) =>
-      model == 'gemini-3.1-pro-preview'
-          ? <String, dynamic>{}
-          : {'generationConfig': thinkingOffConfig()};
+  static Map<String, dynamic> generationConfigForModel(String model) {
+    if (model == 'gemini-4-argon') {
+      return {
+        'generationConfig': {
+          // Non-streaming REST cap includes both thinking and visible output.
+          'maxOutputTokens': 32768,
+          'thinkingConfig': {'thinkingLevel': 'low'},
+        },
+      };
+    }
+    // Retain the request contract of explicitly selected legacy models.
+    return model == 'gemini-3.1-pro-preview'
+        ? <String, dynamic>{}
+        : {'generationConfig': thinkingOffConfig()};
+  }
 }

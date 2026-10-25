@@ -121,9 +121,9 @@ class AiModelConfig {
 
   // ---------- Gemini ----------
   // Pro models
-  static const String geminiSummaryPro = 'gemini-3.1-pro-preview';
+  static const String geminiSummaryPro = 'gemini-4-argon';
   static const String geminiTranscriptionPro = 'gemini-3.5-transcribe';
-  static const String geminiTranslationPro = 'gemini-3.1-pro-preview';
+  static const String geminiTranslationPro = 'gemini-4-argon';
   static const String geminiImagePro = 'gemini-3-pro-image';
 
   // Fast models

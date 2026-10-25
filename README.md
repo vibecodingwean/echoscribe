@@ -51,6 +51,7 @@ Requests go directly from your device to your selected AI provider using your ow
 Access the world's most powerful AI models with a single toggle:
 - **Standard (Fast):** GPT-6 Luna, Gemini 3.8 Flash, Claude Haiku 5.5, Grok 4.3, or local `qwen2.5:7b`.
 - **Pro Mode (Premium):** GPT-6 Astra, Gemini 3.1 Pro Preview, Claude Opus 5.5, Grok 4.6.
+  - Android Internal candidates use **Gemini 4 Argon** (`gemini-4-argon`) for Gemini Pro summaries, translations, and native text formatting. Gemini Fast and dedicated speech, image, TTS, and Live models are unchanged. Argon uses low thinking with a bounded output; incomplete answers are rejected. Production and other-platform rollout remain pending.
 - **Speech Models:** OpenAI Pro file transcription uses GPT Transcribe; OpenAI Realtime uses GPT Live Transcribe; xAI batch transcription uses Grok Voice Transcribe 2.0; ElevenLabs file transcription and Keyboard STT use Scribe v2; optional Realtime uses Scribe v2 Realtime.
 
 ### 🌍 Intelligent Re-Translation

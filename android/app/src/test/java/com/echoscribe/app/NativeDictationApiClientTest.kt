@@ -14,8 +14,8 @@ import org.junit.Test
 
 class NativeDictationApiClientTest {
     @Test
-    fun geminiFormattingRequestOmitsProThinkingButKeepsFastSuppression() {
-        for (model in listOf("gemini-3.1-pro-preview", "gemini-3.8-flash")) {
+    fun geminiFormattingRequestUsesArgonConfigButKeepsLegacyAndFastContract() {
+        for (model in listOf("gemini-4-argon", "gemini-3.1-pro-preview", "gemini-3.8-flash")) {
             val body = NativeDictationApiClient.buildGeminiFormattingRequest(model, "System", "User")
             val expected = JSONObject().put(
                 "systemInstruction",
@@ -26,7 +26,11 @@ class NativeDictationApiClientTest {
                     "parts", org.json.JSONArray().put(JSONObject().put("text", "User")),
                 )),
             )
-            if (model == "gemini-3.8-flash") {
+            if (model == "gemini-4-argon") {
+                expected.put("generationConfig", JSONObject().put("maxOutputTokens", 32768).put(
+                    "thinkingConfig", JSONObject().put("thinkingLevel", "low"),
+                ))
+            } else if (model == "gemini-3.8-flash") {
                 expected.put("generationConfig", JSONObject().put(
                     "thinkingConfig", JSONObject().put("thinkingBudget", 0),
                 ))
@@ -37,7 +41,7 @@ class NativeDictationApiClientTest {
 
     @Test
     fun geminiFormattingAndImeRewriteUseSelectedModel() {
-        for (model in listOf("gemini-3.1-pro-preview", "gemini-3.8-flash")) {
+        for (model in listOf("gemini-4-argon", "gemini-3.1-pro-preview", "gemini-3.8-flash", "custom-gemini-model")) {
             val config = xaiConfig("").copy(provider = "gemini", formattingModel = model)
             lateinit var request: CapturingConnection
             val client = NativeDictationApiClient(config) { url ->
@@ -48,16 +52,17 @@ class NativeDictationApiClientTest {
                 assertThrows(IllegalStateException::class.java) {
                     if (rewrite) client.rewrite("System", "User") else client.format("User")
                 }
-                assertTrue(request.url.toString().contains("/$model:generateContent"))
+                val effective = if (model == "gemini-3.1-pro-preview") "gemini-4-argon" else model
+                assertTrue(request.url.toString().contains("/$effective:generateContent"))
                 val body = JSONObject(request.body.toString(Charsets.UTF_8.name()))
-                assertEquals(model == "gemini-3.8-flash", body.has("generationConfig"))
+                assertTrue(body.has("generationConfig"))
             }
         }
     }
 
     @Test
     fun geminiFormattingAndRewriteIgnoreThoughtBeforeFinalText() {
-        val response = """{"candidates":[{"content":{"parts":[{"thought":true,"text":"private reasoning"},{"text":"Final text"}]}}]}"""
+        val response = """{"candidates":[{"finishReason":"STOP","content":{"parts":[{"thought":true,"text":"private reasoning"},{"text":"Final text"}]}}]}"""
         val client = NativeDictationApiClient(
             xaiConfig("").copy(provider = "gemini", formattingModel = "gemini-3.1-pro-preview"),
         ) { url -> CapturingConnection(url, 200, response) }
@@ -68,7 +73,7 @@ class NativeDictationApiClientTest {
 
     @Test
     fun geminiFormattingAndRewriteRejectThoughtOnlyResponse() {
-        val response = """{"candidates":[{"content":{"parts":[{"thought":true,"text":"private reasoning"}]}}]}"""
+        val response = """{"candidates":[{"finishReason":"STOP","content":{"parts":[{"thought":true,"text":"private reasoning"}]}}]}"""
         val client = NativeDictationApiClient(
             xaiConfig("").copy(provider = "gemini", formattingModel = "gemini-3.1-pro-preview"),
         ) { url -> CapturingConnection(url, 200, response) }
@@ -77,6 +82,39 @@ class NativeDictationApiClientTest {
         assertEquals("AI rewrite returned empty text", formatError.message)
         val rewriteError = assertThrows(IllegalStateException::class.java) { client.rewrite("System", "User") }
         assertEquals("AI rewrite returned empty text", rewriteError.message)
+    }
+
+    @Test
+    fun argonFormattingKeepsAllVisiblePartsWhileLegacyExtractionIsUnchanged() {
+        val response = """{"candidates":[{"finishReason":"STOP","content":{"parts":[{"thought":true,"text":"Reasoning"},{"text":"First"},{"text":"Second"}]}}]}"""
+        for ((model, expected) in mapOf("gemini-4-argon" to "First\nSecond", "gemini-3.8-flash" to "First")) {
+            val client = NativeDictationApiClient(
+                xaiConfig("").copy(provider = "gemini", formattingModel = model),
+            ) { url -> CapturingConnection(url, 200, response) }
+            assertEquals(expected, client.format("Raw text"))
+            assertEquals(expected, client.rewrite("System", "User"))
+        }
+    }
+
+    @Test
+    fun argonFormattingRejectsTruncationAndMissingCompletionEvenWithVisibleText() {
+        for (reason in listOf("MAX_TOKENS", "SAFETY", "")) {
+            val response = """{"candidates":[{"finishReason":"$reason","content":{"parts":[{"text":"Incomplete"}]}}]}"""
+            val client = NativeDictationApiClient(
+                xaiConfig("").copy(provider = "gemini", formattingModel = "gemini-4-argon"),
+            ) { url -> CapturingConnection(url, 200, response) }
+            assertThrows(IllegalStateException::class.java) { client.format("Raw text") }
+            assertThrows(IllegalStateException::class.java) { client.rewrite("System", "User") }
+        }
+    }
+
+    @Test
+    fun retainedNativeFormattingMigratesOnlyExactOldPro() {
+        for ((saved, expected) in mapOf("" to "gemini-3.8-flash", "gemini-3.1-pro-preview" to "gemini-4-argon",
+            "gemini-3.8-flash" to "gemini-3.8-flash", "my-custom-model" to "my-custom-model",
+            "gemini-3.1-pro-preview-custom" to "gemini-3.1-pro-preview-custom")) {
+            assertEquals(expected, NativeDictationApiClient.effectiveGeminiFormattingModel(saved))
+        }
     }
 
     @Test
