@@ -7,6 +7,7 @@ function optionsDocument() {
   return new JSDOM(`<body>
     <select id="provider"></select><input id="api-key" type="password"><span id="key-status"></span><button id="clear-key"></button><select id="model"></select>
     <button id="fetch-models"></button><p id="model-refresh-help"></p><textarea id="prompt"></textarea><button id="reset-prompt"></button>
+    <div id="provider-consent-detail"></div><span id="provider-consent-status"></span><button id="provider-consent-toggle"></button>
     <button id="save"></button><button id="clear-data"></button><div id="status"></div>
   </body>`).window.document;
 }
@@ -16,13 +17,18 @@ function setup() {
     provider: 'gemini',
     models: {
       openai: 'gpt-6-luna', anthropic: 'claude-haiku-5-5',
-      gemini: 'gemini-3.1-pro-preview', xai: 'grok-4.3'
+      gemini: 'gemini-4-argon', xai: 'grok-4.3'
     },
+    providerConsent: { gemini: true },
     configuredProviders: { openai: false, anthropic: false, gemini: true, xai: false },
     targetLanguage: 'auto', customPrompt: 'My custom prompt'
   };
   const api = { runtime: { sendMessage: vi.fn(async (message) => {
     if (message.type === 'getSettings') return { ok: true, settings };
+    if (message.type === 'setProviderConsent') {
+      settings.providerConsent[message.provider] = message.allowed;
+      return { ok: true, settings };
+    }
     if (message.type === 'listModels') return { ok: true, models: ['gemini-api-extra', 'gemini-3.8-flash'] };
     return { ok: true };
   }) } };
@@ -34,6 +40,14 @@ const modelOptions = (document) => [...document.querySelectorAll('#model option'
   .map((option) => ({ value: option.value, label: option.textContent }));
 
 describe('options', () => {
+  it('revokes permission and blocks model refresh before a provider request', async () => {
+    const { document, api, controller } = setup();
+    await controller.ready;
+    await controller.toggleProviderConsent();
+    expect(document.querySelector('#provider-consent-status').textContent).toContain('blocked');
+    await controller.fetchModels();
+    expect(api.runtime.sendMessage).not.toHaveBeenCalledWith({ type: 'listModels', provider: 'gemini' });
+  });
   it('loads a real model dropdown with visible Fast and Pro choices', async () => {
     const { document, controller } = setup();
     await controller.ready;
@@ -44,9 +58,9 @@ describe('options', () => {
     expect(document.querySelector('#key-status').textContent).toContain('configured');
     expect(modelOptions(document)).toEqual([
       { value: 'gemini-3.8-flash', label: 'Fast — gemini-3.8-flash' },
-      { value: 'gemini-3.1-pro-preview', label: 'Pro — gemini-3.1-pro-preview' }
+      { value: 'gemini-4-argon', label: 'Pro — gemini-4-argon' }
     ]);
-    expect(document.querySelector('#model').value).toBe('gemini-3.1-pro-preview');
+    expect(document.querySelector('#model').value).toBe('gemini-4-argon');
     expect(document.querySelector('#prompt').value).toBe('My custom prompt');
   });
 
@@ -57,7 +71,7 @@ describe('options', () => {
     expect(api.runtime.sendMessage).toHaveBeenCalledWith({ type: 'listModels', provider: 'gemini' });
     expect(modelOptions(document)).toEqual([
       { value: 'gemini-3.8-flash', label: 'Fast — gemini-3.8-flash' },
-      { value: 'gemini-3.1-pro-preview', label: 'Pro — gemini-3.1-pro-preview' },
+      { value: 'gemini-4-argon', label: 'Pro — gemini-4-argon' },
       { value: 'gemini-api-extra', label: 'API — gemini-api-extra' }
     ]);
     expect(document.querySelector('#fetch-models').textContent).toBe('Model list updated');
@@ -87,7 +101,7 @@ describe('options', () => {
     api.runtime.sendMessage.mockImplementation(async (message) => {
       if (message.type === 'listModels') return new Promise((resolve) => { completeRequest = resolve; });
       if (message.type === 'getSettings') return { ok: true, settings: {
-        provider: 'gemini', models: {}, configuredProviders: { gemini: true }, targetLanguage: 'auto', customPrompt: ''
+        provider: 'gemini', models: {}, configuredProviders: { gemini: true }, providerConsent: { gemini: true }, targetLanguage: 'auto', customPrompt: ''
       } };
       return { ok: true };
     });
@@ -116,7 +130,7 @@ describe('options', () => {
     model.value = 'gpt-6-astra';
     provider.value = 'gemini';
     provider.dispatchEvent(new document.defaultView.Event('change'));
-    expect(model.value).toBe('gemini-3.1-pro-preview');
+    expect(model.value).toBe('gemini-4-argon');
     provider.value = 'openai';
     provider.dispatchEvent(new document.defaultView.Event('change'));
     expect(model.value).toBe('gpt-6-astra');

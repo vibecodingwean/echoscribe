@@ -65,6 +65,7 @@ class TtsService {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return Uint8List(0);
     await _consent?.ensure(AiProviderType.openai,
+        use: AiDataUse.speech,
         dataType: 'text from a transcript or summary',
         purpose: 'speech generation');
 
@@ -127,6 +128,7 @@ class TtsService {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return Uint8List(0);
     await _consent?.ensure(AiProviderType.gemini,
+        use: AiDataUse.speech,
         dataType: 'text from a transcript or summary',
         purpose: 'speech generation');
 
@@ -210,6 +212,7 @@ class TtsService {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return Uint8List(0);
     await _consent?.ensure(AiProviderType.xai,
+        use: AiDataUse.speech,
         dataType: 'text from a transcript or summary',
         purpose: 'speech generation');
 
@@ -265,6 +268,7 @@ class TtsService {
     final resolvedVoiceId =
         usesTutorialVoice ? AiModelConfig.elevenLabsTtsVoice : customVoiceId;
     await _consent?.ensure(AiProviderType.elevenLabs,
+        use: AiDataUse.speech,
         dataType: 'text from a transcript or summary',
         purpose: 'speech generation');
 

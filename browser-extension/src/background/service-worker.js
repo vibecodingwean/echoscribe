@@ -18,8 +18,11 @@ export function installBackground({ api, orchestrator, listModels = listProvider
     if (info.menuItemId !== MENU_ID || !tab) return;
     try {
       await orchestrator.summarizeTab(tab, info.selectionText || '', '');
-    } catch {
-      // The orchestrator stores a secret-safe error for the popup.
+    } catch (error) {
+      await api.storage.local.set({ latestError: safeMessage(error?.message || error) });
+      if (String(error?.message || '').includes('review provider data transfer')) {
+        try { await api.action?.openPopup?.(); } catch { /* The popup remains available from the toolbar. */ }
+      }
     }
   });
 
@@ -36,13 +39,22 @@ export function installBackground({ api, orchestrator, listModels = listProvider
       if (message?.type === 'listModels') {
         const settings = await orchestrator.readSettings();
         const provider = message.provider || settings.provider;
+        if (!settings.providerConsent?.[provider]) return { ok: false, error: 'Allow this provider in Settings before refreshing models.' };
         const models = await listModels({ provider, apiKey: settings.apiKeys[provider] });
         return { ok: true, models };
       }
       if (message?.type === 'getSummaryReadiness') {
         const settings = await orchestrator.readSettings();
         const provider = settings.provider;
-        return { ok: true, provider, configured: Boolean(settings.apiKeys[provider]) };
+        return { ok: true, provider, configured: Boolean(settings.apiKeys[provider]), consented: Boolean(settings.providerConsent?.[provider]) };
+      }
+      if (message?.type === 'setProviderConsent') {
+        const settings = normalizeSettings(await orchestrator.readSettings());
+        const provider = String(message.provider || '');
+        if (!Object.hasOwn(settings.providerConsent, provider)) return { ok: false, error: 'Unsupported provider.' };
+        settings.providerConsent[provider] = message.allowed === true;
+        await api.storage.local.set({ settings });
+        return { ok: true, settings: publicSettings(settings) };
       }
       if (message?.type === 'getSettings') return { ok: true, settings: publicSettings(await orchestrator.readSettings()) };
       if (message?.type === 'saveSettings') {
@@ -51,7 +63,8 @@ export function installBackground({ api, orchestrator, listModels = listProvider
           ...current,
           ...message.settings,
           models: { ...current.models, ...message.settings?.models },
-          apiKeys: current.apiKeys
+          apiKeys: current.apiKeys,
+          providerConsent: current.providerConsent
         });
         const keyProvider = String(message.apiKey?.provider || '');
         if (Object.hasOwn(settings.apiKeys, keyProvider)) {

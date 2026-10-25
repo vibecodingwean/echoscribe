@@ -637,7 +637,7 @@ class FloatingDictationAccessibilityService : AccessibilityService() {
             renderOverlay()
             Thread {
                 try {
-                    NativeDictationApiClient(config).preflightLocalAi()
+                    NativeDictationApiClient(config, consentCheck = { use -> NativeAiConsent(this).hasGrant(config, use) }).preflightLocalAi()
                     mainHandler.post { startRecordingNow() }
                 } catch (e: Exception) {
                     mainHandler.post {
@@ -699,7 +699,7 @@ class FloatingDictationAccessibilityService : AccessibilityService() {
         renderOverlay()
         Thread {
             try {
-                val client = NativeDictationApiClient(config)
+                val client = NativeDictationApiClient(config, consentCheck = { use -> NativeAiConsent(this).hasGrant(config, use) })
                 val rawText = client.transcribe(file)
                 val formatted = client.format(rawText)
                 mainHandler.post {

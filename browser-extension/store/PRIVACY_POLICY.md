@@ -1,6 +1,6 @@
 # EchoScribe Web Summary Privacy Policy
 
-**Effective date:** 2026-08-08
+**Effective date:** 2026-10-25
 
 EchoScribe Web Summary is a bring-your-own-key browser extension for summarizing webpages, selected text, and text-based PDFs. It has no developer-operated server, account system, advertising, analytics, or telemetry.
 
@@ -8,13 +8,13 @@ EchoScribe Web Summary is a bring-your-own-key browser extension for summarizing
 
 - **Website/PDF content and metadata:** After the user explicitly invokes Summarize or the context-menu command, EchoScribe Web Summary extracts bounded selected text or relevant page/PDF text plus the bounded page title and HTML meta description. A meta description is page metadata and may not be visibly rendered.
 - **Authentication information:** The user may store one API key for each supported AI provider.
-- **Settings and results:** Provider, model, prompt, language preference, latest summary, and a bounded safe error message may be stored locally.
+- **Settings and results:** Provider, model, prompt, language preference, per-provider transfer permission, latest summary, and a bounded safe error message may be stored locally.
 
 EchoScribe Web Summary does not transmit the page URL to an AI provider and does not retain it with the result.
 
 ## Where data goes
 
-On an explicit summary command, the extracted content, title, meta description, and only the selected provider's API key are sent directly over HTTPS to that provider. If the user explicitly clicks **Refresh model list**, the key is sent to that provider's model-list endpoint without page content.
+Before the first transfer to each provider, EchoScribe names the recipient and describes the data and purpose, then requires **Allow transfer**. Canceling stops extraction and provider requests. Permission can be revoked for each provider in Settings. On an approved summary command, the extracted content, title, meta description, custom summary instructions, and only the selected provider's API key are sent directly over HTTPS to that provider. If the user explicitly clicks **Refresh model list** after approval, the key is sent to that provider's model-list endpoint without page content.
 
 - OpenAI — `api.openai.com`
 - Anthropic — `api.anthropic.com`

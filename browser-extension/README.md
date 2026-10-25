@@ -17,7 +17,7 @@ EchoScribe Web Summary is a standalone browser extension that summarizes the act
 
 A provider key is stored in browser-managed local extension storage. This is not an operating-system credential vault and is not guaranteed to be encrypted. Use a dedicated restricted provider key, configure provider-side spending/rate limits, and rotate or revoke the key if needed.
 
-Network access occurs only after an explicit action: invoking a summary or clicking **Refresh model list**. A summary sends extracted page/PDF or selected text, the bounded page title and meta description, and the selected provider's key directly over HTTPS to that provider. Refreshing models sends the key to that provider's model-list endpoint but sends no page content. EchoScribe Web Summary does not receive any of it.
+Network access occurs only after an explicit action and per-provider permission: invoking a summary or clicking **Refresh model list**. At first use the popup names the provider and asks before extracting page/PDF content or sending it. Settings also show the data categories, allow permission, and revoke it. A summary sends extracted page/PDF or selected text, the bounded page title and meta description, your summary instructions, and the selected provider's key directly over HTTPS to that provider. Refreshing models sends the key to that provider's model-list endpoint but sends no page content. EchoScribe Web Summary does not receive any of it.
 
 To support authenticated web PDFs, the browser may re-fetch the active HTTP(S) PDF with that website's cookies. The URL and cookies stay between the browser and the website and are not sent to the AI provider.
 

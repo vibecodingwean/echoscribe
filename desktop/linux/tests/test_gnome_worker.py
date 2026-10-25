@@ -21,6 +21,7 @@ class GnomeWorkerTests(unittest.TestCase):
         data = deepcopy(DEFAULTS)
         data["recorder"]["command"] = "fake-recorder {path}"
         data["recorder"]["minimum_bytes"] = 8
+        data["consent"]["openai"] = "https://api.openai.com"
         self.config = Config(data, None, self.root, self.root / "secrets.env")
 
     def tearDown(self) -> None:
@@ -55,6 +56,27 @@ class GnomeWorkerTests(unittest.TestCase):
         finally:
             if previous is not None:
                 sys.modules["echoscribe.providers"] = previous
+
+    def test_unapproved_provider_never_starts_recorder_or_sends_audio(self) -> None:
+        self.config.data["consent"].clear()
+        with patch.object(worker.subprocess, "Popen") as recorder:
+            with self.assertRaisesRegex(RuntimeError, "OpenAI"):
+                worker.start_recording(self.config)
+        recorder.assert_not_called()
+        with patch("echoscribe.providers.create_provider") as provider:
+            with self.assertRaisesRegex(RuntimeError, "Audio transfer"):
+                worker.transcribe(self.config, self.root / "audio.wav")
+        provider.assert_not_called()
+
+    def test_changed_local_endpoint_requires_new_permission(self) -> None:
+        from echoscribe.consent import allowed
+
+        self.config.data["providers"]["transcription"] = "localai"
+        old_url = self.config.data["localai"]["whisper_url"]
+        self.config.data["consent"]["localai"] = old_url
+        self.assertTrue(allowed(self.config, "localai"))
+        self.config.data["localai"]["whisper_url"] = "https://new.example/v1/audio/transcriptions"
+        self.assertFalse(allowed(self.config, "localai"))
 
     def test_start_command_has_no_local_duration_limit(self) -> None:
         fake = Mock(pid=4321)

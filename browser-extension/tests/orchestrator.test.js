@@ -4,7 +4,8 @@ import { createOrchestrator } from '../src/background/orchestrator.js';
 function setup(overrides = {}) {
   const stored = { settings: {
     provider: 'anthropic', models: { anthropic: 'claude-user' },
-    apiKeys: { anthropic: 'private-key' }, targetLanguage: 'auto', customPrompt: ''
+    apiKeys: { anthropic: 'private-key' }, targetLanguage: 'auto', customPrompt: '',
+    providerConsent: { anthropic: true }
   } };
   const api = {
     tabs: { query: vi.fn(async () => [{ id: 7, url: 'https://example.com', title: 'Page' }]) },
@@ -30,6 +31,15 @@ function setup(overrides = {}) {
 }
 
 describe('background orchestrator', () => {
+  it('blocks page extraction and provider calls until the selected provider is approved', async () => {
+    const { orchestrator, stored, api, summarizeProvider } = setup();
+    stored.settings.providerConsent.anthropic = false;
+    await expect(orchestrator.summarizeActiveTab()).rejects.toThrow('popup');
+    expect(api.scripting.executeScript).not.toHaveBeenCalled();
+    const result = await orchestrator.summarizePayload({ title: 'Private', text: 'Private body' }, 'auto');
+    expect(result).toMatchObject({ ok: false });
+    expect(summarizeProvider).not.toHaveBeenCalled();
+  });
   it('summarizes the active tab with persisted provider and model', async () => {
     const { orchestrator, summarizeProvider, stored } = setup();
     const result = await orchestrator.summarizeActiveTab('de');

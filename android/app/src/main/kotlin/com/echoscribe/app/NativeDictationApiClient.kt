@@ -9,8 +9,22 @@ import java.net.URL
 
 class NativeDictationApiClient(
     private val config: NativeDictationConfig,
+    private val consentCheck: (String) -> Boolean = { false },
     private val connectionFactory: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection },
 ) {
+    private val activeUse = ThreadLocal<String>()
+
+    private fun requireConsent(use: String = activeUse.get() ?: "text") {
+        if (!consentCheck(use)) {
+            throw IllegalStateException("Open EchoScribe and allow AI sharing with ${config.brandName.ifBlank { "this provider" }} before using dictation.")
+        }
+    }
+
+    private fun <T> withConsent(use: String, action: () -> T): T {
+        requireConsent(use)
+        activeUse.set(use)
+        return try { action() } finally { activeUse.remove() }
+    }
     internal companion object {
         const val DEFAULT_LOCAL_AI_FORMATTING_MODEL = "qwen2.5:7b"
 
@@ -54,19 +68,21 @@ class NativeDictationApiClient(
 
     fun preflightLocalAi() {
         if (config.provider != "localAi") return
-        preflightLocalAiWhisper()
-        preflightLocalAiLlm()
+        withConsent("fileAudio") {
+            preflightLocalAiWhisper()
+            preflightLocalAiLlm()
+        }
     }
 
     fun transcribe(file: File): String {
-        return when (config.provider) {
+        return withConsent("fileAudio") { when (config.provider) {
             "openai" -> transcribeOpenAi(file)
             "gemini" -> transcribeGemini(file)
             "xai" -> transcribeXai(file)
             "localAi" -> transcribeLocalAi(file)
             "elevenLabs", "elevenlabs" -> transcribeElevenLabs(file)
             else -> throw IllegalStateException("Speech input not supported for ${config.brandName.ifBlank { "this provider" }}")
-        }
+        } }
     }
 
     fun format(rawText: String): String {
@@ -84,13 +100,14 @@ class NativeDictationApiClient(
      * Uses formattingModel and the same provider keys as dictation formatting.
      */
     fun rewrite(systemPrompt: String, userPrompt: String, variantCount: Int = 1): List<String> {
+        return withConsent("text") {
         val system = systemPrompt.trim().ifBlank {
             "You rewrite user text. Output only the rewritten text."
         }
         val user = userPrompt.trim()
-        if (user.isBlank()) return emptyList()
+        if (user.isBlank()) return@withConsent emptyList()
         val count = variantCount.coerceIn(1, 3)
-        return when (config.provider) {
+        when (config.provider) {
             "openai" -> List(count) {
                 chatCompletions(
                     endpoint = "https://api.openai.com/v1/chat/completions",
@@ -113,6 +130,7 @@ class NativeDictationApiClient(
                 "AI rewrite not supported for ${config.brandName.ifBlank { "this provider" }}",
             )
         }.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+        }
     }
 
     fun rewrite(systemPrompt: String, userPrompt: String): String {
@@ -464,6 +482,7 @@ class NativeDictationApiClient(
         connectTimeoutMs: Int,
         readTimeoutMs: Int,
     ): JSONObject {
+        requireConsent()
         val connection = connectionFactory(URL(endpoint)).apply {
             requestMethod = method
             connectTimeout = connectTimeoutMs
@@ -481,6 +500,7 @@ class NativeDictationApiClient(
         connectTimeoutMs: Int,
         readTimeoutMs: Int,
     ): String {
+        requireConsent()
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
             requestMethod = method
             connectTimeout = connectTimeoutMs
@@ -503,6 +523,7 @@ class NativeDictationApiClient(
         readTimeoutMs: Int,
         allowClientError: Boolean,
     ) {
+        requireConsent()
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
             requestMethod = method
             connectTimeout = connectTimeoutMs
@@ -524,6 +545,7 @@ class NativeDictationApiClient(
         connectTimeoutMs: Int = 30_000,
         readTimeoutMs: Int = 180_000,
     ): JSONObject {
+        requireConsent()
         val boundary = "EchoScribeBoundary${System.currentTimeMillis()}"
         val connection = connectionFactory(URL(endpoint)).apply {
             requestMethod = "POST"

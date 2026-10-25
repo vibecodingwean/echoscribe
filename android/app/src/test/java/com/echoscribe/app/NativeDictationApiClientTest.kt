@@ -14,6 +14,24 @@ import org.junit.Test
 
 class NativeDictationApiClientTest {
     @Test
+    fun nativeRequestsRequireTheMatchingDataPermissionBeforeOpeningConnection() {
+        var connections = 0
+        val config = xaiConfig("").copy(provider = "gemini", formattingModel = "gemini-3.8-flash")
+        val client = NativeDictationApiClient(
+            config,
+            consentCheck = { use -> use == "fileAudio" },
+        ) { url ->
+            connections++
+            CapturingConnection(url)
+        }
+        val error = assertThrows(IllegalStateException::class.java) {
+            client.rewrite("System", "private text")
+        }
+        assertTrue(error.message!!.contains("allow AI sharing"))
+        assertEquals(0, connections)
+    }
+
+    @Test
     fun geminiFormattingRequestUsesArgonConfigButKeepsLegacyAndFastContract() {
         for (model in listOf("gemini-4-argon", "gemini-3.1-pro-preview", "gemini-3.8-flash")) {
             val body = NativeDictationApiClient.buildGeminiFormattingRequest(model, "System", "User")
@@ -44,7 +62,7 @@ class NativeDictationApiClientTest {
         for (model in listOf("gemini-4-argon", "gemini-3.1-pro-preview", "gemini-3.8-flash", "custom-gemini-model")) {
             val config = xaiConfig("").copy(provider = "gemini", formattingModel = model)
             lateinit var request: CapturingConnection
-            val client = NativeDictationApiClient(config) { url ->
+            val client = NativeDictationApiClient(config, consentCheck = { _ -> true }) { url ->
                 request = CapturingConnection(url)
                 request
             }
@@ -65,6 +83,7 @@ class NativeDictationApiClientTest {
         val response = """{"candidates":[{"finishReason":"STOP","content":{"parts":[{"thought":true,"text":"private reasoning"},{"text":"Final text"}]}}]}"""
         val client = NativeDictationApiClient(
             xaiConfig("").copy(provider = "gemini", formattingModel = "gemini-3.1-pro-preview"),
+            consentCheck = { _ -> true },
         ) { url -> CapturingConnection(url, 200, response) }
 
         assertEquals("Final text", client.format("Raw text"))
@@ -76,6 +95,7 @@ class NativeDictationApiClientTest {
         val response = """{"candidates":[{"finishReason":"STOP","content":{"parts":[{"thought":true,"text":"private reasoning"}]}}]}"""
         val client = NativeDictationApiClient(
             xaiConfig("").copy(provider = "gemini", formattingModel = "gemini-3.1-pro-preview"),
+            consentCheck = { _ -> true },
         ) { url -> CapturingConnection(url, 200, response) }
 
         val formatError = assertThrows(IllegalStateException::class.java) { client.format("Raw text") }
@@ -90,6 +110,7 @@ class NativeDictationApiClientTest {
         for ((model, expected) in mapOf("gemini-4-argon" to "First\nSecond", "gemini-3.8-flash" to "First")) {
             val client = NativeDictationApiClient(
                 xaiConfig("").copy(provider = "gemini", formattingModel = model),
+            consentCheck = { _ -> true },
             ) { url -> CapturingConnection(url, 200, response) }
             assertEquals(expected, client.format("Raw text"))
             assertEquals(expected, client.rewrite("System", "User"))
@@ -102,6 +123,7 @@ class NativeDictationApiClientTest {
             val response = """{"candidates":[{"finishReason":"$reason","content":{"parts":[{"text":"Incomplete"}]}}]}"""
             val client = NativeDictationApiClient(
                 xaiConfig("").copy(provider = "gemini", formattingModel = "gemini-4-argon"),
+            consentCheck = { _ -> true },
             ) { url -> CapturingConnection(url, 200, response) }
             assertThrows(IllegalStateException::class.java) { client.format("Raw text") }
             assertThrows(IllegalStateException::class.java) { client.rewrite("System", "User") }
@@ -137,7 +159,7 @@ class NativeDictationApiClientTest {
         try {
             audio.writeBytes(byteArrayOf(1, 2, 3))
             lateinit var request: CapturingConnection
-            val client = NativeDictationApiClient(xaiConfig(configModel)) { url ->
+            val client = NativeDictationApiClient(xaiConfig(configModel), consentCheck = { _ -> true }) { url ->
                 request = CapturingConnection(url)
                 request
             }

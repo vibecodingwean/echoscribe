@@ -48,6 +48,20 @@ describe('summarizeWithProvider', () => {
     expect(JSON.parse(request.body)).toEqual({ contents: [{ role: 'user', parts: [{ text: 'Prompt' }] }] });
   });
 
+  it('uses Argon low thinking and discards thought or incomplete responses', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ candidates: [{
+      finishReason: 'STOP', content: { parts: [{ thought: true, text: 'Hidden' }, { text: 'Visible summary' }] }
+    }] }));
+    const result = await summarizeWithProvider({ provider: 'gemini', apiKey: 'x', model: 'gemini-4-argon', prompt: 'Prompt', fetchImpl });
+    expect(result.summary).toBe('Visible summary');
+    expect(JSON.parse(fetchImpl.mock.calls[0][1].body).generationConfig).toEqual({
+      maxOutputTokens: 32768, thinkingConfig: { thinkingLevel: 'low' }
+    });
+    fetchImpl.mockResolvedValueOnce(jsonResponse({ candidates: [{ finishReason: 'MAX_TOKENS', content: { parts: [{ text: 'Partial' }] } }] }));
+    await expect(summarizeWithProvider({ provider: 'gemini', apiKey: 'x', model: 'gemini-4-argon', prompt: 'Prompt', fetchImpl }))
+      .rejects.toThrow('No partial result');
+  });
+
   it('fails before network access when the key or model is missing', async () => {
     const fetchImpl = vi.fn();
     await expect(summarizeWithProvider({ provider: 'openai', apiKey: '', model: 'gpt', prompt: 'x', fetchImpl })).rejects.toThrow('API key');

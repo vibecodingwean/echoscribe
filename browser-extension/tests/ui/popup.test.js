@@ -8,6 +8,7 @@ function popupDocument() {
     <button id="summarize"></button><button id="retry"></button><button id="copy"></button><button id="settings"></button>
     <div id="status"></div><article id="summary"></article>
     <dialog id="pdf-confirm"><button id="pdf-ok"></button><button id="pdf-cancel"></button></dialog>
+    <dialog id="provider-consent"><p id="provider-consent-detail"></p><button id="provider-consent-allow"></button><button id="provider-consent-cancel"></button></dialog>
   </body>`).window.document;
 }
 
@@ -17,7 +18,7 @@ function setup(response = { ok: true, summary: 'New summary', provider: 'openai'
     tabs: { query: vi.fn(async () => [options.tab || { id: 7, url: 'https://example.com/article', title: 'Article' }]) },
     storage: { local: { get: vi.fn(async () => ({ latestSummary: 'Old summary', latestProvider: 'xai', latestModel: 'grok', summaryTargetLanguage: 'de' })), set: vi.fn(async () => {}) } },
     runtime: { sendMessage: vi.fn(async (message) => message.type === 'getSummaryReadiness'
-      ? { ok: true, provider: 'openai', configured: true }
+      ? { ok: true, provider: 'openai', configured: true, consented: true }
       : response), openOptionsPage: vi.fn(async () => {}) }
   };
   const clipboard = { writeText: vi.fn(async () => {}) };
@@ -27,6 +28,25 @@ function setup(response = { ok: true, summary: 'New summary', provider: 'openai'
 }
 
 describe('popup', () => {
+  it('asks for named permission before extracting or transmitting a page', async () => {
+    const { document, api, controller } = setup();
+    const dialog = document.querySelector('#provider-consent');
+    dialog.showModal = vi.fn();
+    dialog.close = vi.fn();
+    api.runtime.sendMessage.mockImplementation(async (message) => {
+      if (message.type === 'getSummaryReadiness') return { ok: true, provider: 'openai', configured: true, consented: false };
+      return { ok: true };
+    });
+    await controller.ready;
+    const pending = controller.summarize();
+    await vi.waitFor(() => expect(dialog.showModal).toHaveBeenCalledOnce());
+    expect(document.querySelector('#provider-consent-detail').textContent).toContain('OpenAI');
+    expect(api.tabs.query).not.toHaveBeenCalled();
+    document.querySelector('#provider-consent-cancel').click();
+    await pending;
+    expect(api.runtime.sendMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'summarizeActiveTab' }));
+    expect(api.runtime.sendMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'setProviderConsent' }));
+  });
   it('loads the latest local summary and language preference', async () => {
     const { document, controller } = setup();
     await controller.ready;
@@ -82,7 +102,7 @@ describe('popup', () => {
       tabs: { query: vi.fn(async () => [{ id: 7, url: 'https://example.com/report.pdf', title: 'report.pdf' }]) },
       storage: { local: { get: vi.fn(async () => ({})), set: vi.fn(async () => {}) } },
       runtime: { sendMessage: vi.fn(async (message) => message.type === 'getSummaryReadiness'
-        ? { ok: true, provider: 'openai', configured: true }
+        ? { ok: true, provider: 'openai', configured: true, consented: true }
         : { ok: true }), openOptionsPage: vi.fn() }
     };
     const loadPdfPayload = vi.fn();
@@ -118,7 +138,7 @@ describe('popup', () => {
     expect(document.querySelector('#status').textContent).toContain('Configure');
     expect(document.querySelector('#retry').hidden).toBe(false);
     api.runtime.sendMessage
-      .mockResolvedValueOnce({ ok: true, provider: 'openai', configured: true })
+      .mockResolvedValueOnce({ ok: true, provider: 'openai', configured: true, consented: true })
       .mockResolvedValueOnce({ ok: true, summary: 'Retried', provider: 'openai', model: 'gpt-test' });
     await controller.retry();
     expect(api.runtime.sendMessage).toHaveBeenLastCalledWith({ type: 'summarizeActiveTab', targetLanguage: 'de' });

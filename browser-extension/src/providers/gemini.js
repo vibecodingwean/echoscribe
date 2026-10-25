@@ -11,10 +11,21 @@ export const gemini = {
       fetchImpl,
       request: {
         method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
-        body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }] })
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          ...(cleanModel === 'gemini-4-argon' ? {
+            generationConfig: { maxOutputTokens: 32768, thinkingConfig: { thinkingLevel: 'low' } }
+          } : {})
+        })
       }
     }, apiKey);
-    const summary = (body?.candidates?.[0]?.content?.parts || []).map((part) => part.text || '').join('').trim();
+    const candidate = body?.candidates?.[0];
+    if (cleanModel === 'gemini-4-argon' && candidate?.finishReason !== 'STOP') {
+      throw new Error('Gemini did not complete the answer. No partial result was used.');
+    }
+    const summary = (candidate?.content?.parts || [])
+      .filter((part) => part?.thought !== true)
+      .map((part) => part.text || '').join('').trim();
     if (!summary) throw new Error('The provider returned an empty summary.');
     return summary;
   },

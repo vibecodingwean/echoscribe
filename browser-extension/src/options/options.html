@@ -21,10 +21,12 @@
         </div>
         <label><span>API key</span><input id="api-key" type="password" autocomplete="new-password" spellcheck="false"></label>
         <div class="inline"><span id="key-status" class="muted"></span><button id="clear-key" class="danger" type="button">Remove key</button></div>
+        <div class="notice" id="provider-consent-detail" aria-live="polite"></div>
+        <div class="inline"><span id="provider-consent-status" class="muted"></span><button id="provider-consent-toggle" type="button">Allow transfer</button></div>
         <p class="notice"><strong>BYOK notice:</strong> the key is stored in browser-managed local extension storage, not an operating-system credential vault. Use a dedicated restricted key with a low spending limit. Clearing it here does not revoke it at the provider.</p>
         <div class="model-refresh">
           <button id="fetch-models" type="button">Refresh model list</button>
-          <p id="model-refresh-help" class="muted">Requires an API key for the selected provider. Refreshing sends the key but no page content.</p>
+          <p id="model-refresh-help" class="muted">Requires an API key and permission for the selected provider. Refreshing sends the key but no page content.</p>
         </div>
       </section>
 

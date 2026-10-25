@@ -18,8 +18,10 @@ class ConsentAwareProvider implements AiProvider {
   final ProviderConsentService consent;
   final String? localEndpoint;
 
-  Future<void> _ensure(String dataType, String purpose) => consent.ensure(
+  Future<void> _ensure(AiDataUse use, String dataType, String purpose) =>
+      consent.ensure(
         provider,
+        use: use,
         dataType: dataType,
         purpose: purpose,
         localEndpoint: localEndpoint,
@@ -34,7 +36,8 @@ class ConsentAwareProvider implements AiProvider {
     String? summaryPrompt,
     String? reasoningEffort,
   }) async {
-    await _ensure('text, URL or webpage content and custom prompts', 'a summary');
+    await _ensure(AiDataUse.text,
+        'text, URL or webpage content and custom prompts', 'a summary');
     return delegate.summarize(
       apiKey: apiKey,
       text: text,
@@ -53,7 +56,7 @@ class ConsentAwareProvider implements AiProvider {
     required String model,
     String? reasoningEffort,
   }) async {
-    await _ensure('text and custom prompts', 'translation');
+    await _ensure(AiDataUse.text, 'text and custom prompts', 'translation');
     return delegate.translate(
       apiKey: apiKey,
       text: text,
@@ -71,7 +74,8 @@ class ConsentAwareProvider implements AiProvider {
     required String mimeType,
     required String model,
   }) async {
-    await _ensure('an audio file and its filename', 'transcription');
+    await _ensure(
+        AiDataUse.fileAudio, 'an audio file and its filename', 'transcription');
     return delegate.transcribe(
       apiKey: apiKey,
       filePath: filePath,
@@ -87,7 +91,8 @@ class ConsentAwareProvider implements AiProvider {
     required String prompt,
     required String model,
   }) async {
-    await _ensure('a text prompt derived from your content', 'image generation');
+    await _ensure(AiDataUse.image, 'a text prompt derived from your content',
+        'image generation');
     return delegate.generateImage(
       apiKey: apiKey,
       prompt: prompt,

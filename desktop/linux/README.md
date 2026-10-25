@@ -81,6 +81,16 @@ Provider/model/endpoint configuration is backed by the normal EchoScribe
 config. Preferences show API keys only as set or
 missing; stored keys are never printed back into the UI.
 
+The first dictation attempt opens Preferences until the selected recipient is
+approved in **Audio transfer permission**. Each switch names the provider or
+configured Local AI Whisper endpoint and explains that recorded audio, model
+and language settings, optional transcription settings, and (for cloud
+providers) the API key are sent for transcription. Turning it off blocks future
+transfers. Changing the Local AI Whisper URL requires approval for the new URL.
+The worker enforces permission before recording starts and before any audio
+request. A custom Local AI Whisper URL can point to another machine; review
+the exact URL before allowing it.
+
 The shell-status feedback remains visible for the full recording. After 90
 seconds EchoScribe shows a reminder notification but continues recording. There
 is no local duration cutoff; the selected transcription provider's upload and
@@ -98,6 +108,9 @@ applications and `Ctrl+V` elsewhere.
 python3 -m echoscribe doctor
 python3 -m echoscribe config-get transcription-provider
 python3 -m echoscribe config-set transcription-provider openai
+python3 -m echoscribe config-get consent-status openai
+python3 -m echoscribe config-set consent openai allow   # after reviewing recipient and data above
+python3 -m echoscribe config-set consent openai revoke
 python3 -m echoscribe config-tui
 python3 -m echoscribe gnome-worker status --json
 python3 -m echoscribe gnome-worker start --json

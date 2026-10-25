@@ -8,8 +8,27 @@ export function bindPopup(document, api, clipboard = navigator.clipboard, {
     return parser.loadPdfPayload(tab, extensionApi.runtime.getURL('vendor/pdf.worker.min.mjs'));
   }
 } = {}) {
-  const elements = Object.fromEntries(['provider-model', 'language', 'summarize', 'retry', 'copy', 'settings', 'status', 'summary', 'pdf-confirm', 'pdf-ok', 'pdf-cancel']
+  const elements = Object.fromEntries(['provider-model', 'language', 'summarize', 'retry', 'copy', 'settings', 'status', 'summary', 'pdf-confirm', 'pdf-ok', 'pdf-cancel', 'provider-consent', 'provider-consent-detail', 'provider-consent-allow', 'provider-consent-cancel']
     .map((id) => [id, document.getElementById(id)]));
+
+  const requestProviderConsent = (provider) => new Promise((resolve) => {
+    const dialog = elements['provider-consent'];
+    const finish = (accepted) => {
+      elements['provider-consent-allow'].removeEventListener('click', accept);
+      elements['provider-consent-cancel'].removeEventListener('click', cancel);
+      dialog.removeEventListener('cancel', cancelEvent);
+      dialog.close();
+      resolve(accepted);
+    };
+    const accept = () => finish(true);
+    const cancel = () => finish(false);
+    const cancelEvent = (event) => { event.preventDefault(); finish(false); };
+    elements['provider-consent-detail'].textContent = `Recipient: ${PROVIDERS[provider]?.label || provider}.`;
+    elements['provider-consent-allow'].addEventListener('click', accept);
+    elements['provider-consent-cancel'].addEventListener('click', cancel);
+    dialog.addEventListener('cancel', cancelEvent);
+    dialog.showModal();
+  });
 
   const requestPdfConfirmation = confirmAction || (() => new Promise((resolve) => {
     const dialog = elements['pdf-confirm'];
@@ -84,6 +103,17 @@ export function bindPopup(document, api, clipboard = navigator.clipboard, {
       elements.status.textContent = 'An API key is required for the selected provider.';
       elements.retry.hidden = true;
       return;
+    }
+    if (!readiness.consented) {
+      if (!await requestProviderConsent(readiness.provider)) {
+        elements.status.textContent = 'Cancelled';
+        return;
+      }
+      const granted = await api.runtime.sendMessage({ type: 'setProviderConsent', provider: readiness.provider, allowed: true });
+      if (!granted?.ok) {
+        elements.status.textContent = granted?.error || 'Permission could not be saved.';
+        return;
+      }
     }
     const [tab] = await api.tabs.query({ active: true, currentWindow: true });
     if (isWebPdfTab(tab)) {

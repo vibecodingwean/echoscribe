@@ -7,6 +7,7 @@ import 'package:echoscribe/models/enums.dart';
 import 'package:echoscribe/models/app_exception.dart';
 import 'package:echoscribe/services/local_ai_health_service.dart';
 import 'package:echoscribe/services/service_locator.dart';
+import 'package:echoscribe/services/provider_consent_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -25,6 +26,29 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage>
     with WidgetsBindingObserver, TickerProviderStateMixin {
   bool get _isIOS => defaultTargetPlatform == TargetPlatform.iOS;
+
+  Future<void> _reviewNativeConsent(
+      AiDataUse use, String dataType, String purpose) async {
+    try {
+      await ServiceLocator().providerConsent.ensure(
+            widget.settings.provider,
+            use: use,
+            dataType: dataType,
+            purpose: purpose,
+            localEndpoint: widget.settings.provider == AiProviderType.localAi
+                ? '${widget.settings.localAiLlmUrl}|${widget.settings.localAiWhisperUrl}'
+                : null,
+          );
+    } on AppException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.userMessage)),
+        );
+      }
+    }
+    if (mounted) setState(() {});
+  }
+
   final _openAiFormKey = GlobalKey<FormState>();
   final _geminiFormKey = GlobalKey<FormState>();
   final _anthropicFormKey = GlobalKey<FormState>();
@@ -869,7 +893,7 @@ class _SettingsPageState extends State<SettingsPage>
                 ],
               ),
             ),
-            if (_isIOS) ...[
+            if (_isIOS || defaultTargetPlatform == TargetPlatform.android) ...[
               const SizedBox(height: 12),
               Text('AI data sharing',
                   style: Theme.of(context).textTheme.titleSmall),
@@ -881,24 +905,63 @@ class _SettingsPageState extends State<SettingsPage>
                     const Padding(
                       padding: EdgeInsets.fromLTRB(12, 12, 12, 4),
                       child: Text(
-                        'You choose whether EchoScribe may send content to each provider. Withdraw a choice here to stop future transfers. Content already sent cannot be recalled.',
+                        'You choose separately whether EchoScribe may send audio, live audio, text, image prompts or speech text to each provider. Withdraw a provider here to stop future transfers. Content already sent cannot be recalled.',
                       ),
                     ),
+                    if (defaultTargetPlatform == TargetPlatform.android &&
+                        widget.settings.provider.supportsKeyboardDictation) ...[
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          'Keyboard and floating dictation need permission in this app before they can send audio or text.',
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => _reviewNativeConsent(
+                          AiDataUse.fileAudio,
+                          'recorded audio files and filenames',
+                          'keyboard or floating transcription',
+                        ),
+                        child: const Text('Review dictation audio sharing'),
+                      ),
+                      if (widget.settings.provider.supportsSummary)
+                        TextButton(
+                          onPressed: () => _reviewNativeConsent(
+                            AiDataUse.text,
+                            'dictated text, selected field text and custom prompts',
+                            'dictation formatting or keyboard rewriting',
+                          ),
+                          child: const Text('Review keyboard text sharing'),
+                        ),
+                    ],
                     for (final provider in AiProviderType.values)
-                      FutureBuilder<bool>(
-                        future: ServiceLocator().providerConsent.hasGrant(
-                              provider,
-                              localEndpoint: provider == AiProviderType.localAi
-                                  ? '${widget.settings.localAiLlmUrl}|${widget.settings.localAiWhisperUrl}'
-                                  : null,
-                            ),
+                      FutureBuilder<List<bool>>(
+                        future: Future.wait([
+                          for (final use in AiDataUse.values)
+                            ServiceLocator().providerConsent.hasGrant(
+                                  provider,
+                                  use: use,
+                                  localEndpoint: provider ==
+                                          AiProviderType.localAi
+                                      ? '${widget.settings.localAiLlmUrl}|${widget.settings.localAiWhisperUrl}'
+                                      : null,
+                                ),
+                        ]),
                         builder: (context, snapshot) => ListTile(
                           dense: true,
                           title: Text(provider.brandName),
-                          subtitle: Text(snapshot.data == true
-                              ? 'Allowed'
-                              : 'Not allowed'),
-                          trailing: snapshot.data == true
+                          subtitle: Text(
+                              snapshot.hasData && snapshot.data!.contains(true)
+                                  ? 'Allowed: ${[
+                                      for (var i = 0;
+                                          i < AiDataUse.values.length;
+                                          i++)
+                                        if (snapshot.data![i])
+                                          AiDataUse.values[i].label
+                                    ].join(', ')}'
+                                  : 'No data sharing allowed'),
+                          trailing: snapshot.hasData &&
+                                  snapshot.data!.contains(true)
                               ? TextButton(
                                   onPressed: () async {
                                     try {

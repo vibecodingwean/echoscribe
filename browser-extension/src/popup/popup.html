@@ -41,9 +41,18 @@
     </footer>
   </main>
 
+  <dialog id="provider-consent" aria-labelledby="provider-consent-title">
+    <h2 id="provider-consent-title">Allow AI data transfer?</h2>
+    <p id="provider-consent-detail"></p>
+    <p>EchoScribe sends selected or extracted page/PDF text, page title, meta description, your summary instructions and API key to this provider to generate a summary. Web addresses are removed from the prompt. Refreshing its model list sends only the API key. You can revoke permission in Settings.</p>
+    <div class="dialog-actions">
+      <button id="provider-consent-cancel" type="button">Cancel</button>
+      <button id="provider-consent-allow" class="primary" type="button">Allow transfer</button>
+    </div>
+  </dialog>
   <dialog id="pdf-confirm" aria-labelledby="pdf-confirm-title">
     <h2 id="pdf-confirm-title">EchoScribe</h2>
-    <p>The text of this PDF will be sent to your selected AI provider. Continue?</p>
+    <p>The text of this PDF will be sent to your approved AI provider. Continue?</p>
     <div class="dialog-actions">
       <button id="pdf-cancel" type="button">Cancel</button>
       <button id="pdf-ok" class="primary" type="button">Continue</button>

@@ -17,7 +17,8 @@ function normalizePublicSettings(value = {}) {
 export function bindOptions(document, api, confirmAction = (message) => window.confirm(message)) {
   const ids = [
     'provider', 'api-key', 'key-status', 'clear-key', 'model',
-    'fetch-models', 'model-refresh-help', 'prompt', 'reset-prompt', 'save', 'clear-data', 'status'
+    'fetch-models', 'model-refresh-help', 'prompt', 'reset-prompt', 'save', 'clear-data', 'status',
+    'provider-consent-detail', 'provider-consent-status', 'provider-consent-toggle'
   ];
   const elements = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
   let settings = normalizePublicSettings(defaultSettings());
@@ -48,6 +49,9 @@ export function bindOptions(document, api, confirmAction = (message) => window.c
       ? 'API key configured locally'
       : 'No API key configured';
     elements['clear-key'].disabled = !settings.configuredProviders[provider];
+    elements['provider-consent-detail'].textContent = `Recipient: ${PROVIDERS[provider].label}. Summaries send selected or extracted page/PDF text, page title, meta description, your summary instructions and API key to generate a summary. Web addresses are removed from the prompt. Refreshing models sends only the key.`;
+    elements['provider-consent-status'].textContent = settings.providerConsent[provider] ? 'Transfer allowed' : 'Transfer blocked until you allow it';
+    elements['provider-consent-toggle'].textContent = settings.providerConsent[provider] ? 'Revoke permission' : 'Allow transfer';
     elements['model-refresh-help'].textContent = settings.configuredProviders[provider]
       ? 'Refreshes the live model list for this provider. It sends the key but no page content.'
       : `An API key for ${PROVIDERS[provider].label} is required to refresh its live model list.`;
@@ -106,6 +110,10 @@ export function bindOptions(document, api, confirmAction = (message) => window.c
       restoreRefreshButton();
       return;
     }
+    if (!settings.providerConsent[provider]) {
+      elements.status.textContent = `Allow transfer to ${label} before refreshing models.`;
+      return;
+    }
 
     try {
       showRefreshProgress('Saving API key…', `Saving the ${label} API key locally…`);
@@ -155,6 +163,15 @@ export function bindOptions(document, api, confirmAction = (message) => window.c
     elements.status.textContent = 'Default prompt restored. Save to apply.';
   }
 
+  async function toggleProviderConsent() {
+    const provider = elements.provider.value;
+    const allowed = !settings.providerConsent[provider];
+    const response = await api.runtime.sendMessage({ type: 'setProviderConsent', provider, allowed });
+    if (!response?.ok) throw new Error(response?.error || 'Permission could not be saved.');
+    applyPublicSettings(response.settings);
+    elements.status.textContent = allowed ? `Transfer to ${PROVIDERS[provider].label} allowed.` : `Transfer to ${PROVIDERS[provider].label} revoked.`;
+  }
+
   async function clearProviderKey() {
     const provider = elements.provider.value;
     if (!confirmAction(`Remove the saved ${PROVIDERS[provider].label} API key?`)) return;
@@ -180,8 +197,9 @@ export function bindOptions(document, api, confirmAction = (message) => window.c
   elements['fetch-models'].addEventListener('click', fetchModels);
   elements['reset-prompt'].addEventListener('click', resetPrompt);
   elements['clear-key'].addEventListener('click', clearProviderKey);
+  elements['provider-consent-toggle'].addEventListener('click', toggleProviderConsent);
   elements.save.addEventListener('click', save);
   elements['clear-data'].addEventListener('click', clearData);
 
-  return { ready, save, fetchModels, resetPrompt, clearProviderKey, clearData };
+  return { ready, save, fetchModels, resetPrompt, clearProviderKey, clearData, toggleProviderConsent };
 }

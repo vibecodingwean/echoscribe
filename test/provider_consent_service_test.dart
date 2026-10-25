@@ -42,7 +42,8 @@ void main() {
       throwsA(isA<AppException>()),
     );
     expect(delegate.calls, 0);
-    expect(await consent.hasGrant(AiProviderType.openai), isFalse);
+    expect(await consent.hasGrant(AiProviderType.openai, use: AiDataUse.text),
+        isFalse);
   });
 
   test('denied speech generation sends no HTTP request', () async {
@@ -73,6 +74,7 @@ void main() {
     );
     await consent.ensure(
       AiProviderType.openai,
+      use: AiDataUse.text,
       dataType: 'text',
       purpose: 'summary',
     );
@@ -84,15 +86,76 @@ void main() {
     );
     await restarted.ensure(
       AiProviderType.openai,
+      use: AiDataUse.text,
       dataType: 'text',
       purpose: 'summary',
     );
     expect(prompts, 1);
-    expect(await restarted.hasGrant(AiProviderType.gemini), isFalse);
+    expect(await restarted.hasGrant(AiProviderType.gemini, use: AiDataUse.text),
+        isFalse);
 
     await restarted.revoke(AiProviderType.openai);
-    expect(restarted.canTransferNow(AiProviderType.openai), isFalse);
-    expect(await restarted.hasGrant(AiProviderType.openai), isFalse);
+    expect(restarted.canTransferNow(AiProviderType.openai, use: AiDataUse.text),
+        isFalse);
+    expect(await restarted.hasGrant(AiProviderType.openai, use: AiDataUse.text),
+        isFalse);
+  });
+
+  test('audio permission does not authorize text, image or speech', () async {
+    final requests = <AiDataUse>[];
+    final consent = ProviderConsentService(
+      requestPermission: (request) async {
+        requests.add(request.use);
+        return request.use == AiDataUse.fileAudio;
+      },
+    );
+    await consent.ensure(AiProviderType.openai,
+        use: AiDataUse.fileAudio,
+        dataType: 'audio file',
+        purpose: 'transcription');
+    expect(
+        await consent.hasGrant(AiProviderType.openai, use: AiDataUse.fileAudio),
+        isTrue);
+    for (final use in [AiDataUse.text, AiDataUse.image, AiDataUse.speech]) {
+      expect(await consent.hasGrant(AiProviderType.openai, use: use), isFalse);
+      await expectLater(
+        consent.ensure(AiProviderType.openai,
+            use: use, dataType: 'private content', purpose: 'another action'),
+        throwsA(isA<AppException>()),
+      );
+    }
+    expect(requests, [
+      AiDataUse.fileAudio,
+      AiDataUse.text,
+      AiDataUse.image,
+      AiDataUse.speech
+    ]);
+  });
+
+  testWidgets('Android names the recipient and action before any grant',
+      (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    final consent = ProviderConsentService();
+    await tester.pumpWidget(MaterialApp(
+      navigatorKey: consent.navigatorKey,
+      home: const Scaffold(body: SizedBox()),
+    ));
+    final request = consent.ensure(AiProviderType.openai,
+        use: AiDataUse.fileAudio,
+        dataType: 'an imported audio file and its filename',
+        purpose: 'transcription');
+    final denied = expectLater(request, throwsA(isA<AppException>()));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('OpenAI (api.openai.com)'), findsOneWidget);
+    expect(find.textContaining('an imported audio file'), findsOneWidget);
+    expect(find.text('Privacy policy'), findsOneWidget);
+    expect(
+        await consent.hasGrant(AiProviderType.openai, use: AiDataUse.fileAudio),
+        isFalse);
+    await tester.tap(find.text('Not now'));
+    await tester.pumpAndSettle();
+    await denied;
+    debugDefaultTargetPlatformOverride = null;
   });
 
   test('withdrawal invalidates an approval dialog already open', () async {
@@ -102,6 +165,7 @@ void main() {
     );
     final request = consent.ensure(
       AiProviderType.gemini,
+      use: AiDataUse.fileAudio,
       dataType: 'audio',
       purpose: 'transcription',
     );
@@ -109,8 +173,12 @@ void main() {
     await consent.revoke(AiProviderType.gemini);
     decision.complete(true);
     await expectLater(request, throwsA(isA<AppException>()));
-    expect(await consent.hasGrant(AiProviderType.gemini), isFalse);
-    expect(consent.canTransferNow(AiProviderType.gemini), isFalse);
+    expect(
+        await consent.hasGrant(AiProviderType.gemini, use: AiDataUse.fileAudio),
+        isFalse);
+    expect(
+        consent.canTransferNow(AiProviderType.gemini, use: AiDataUse.fileAudio),
+        isFalse);
   });
 
   test('changing the Local AI destination requires renewed permission',
@@ -123,24 +191,31 @@ void main() {
       },
     );
     await consent.ensure(AiProviderType.localAi,
-        dataType: 'text', purpose: 'summary', localEndpoint: 'https://a.test');
+        use: AiDataUse.text,
+        dataType: 'text',
+        purpose: 'summary',
+        localEndpoint: 'https://a.test');
     expect(
       await consent.hasGrant(AiProviderType.localAi,
-          localEndpoint: 'https://b.test'),
+          use: AiDataUse.text, localEndpoint: 'https://b.test'),
       isFalse,
     );
     await consent.ensure(AiProviderType.localAi,
-        dataType: 'text', purpose: 'summary', localEndpoint: 'https://b.test');
+        use: AiDataUse.text,
+        dataType: 'text',
+        purpose: 'summary',
+        localEndpoint: 'https://b.test');
     expect(prompts, 2);
   });
 
   testWidgets('Gemini requires adult and paid-service confirmation on iOS',
       (tester) async {
     SharedPreferences.setMockInitialValues({
-      'ai_provider_consent_v1_gemini': ProviderConsentService.disclosureVersion,
+      'ai_provider_consent_v1_gemini': '1:gemini-adult-paid-2026-03',
     });
     final consent = ProviderConsentService();
-    expect(await consent.hasGrant(AiProviderType.gemini), isFalse);
+    expect(await consent.hasGrant(AiProviderType.gemini, use: AiDataUse.text),
+        isFalse);
 
     await tester.pumpWidget(MaterialApp(
       navigatorKey: consent.navigatorKey,
@@ -148,6 +223,7 @@ void main() {
     ));
     final request = consent.ensure(
       AiProviderType.gemini,
+      use: AiDataUse.text,
       dataType: 'text',
       purpose: 'summary',
     );
@@ -179,7 +255,8 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Allow & remember'));
     await tester.pumpAndSettle();
     await request;
-    expect(await consent.hasGrant(AiProviderType.gemini), isTrue);
+    expect(await consent.hasGrant(AiProviderType.gemini, use: AiDataUse.text),
+        isTrue);
     debugDefaultTargetPlatformOverride = null;
   });
 }

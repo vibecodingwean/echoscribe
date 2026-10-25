@@ -30,7 +30,7 @@ function setup() {
     summarizePayload: vi.fn(async () => ({ ok: true })),
     summarizeTab: vi.fn(async () => ({ ok: true })),
     retryLatest: vi.fn(async () => ({ ok: true })),
-    readSettings: vi.fn(async () => ({ provider: 'openai', apiKeys: { openai: 'key' } }))
+    readSettings: vi.fn(async () => ({ provider: 'openai', apiKeys: { openai: 'key' }, providerConsent: { openai: true } }))
   };
   const listModels = vi.fn(async () => ['model-a']);
   installBackground({ api, orchestrator, listModels });
@@ -38,6 +38,15 @@ function setup() {
 }
 
 describe('background event wiring', () => {
+  it('blocks model refresh when consent is absent and can revoke a stored approval', async () => {
+    const { onMessage, orchestrator, listModels, api } = setup();
+    orchestrator.readSettings.mockResolvedValue({ provider: 'openai', apiKeys: { openai: 'key' }, providerConsent: { openai: false } });
+    await expect(onMessage.fire({ type: 'listModels', provider: 'openai' })).resolves.toMatchObject({ ok: false });
+    expect(listModels).not.toHaveBeenCalled();
+    const saved = await onMessage.fire({ type: 'setProviderConsent', provider: 'openai', allowed: true });
+    expect(saved.settings.providerConsent.openai).toBe(true);
+    expect(api.storage.local.set.mock.calls.at(-1)[0].settings.providerConsent.openai).toBe(true);
+  });
   it('creates page and selection context menu entries on install', async () => {
     const { api, onInstalled } = setup();
     await onInstalled.fire();
@@ -49,6 +58,15 @@ describe('background event wiring', () => {
     const { onClicked, orchestrator } = setup();
     await onClicked.fire({ menuItemId: 'echoscribe-summarize', selectionText: 'Chosen' }, { id: 9 });
     expect(orchestrator.summarizeTab).toHaveBeenCalledWith({ id: 9 }, 'Chosen', '');
+  });
+
+  it('opens the popup when a context-menu summary needs provider approval', async () => {
+    const { onClicked, orchestrator, api } = setup();
+    api.action = { openPopup: vi.fn(async () => {}) };
+    orchestrator.summarizeTab.mockRejectedValue(new Error('Open the EchoScribe popup to review provider data transfer.'));
+    await onClicked.fire({ menuItemId: 'echoscribe-summarize' }, { id: 9 });
+    expect(api.action.openPopup).toHaveBeenCalledOnce();
+    expect(api.storage.local.set).toHaveBeenCalledWith({ latestError: 'Open the EchoScribe popup to review provider data transfer.' });
   });
 
   it('routes popup summary messages', async () => {
@@ -86,7 +104,7 @@ describe('background event wiring', () => {
   it('checks whether the selected provider has a local API key before summarizing', async () => {
     const { onMessage, listModels } = setup();
     await expect(onMessage.fire({ type: 'getSummaryReadiness' })).resolves.toEqual({
-      ok: true, provider: 'openai', configured: true
+      ok: true, provider: 'openai', configured: true, consented: true
     });
     expect(listModels).not.toHaveBeenCalled();
   });

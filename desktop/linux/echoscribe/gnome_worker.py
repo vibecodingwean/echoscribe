@@ -153,6 +153,9 @@ def error_response(snapshot: dict[str, Any], message: object) -> dict[str, Any]:
 
 def start_recording(config: Config) -> dict[str, Any]:
     """Start the recorder only; provider modules are deliberately not loaded here."""
+    from .consent import require_consent
+
+    require_consent(config, config.active_provider("transcription"))
     with worker_lock():
         current = read_state()
         if current["state"] in {"recording", "processing"}:
@@ -321,9 +324,11 @@ def provider_config(config: Config) -> tuple[str, dict[str, Any]]:
 
 def transcribe(config: Config, path: Path) -> str:
     # Importing providers can be relatively expensive. Keep it off the shortcut start path.
+    from .consent import require_consent
     from .providers import create_provider
 
     provider_name, transcription_cfg = provider_config(config)
+    require_consent(config, provider_name)
     api_key = "" if provider_name == "localai" else config.provider_api_key(provider_name)
     if provider_name != "localai" and not api_key:
         raise RuntimeError(f"{default_api_key_env(provider_name)} missing for selected provider")

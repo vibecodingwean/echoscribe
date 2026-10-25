@@ -370,6 +370,8 @@ export default class EchoScribeExtension extends Extension {
             if (!payload.ok) {
                 this._resetToIdle();
                 this._showError(payload.message);
+                if (String(payload.message || '').includes('Audio transfer to'))
+                    this.openPreferences()?.catch?.(error => logError(error));
                 return;
             }
             this._recordingId = String(payload.recording_id || '');

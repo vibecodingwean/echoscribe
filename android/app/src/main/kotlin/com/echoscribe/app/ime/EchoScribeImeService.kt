@@ -51,6 +51,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.echoscribe.app.NativeDictationApiClient
+import com.echoscribe.app.NativeAiConsent
 import com.echoscribe.app.NativeDictationConfig
 import com.echoscribe.app.R
 import com.echoscribe.app.NativeDictationConfigStore
@@ -1282,7 +1283,7 @@ class EchoScribeImeService : InputMethodService() {
         setStatus("⏳ Grammar…")
         Thread {
             try {
-                val client = NativeDictationApiClient(cfg)
+                val client = NativeDictationApiClient(cfg, consentCheck = { use -> NativeAiConsent(this).hasGrant(cfg, use) })
                 val system = ImeAiActions.systemPromptFor(ImeSheetKind.Grammar)
                 val results = client.rewrite(system, "$instruction\n\nText:\n$source", variantCount = 1)
                 val out = results.firstOrNull()?.trim().orEmpty()
@@ -1679,7 +1680,7 @@ class EchoScribeImeService : InputMethodService() {
 
         Thread {
             try {
-                val client = NativeDictationApiClient(cfg)
+                val client = NativeDictationApiClient(cfg, consentCheck = { use -> NativeAiConsent(this).hasGrant(cfg, use) })
                 val system = ImeAiActions.systemPromptFor(kind)
                 val user = "$instruction\n\nText:\n$source"
                 val results = client.rewrite(system, user, variantCount = variantCount)
@@ -1995,7 +1996,7 @@ class EchoScribeImeService : InputMethodService() {
             if (cfg.provider == "localAi") {
                 Thread {
                     try {
-                        NativeDictationApiClient(cfg).preflightLocalAi()
+                        NativeDictationApiClient(cfg, consentCheck = { use -> NativeAiConsent(this).hasGrant(cfg, use) }).preflightLocalAi()
                         mainHandler.post { startRecorderNow() }
                     } catch (e: Exception) {
                         mainHandler.post {
@@ -2053,7 +2054,7 @@ class EchoScribeImeService : InputMethodService() {
         rebuildUi()
         Thread {
             try {
-                val client = NativeDictationApiClient(cfg)
+                val client = NativeDictationApiClient(cfg, consentCheck = { use -> NativeAiConsent(this).hasGrant(cfg, use) })
                 mainHandler.post { setVoiceLog("⏳ Requesting ${voiceModelLabel()}…") }
                 val raw = client.transcribe(file)
                 mainHandler.post { setVoiceLog("✨ Cleaning up text…") }

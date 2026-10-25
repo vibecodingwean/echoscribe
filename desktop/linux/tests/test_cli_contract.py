@@ -82,6 +82,22 @@ class CliContractTests(unittest.TestCase):
                     result = self.run_cli(*command, env=env)
                     self.assertNotEqual(result.returncode, 0)
 
+    def test_consent_is_explicit_revocable_and_bound_to_local_endpoint(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            path = Path(raw) / "config.toml"
+            path.write_text("", encoding="utf-8")
+            env = {**os.environ, "PYTHONPATH": str(LINUX_ROOT), "ECHOSCRIBE_CONFIG": str(path)}
+            self.assertEqual(self.run_cli("config-get", "consent-status", "openai", env=env).stdout.strip(), "blocked")
+            self.assertEqual(self.run_cli("config-set", "consent", "openai", "allow", env=env).returncode, 0)
+            self.assertEqual(self.run_cli("config-get", "consent-status", "openai", env=env).stdout.strip(), "allowed")
+            self.assertEqual(self.run_cli("config-get", "consent-status", "localai", env=env).stdout.strip(), "blocked")
+            self.assertEqual(self.run_cli("config-set", "consent", "localai", "allow", env=env).returncode, 0)
+            self.assertEqual(self.run_cli("config-get", "consent-status", "localai", env=env).stdout.strip(), "allowed")
+            self.assertEqual(self.run_cli("config-set", "local-ai-whisper-url", "https://other.example/stt", env=env).returncode, 0)
+            self.assertEqual(self.run_cli("config-get", "consent-status", "localai", env=env).stdout.strip(), "blocked")
+            self.assertEqual(self.run_cli("config-set", "consent", "localai", "revoke", env=env).returncode, 0)
+            self.assertEqual(self.run_cli("config-get", "consent-status", "localai", env=env).stdout.strip(), "blocked")
+
 
 if __name__ == "__main__":
     unittest.main()

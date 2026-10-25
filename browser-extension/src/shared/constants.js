@@ -9,7 +9,7 @@ export const PROVIDERS = Object.freeze({
   },
   gemini: {
     label: 'Google Gemini', defaultModel: 'gemini-3.8-flash',
-    models: [{ id: 'gemini-3.8-flash', tier: 'Fast' }, { id: 'gemini-3.1-pro-preview', tier: 'Pro' }]
+    models: [{ id: 'gemini-3.8-flash', tier: 'Fast' }, { id: 'gemini-4-argon', tier: 'Pro' }]
   },
   xai: {
     label: 'xAI', defaultModel: 'grok-4.3',

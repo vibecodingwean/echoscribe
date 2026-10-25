@@ -32,6 +32,7 @@ DEFAULTS: dict[str, Any] = {
     "providers": {
         "transcription": "openai",
     },
+    "consent": {},
     "openai": {
         "api_key": "",
         "api_key_env": "OPENAI_API_KEY",

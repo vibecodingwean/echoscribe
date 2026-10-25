@@ -25,6 +25,9 @@ export function createOrchestrator({
     const apiKey = settings.apiKeys[provider];
 
     try {
+      if (!settings.providerConsent[provider]) {
+        throw new Error(`Allow ${provider} data transfer in EchoScribe before summarizing.`);
+      }
       const providerResult = await summarizeProvider({
         provider, model, apiKey,
         prompt: buildSummaryPrompt(page, language, settings.customPrompt)
@@ -67,6 +70,10 @@ export function createOrchestrator({
 
   async function summarizeTab(tab, selectionText = '', targetLanguage = '') {
     if (!tab?.id) throw new Error('The active tab cannot be accessed.');
+    const settings = await readSettings();
+    if (!settings.providerConsent[settings.provider]) {
+      throw new Error('Open the EchoScribe popup to review provider data transfer.');
+    }
     const page = await buildPayload(tab, selectionText);
     return summarizePayload(page, targetLanguage);
   }

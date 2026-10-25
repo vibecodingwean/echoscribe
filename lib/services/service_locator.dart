@@ -19,7 +19,7 @@ class ServiceLocator {
   late final TtsService tts;
   late final SecureStorageService secureStorage;
   late final AiProviderFactory aiProviderFactory;
-  late final ProviderConsentService providerConsent;
+  late final ProviderConsentService providerConsent = ProviderConsentService();
 
   void init() {
     final whisper = WhisperService();
@@ -30,7 +30,6 @@ class ServiceLocator {
     final xaiSpeech = XaiSpeechService();
 
     recorder = RecorderService();
-    providerConsent = ProviderConsentService();
     tts = TtsService(consent: providerConsent);
     secureStorage = SecureStorageService();
 

@@ -109,9 +109,13 @@ class HomeController extends ChangeNotifier {
   void _onConsentChanged() {
     final session = _activeRecordingSession;
     final guard = consent;
-    if (session == null || guard == null || !session.metadata.isRealtime) return;
-    if (!guard.canTransferNow(session.metadata.provider)) {
-      unawaited(_handleRealtimeFailure('AI sharing permission withdrawn', session));
+    if (session == null || guard == null || !session.metadata.isRealtime) {
+      return;
+    }
+    if (!guard.canTransferNow(session.metadata.provider,
+        use: AiDataUse.liveAudio)) {
+      unawaited(
+          _handleRealtimeFailure('AI sharing permission withdrawn', session));
     }
   }
 
@@ -751,9 +755,8 @@ class HomeController extends ChangeNotifier {
       return;
     }
 
-    final isElevenLabsRealtime =
-        initialProvider == AiProviderType.elevenLabs &&
-            settings.elevenLabsRealtime;
+    final isElevenLabsRealtime = initialProvider == AiProviderType.elevenLabs &&
+        settings.elevenLabsRealtime;
     final isOpenAiRealtime =
         initialProvider == AiProviderType.openai && settings.openAiRealtime;
     final isGeminiRealtime =
@@ -844,6 +847,7 @@ class HomeController extends ChangeNotifier {
 
         await consent?.ensure(
           initialProvider,
+          use: AiDataUse.liveAudio,
           dataType: 'live microphone audio',
           purpose: 'live transcription',
         );
@@ -945,8 +949,11 @@ class HomeController extends ChangeNotifier {
         _audioStreamSub = stream.listen((chunk) {
           if (identical(_activeRecordingSession, session) &&
               session.canStreamMicrophone) {
-            if (consent != null && !consent!.canTransferNow(initialProvider)) {
-              unawaited(_handleRealtimeFailure('AI sharing permission withdrawn', session));
+            if (consent != null &&
+                !consent!.canTransferNow(initialProvider,
+                    use: AiDataUse.liveAudio)) {
+              unawaited(_handleRealtimeFailure(
+                  'AI sharing permission withdrawn', session));
             } else {
               realtimeClient.sendAudioChunk(chunk);
             }

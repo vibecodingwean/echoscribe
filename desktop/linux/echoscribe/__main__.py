@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -42,6 +43,15 @@ def main(argv: list[str] | None = None) -> int:
 
         return run_config_tui(config)
     if args.command == "config-get":
+        if len(args.worker_args) == 2 and args.worker_args[0] == "consent-status":
+            from .config import TRANSCRIPTION_PROVIDERS, normalize_provider
+            from .consent import allowed
+
+            provider = normalize_provider(args.worker_args[1])
+            if provider not in TRANSCRIPTION_PROVIDERS:
+                return 2
+            print("allowed" if allowed(config, provider) else "blocked")
+            return 0
         if args.worker_args == ["transcription-provider"]:
             print(config.active_provider("transcription"))
             return 0
@@ -76,6 +86,24 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
     if args.command == "config-set":
+        if len(args.worker_args) == 3 and args.worker_args[0] == "consent":
+            from .config import TRANSCRIPTION_PROVIDERS, normalize_provider
+            from .config_tui import ensure_config_file, set_value
+            from .consent import recipient
+
+            provider = normalize_provider(args.worker_args[1])
+            decision = args.worker_args[2].lower()
+            if provider not in TRANSCRIPTION_PROVIDERS or decision not in {"allow", "revoke"}:
+                return 2
+            label, endpoint = recipient(config, provider)
+            if decision == "allow" and not endpoint:
+                print("echoscribe: recipient endpoint is missing", file=sys.stderr)
+                return 2
+            path = Path(os.environ.get("ECHOSCRIBE_CONFIG") or config.path or "~/.config/echoscribe/config.toml").expanduser()
+            ensure_config_file(path)
+            set_value(path, "consent", provider, endpoint if decision == "allow" else "")
+            print(f"{label}: {decision}")
+            return 0
         if len(args.worker_args) == 2 and args.worker_args[0] == "transcription-provider":
             from .config import TRANSCRIPTION_PROVIDERS, normalize_provider
             from .config_tui import ensure_config_file, set_value

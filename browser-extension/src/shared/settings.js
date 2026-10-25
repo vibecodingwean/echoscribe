@@ -5,6 +5,7 @@ const DEPRECATED_MODELS = Object.freeze({
   'gemini-3.1-flash-lite': 'gemini-3.8-flash',
   'gemini-3.6-flash': 'gemini-3.8-flash',
   'gemini-3.7-flash': 'gemini-3.8-flash',
+  'gemini-3.1-pro-preview': 'gemini-4-argon',
   'grok-4.5': 'grok-4.6',
   'gpt-5.6-sol': 'gpt-6-astra',
   'gpt-5.6-terra': 'gpt-6-luna',
@@ -18,6 +19,7 @@ export function defaultSettings() {
     provider: 'openai',
     models: Object.fromEntries(Object.entries(PROVIDERS).map(([id, value]) => [id, value.defaultModel])),
     apiKeys: Object.fromEntries(Object.keys(PROVIDERS).map((id) => [id, ''])),
+    providerConsent: Object.fromEntries(Object.keys(PROVIDERS).map((id) => [id, false])),
     targetLanguage: 'auto',
     customPrompt: ''
   };
@@ -28,11 +30,13 @@ export function normalizeSettings(value = {}) {
   const provider = Object.hasOwn(PROVIDERS, value.provider) ? value.provider : defaults.provider;
   const models = { ...defaults.models };
   const apiKeys = { ...defaults.apiKeys };
+  const providerConsent = { ...defaults.providerConsent };
 
   for (const id of Object.keys(PROVIDERS)) {
     const model = String(value.models?.[id] ?? '').trim();
     if (model) models[id] = (DEPRECATED_MODELS[model] || model).slice(0, 200);
     apiKeys[id] = String(value.apiKeys?.[id] ?? '').trim().slice(0, 10_000);
+    providerConsent[id] = value.providerConsent?.[id] === true;
   }
 
   const language = String(value.targetLanguage ?? '').trim().toLowerCase();
@@ -40,6 +44,7 @@ export function normalizeSettings(value = {}) {
     provider,
     models,
     apiKeys,
+    providerConsent,
     targetLanguage: LANGUAGE_CODE.test(language) ? language : 'auto',
     customPrompt: String(value.customPrompt ?? '').trim().slice(0, 20_000)
   };

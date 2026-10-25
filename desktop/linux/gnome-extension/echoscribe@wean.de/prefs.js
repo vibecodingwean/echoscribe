@@ -86,12 +86,45 @@ export default class EchoScribePreferences extends ExtensionPreferences {
             apiKeys.add(apiKeyRow(settings, provider, () => {
                 transcriptionProvider.refresh();
             }));
+        const consent = new Adw.PreferencesGroup({title: 'Audio transfer permission'});
+        page.add(consent);
+        for (const provider of TRANSCRIPTION_PROVIDERS)
+            consent.add(consentRow(settings, provider));
         const runtime = new Adw.PreferencesGroup({title: 'Runtime'});
         page.add(runtime);
 
         runtime.add(boundEntryRow('Installation path', settings, 'install-path'));
         runtime.add(boundEntryRow('Python executable', settings, 'python-path'));
     }
+}
+
+function consentRow(settings, provider) {
+    const endpoint = provider.id === 'localai'
+        ? runEchoScribe(settings, ['config-get', 'local-ai-whisper-url']).trim()
+        : ({openai: 'api.openai.com', gemini: 'generativelanguage.googleapis.com',
+            xai: 'api.x.ai', elevenlabs: 'api.elevenlabs.io'})[provider.id];
+    const approved = runEchoScribe(settings, ['config-get', 'consent-status', provider.id]).trim() === 'allowed';
+    const row = new Adw.SwitchRow({
+        title: `Allow ${provider.label}`,
+        subtitle: `Recipient: ${provider.label} (${endpoint}). Sends recorded audio, model/language options${provider.id === 'xai' || provider.id === 'elevenlabs' ? ' and enabled transcription options' : ''}${provider.id === 'localai' ? '' : ', and your API key'} for transcription. Turn off to revoke future transfers.`,
+        active: approved,
+    });
+    let reverting = false;
+    row.connect('notify::active', () => {
+        if (reverting)
+            return;
+        const decision = row.active ? 'allow' : 'revoke';
+        try {
+            runEchoScribe(settings, ['config-set', 'consent', provider.id, decision]);
+        } catch (error) {
+            logError(error);
+            row.subtitle = `Could not ${decision} transfer. Reopen Preferences and retry.`;
+            reverting = true;
+            row.active = !row.active;
+            reverting = false;
+        }
+    });
+    return row;
 }
 
 
