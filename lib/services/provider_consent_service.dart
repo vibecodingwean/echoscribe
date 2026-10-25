@@ -182,9 +182,13 @@ class ProviderConsentService extends ChangeNotifier {
     notifyListeners();
     try {
       final preferences = await _preferences();
+      var allRemoved = true;
       for (final use in AiDataUse.values) {
-        await preferences.remove(_storageKey(provider, use));
+        if (!await preferences.remove(_storageKey(provider, use))) {
+          allRemoved = false;
+        }
       }
+      if (!allRemoved) throw StateError('Consent was not removed');
     } catch (_) {
       throw const AppException(
         'AI sharing is blocked now, but the withdrawal could not be saved. Please try again.',
@@ -212,6 +216,7 @@ class ProviderConsentService extends ChangeNotifier {
                             'Recipient: ${request.destination}\n\n'
                             'Sending now: ${request.dataType}\n'
                             'Purpose: ${request.purpose}\n\n'
+                            '${request.provider == AiProviderType.elevenLabs ? 'ElevenLabs may use submitted data to improve its models unless you turn off “Improve the models for everyone” in your ElevenLabs account.\n\n' : ''}'
                             'Allow & remember also permits future ${request.disclosure} '
                             'to this provider. Other data uses ask separately.\n\n'
                             'Requests go directly from your device using your API key. '

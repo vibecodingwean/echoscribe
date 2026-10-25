@@ -91,10 +91,14 @@ class CliContractTests(unittest.TestCase):
             self.assertEqual(self.run_cli("config-set", "consent", "openai", "allow", env=env).returncode, 0)
             self.assertEqual(self.run_cli("config-get", "consent-status", "openai", env=env).stdout.strip(), "allowed")
             self.assertEqual(self.run_cli("config-get", "consent-status", "localai", env=env).stdout.strip(), "blocked")
-            self.assertEqual(self.run_cli("config-set", "consent", "localai", "allow", env=env).returncode, 0)
+            old_url = "http://127.0.0.1:8000/v1/audio/transcriptions"
+            self.assertNotEqual(self.run_cli("config-set", "consent", "localai", "allow", env=env).returncode, 0)
+            self.assertNotEqual(self.run_cli("config-set", "consent", "localai", "allow", "https://wrong.example/stt", env=env).returncode, 0)
+            self.assertEqual(self.run_cli("config-set", "consent", "localai", "allow", old_url, env=env).returncode, 0)
             self.assertEqual(self.run_cli("config-get", "consent-status", "localai", env=env).stdout.strip(), "allowed")
             self.assertEqual(self.run_cli("config-set", "local-ai-whisper-url", "https://other.example/stt", env=env).returncode, 0)
             self.assertEqual(self.run_cli("config-get", "consent-status", "localai", env=env).stdout.strip(), "blocked")
+            self.assertNotEqual(self.run_cli("config-set", "consent", "localai", "allow", old_url, env=env).returncode, 0)
             self.assertEqual(self.run_cli("config-set", "consent", "localai", "revoke", env=env).returncode, 0)
             self.assertEqual(self.run_cli("config-get", "consent-status", "localai", env=env).stdout.strip(), "blocked")
 

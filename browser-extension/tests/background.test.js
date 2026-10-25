@@ -38,6 +38,29 @@ function setup() {
 }
 
 describe('background event wiring', () => {
+  it('keeps a completed revoke when a stale settings save follows it', async () => {
+    const { onMessage, orchestrator, api } = setup();
+    let state = { provider: 'openai', apiKeys: { openai: 'key' }, providerConsent: { openai: true } };
+    orchestrator.readSettings.mockImplementation(async () => globalThis.structuredClone(state));
+    let finishRevoke;
+    api.storage.local.set.mockImplementation(async ({ settings }) => {
+      if (settings.providerConsent.openai === false && !finishRevoke) {
+        await new Promise((resolve) => { finishRevoke = resolve; });
+      }
+      state = globalThis.structuredClone(settings);
+    });
+    const revoke = onMessage.fire({ type: 'setProviderConsent', provider: 'openai', allowed: false });
+    await vi.waitFor(() => expect(finishRevoke).toBeTypeOf('function'));
+    const save = onMessage.fire({
+      type: 'saveSettings', settings: { provider: 'openai', customPrompt: 'Updated', providerConsent: { openai: true } }
+    });
+    await Promise.resolve();
+    expect(orchestrator.readSettings).toHaveBeenCalledTimes(1);
+    finishRevoke();
+    await Promise.all([revoke, save]);
+    expect(state.customPrompt).toBe('Updated');
+    expect(state.providerConsent.openai).toBe(false);
+  });
   it('blocks model refresh when consent is absent and can revoke a stored approval', async () => {
     const { onMessage, orchestrator, listModels, api } = setup();
     orchestrator.readSettings.mockResolvedValue({ provider: 'openai', apiKeys: { openai: 'key' }, providerConsent: { openai: false } });

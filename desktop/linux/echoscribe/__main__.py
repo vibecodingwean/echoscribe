@@ -86,7 +86,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
     if args.command == "config-set":
-        if len(args.worker_args) == 3 and args.worker_args[0] == "consent":
+        if len(args.worker_args) in {3, 4} and args.worker_args[0] == "consent":
             from .config import TRANSCRIPTION_PROVIDERS, normalize_provider
             from .config_tui import ensure_config_file, set_value
             from .consent import recipient
@@ -98,6 +98,13 @@ def main(argv: list[str] | None = None) -> int:
             label, endpoint = recipient(config, provider)
             if decision == "allow" and not endpoint:
                 print("echoscribe: recipient endpoint is missing", file=sys.stderr)
+                return 2
+            if provider == "localai" and decision == "allow":
+                expected = args.worker_args[3] if len(args.worker_args) == 4 else ""
+                if not expected or expected != endpoint:
+                    print("echoscribe: Local AI endpoint changed or was not specified; review the current URL", file=sys.stderr)
+                    return 2
+            elif len(args.worker_args) == 4:
                 return 2
             path = Path(os.environ.get("ECHOSCRIBE_CONFIG") or config.path or "~/.config/echoscribe/config.toml").expanduser()
             ensure_config_file(path)

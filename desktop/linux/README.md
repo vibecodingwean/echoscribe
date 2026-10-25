@@ -111,6 +111,8 @@ python3 -m echoscribe config-set transcription-provider openai
 python3 -m echoscribe config-get consent-status openai
 python3 -m echoscribe config-set consent openai allow   # after reviewing recipient and data above
 python3 -m echoscribe config-set consent openai revoke
+# For Local AI Whisper, pass the exact URL shown in Preferences:
+python3 -m echoscribe config-set consent localai allow http://127.0.0.1:8000/v1/audio/transcriptions
 python3 -m echoscribe config-tui
 python3 -m echoscribe gnome-worker status --json
 python3 -m echoscribe gnome-worker start --json

@@ -158,6 +158,27 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  testWidgets('ElevenLabs consent discloses model-improvement account control',
+      (tester) async {
+    final consent = ProviderConsentService();
+    await tester.pumpWidget(MaterialApp(
+      navigatorKey: consent.navigatorKey,
+      home: const Scaffold(body: SizedBox()),
+    ));
+    final request = consent.ensure(AiProviderType.elevenLabs,
+        use: AiDataUse.speech,
+        dataType: 'transcript text',
+        purpose: 'speech generation');
+    final denied = expectLater(request, throwsA(isA<AppException>()));
+    await tester.pumpAndSettle();
+    expect(
+        find.textContaining('Improve the models for everyone'), findsOneWidget);
+    await tester.tap(find.text('Not now'));
+    await tester.pumpAndSettle();
+    await denied;
+    debugDefaultTargetPlatformOverride = null;
+  });
+
   test('withdrawal invalidates an approval dialog already open', () async {
     final decision = Completer<bool>();
     final consent = ProviderConsentService(
@@ -179,6 +200,34 @@ void main() {
     expect(
         consent.canTransferNow(AiProviderType.gemini, use: AiDataUse.fileAudio),
         isFalse);
+  });
+
+  test('failed persisted withdrawal reports error and blocks current session',
+      () async {
+    final preferences = _FailingRemovalPreferences();
+    final consent = ProviderConsentService(
+      preferences: () async => preferences,
+      requestPermission: (_) async => true,
+    );
+    await consent.ensure(AiProviderType.openai,
+        use: AiDataUse.text, dataType: 'text', purpose: 'summary');
+    expect(consent.canTransferNow(AiProviderType.openai, use: AiDataUse.text),
+        isTrue);
+
+    await expectLater(
+      consent.revoke(AiProviderType.openai),
+      throwsA(isA<AppException>()),
+    );
+    expect(consent.canTransferNow(AiProviderType.openai, use: AiDataUse.text),
+        isFalse);
+    expect(await consent.hasGrant(AiProviderType.openai, use: AiDataUse.text),
+        isFalse);
+    final restarted = ProviderConsentService(
+      preferences: () async => preferences,
+      requestPermission: (_) async => false,
+    );
+    expect(await restarted.hasGrant(AiProviderType.openai, use: AiDataUse.text),
+        isTrue);
   });
 
   test('changing the Local AI destination requires renewed permission',
@@ -306,4 +355,23 @@ class _CountingProvider implements AiProvider {
     calls++;
     return Uint8List(0);
   }
+}
+
+class _FailingRemovalPreferences implements SharedPreferences {
+  final Map<String, String> values = {};
+
+  @override
+  String? getString(String key) => values[key];
+
+  @override
+  Future<bool> setString(String key, String value) async {
+    values[key] = value;
+    return true;
+  }
+
+  @override
+  Future<bool> remove(String key) async => false;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

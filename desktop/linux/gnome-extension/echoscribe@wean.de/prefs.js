@@ -70,6 +70,7 @@ export default class EchoScribePreferences extends ExtensionPreferences {
 
         const audio = new Adw.PreferencesGroup({title: 'Audio'});
         page.add(audio);
+        const consentRows = new Map();
         const transcriptionProvider = providerRow(
             settings,
             'transcription-provider',
@@ -78,7 +79,9 @@ export default class EchoScribePreferences extends ExtensionPreferences {
         );
         audio.add(transcriptionProvider.row);
         audio.add(transcriptionModelRow(settings, {id: 'localai', label: 'Local AI Whisper'}));
-        audio.add(localAiUrlRow(settings, 'local-ai-whisper-url', 'Local AI Whisper URL'));
+        audio.add(localAiUrlRow(settings, 'local-ai-whisper-url', 'Local AI Whisper URL', () => {
+            consentRows.get('localai')?.refresh();
+        }));
 
         const apiKeys = new Adw.PreferencesGroup({title: 'API Keys'});
         page.add(apiKeys);
@@ -88,8 +91,11 @@ export default class EchoScribePreferences extends ExtensionPreferences {
             }));
         const consent = new Adw.PreferencesGroup({title: 'Audio transfer permission'});
         page.add(consent);
-        for (const provider of TRANSCRIPTION_PROVIDERS)
-            consent.add(consentRow(settings, provider));
+        for (const provider of TRANSCRIPTION_PROVIDERS) {
+            const control = consentRow(settings, provider);
+            consentRows.set(provider.id, control);
+            consent.add(control.row);
+        }
         const runtime = new Adw.PreferencesGroup({title: 'Runtime'});
         page.add(runtime);
 
@@ -99,32 +105,39 @@ export default class EchoScribePreferences extends ExtensionPreferences {
 }
 
 function consentRow(settings, provider) {
-    const endpoint = provider.id === 'localai'
-        ? runEchoScribe(settings, ['config-get', 'local-ai-whisper-url']).trim()
-        : ({openai: 'api.openai.com', gemini: 'generativelanguage.googleapis.com',
+    const fixedEndpoint = ({openai: 'api.openai.com', gemini: 'generativelanguage.googleapis.com',
             xai: 'api.x.ai', elevenlabs: 'api.elevenlabs.io'})[provider.id];
-    const approved = runEchoScribe(settings, ['config-get', 'consent-status', provider.id]).trim() === 'allowed';
-    const row = new Adw.SwitchRow({
-        title: `Allow ${provider.label}`,
-        subtitle: `Recipient: ${provider.label} (${endpoint}). Sends recorded audio, model/language options${provider.id === 'xai' || provider.id === 'elevenlabs' ? ' and enabled transcription options' : ''}${provider.id === 'localai' ? '' : ', and your API key'} for transcription. Turn off to revoke future transfers.`,
-        active: approved,
-    });
+    const row = new Adw.SwitchRow({title: `Allow ${provider.label}`});
     let reverting = false;
+    let displayedEndpoint = '';
+    function refresh() {
+        displayedEndpoint = provider.id === 'localai'
+            ? runEchoScribe(settings, ['config-get', 'local-ai-whisper-url']).trim()
+            : fixedEndpoint;
+        const approved = runEchoScribe(settings, ['config-get', 'consent-status', provider.id]).trim() === 'allowed';
+        row.subtitle = `Recipient: ${provider.label} (${displayedEndpoint}). Sends recorded audio, model/language options${provider.id === 'xai' || provider.id === 'elevenlabs' ? ' and enabled transcription options' : ''}${provider.id === 'localai' ? '' : ', and your API key'} for transcription. Turn off to revoke future transfers.`;
+        reverting = true;
+        row.active = approved;
+        reverting = false;
+    }
     row.connect('notify::active', () => {
         if (reverting)
             return;
         const decision = row.active ? 'allow' : 'revoke';
         try {
-            runEchoScribe(settings, ['config-set', 'consent', provider.id, decision]);
+            const args = ['config-set', 'consent', provider.id, decision];
+            if (provider.id === 'localai' && decision === 'allow')
+                args.push(displayedEndpoint);
+            runEchoScribe(settings, args);
+            refresh();
         } catch (error) {
             logError(error);
-            row.subtitle = `Could not ${decision} transfer. Reopen Preferences and retry.`;
-            reverting = true;
-            row.active = !row.active;
-            reverting = false;
+            refresh();
+            row.subtitle = `Recipient changed or transfer failed. Review ${provider.label} (${displayedEndpoint}) and retry.`;
         }
     });
-    return row;
+    refresh();
+    return {row, refresh};
 }
 
 
@@ -299,7 +312,7 @@ function transcriptionModelValue(settings, provider) {
 }
 
 
-function localAiUrlRow(settings, configKey, title) {
+function localAiUrlRow(settings, configKey, title, onSaved) {
     const row = new Adw.ActionRow({title});
     const entry = new Gtk.Entry({
         text: localAiUrlValue(settings, configKey),
@@ -317,6 +330,7 @@ function localAiUrlRow(settings, configKey, title) {
         try {
             runEchoScribe(settings, ['config-set', configKey, value]);
             row.subtitle = 'Saved';
+            onSaved?.();
         } catch (error) {
             logError(error);
             row.subtitle = 'Could not save URL';

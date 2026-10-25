@@ -75,7 +75,7 @@ class ConsentIntegrationTests(unittest.TestCase):
                 self.assertNotEqual(denied.returncode, 0)
                 self.assertIn("Audio transfer", json.loads(denied.stdout)["message"])
                 self.assertEqual(requests, [])
-                self.assertEqual(command("config-set", "consent", "localai", "allow").returncode, 0)
+                self.assertEqual(command("config-set", "consent", "localai", "allow", endpoint).returncode, 0)
                 started = command("gnome-worker", "start", "--json")
                 self.assertEqual(started.returncode, 0, started.stderr)
                 state = json.loads(started.stdout)

@@ -5,6 +5,13 @@ import { normalizeSettings, publicSettings } from '../shared/settings.js';
 const MENU_ID = 'echoscribe-summarize';
 
 export function installBackground({ api, orchestrator, listModels = listProviderModels }) {
+  let settingsMutation = Promise.resolve();
+  function mutateSettings(action) {
+    const result = settingsMutation.then(action);
+    settingsMutation = result.catch(() => {});
+    return result;
+  }
+
   api.runtime.onInstalled.addListener(async () => {
     await api.contextMenus.removeAll();
     api.contextMenus.create({
@@ -17,6 +24,7 @@ export function installBackground({ api, orchestrator, listModels = listProvider
   api.contextMenus.onClicked.addListener(async (info, tab) => {
     if (info.menuItemId !== MENU_ID || !tab) return;
     try {
+      await settingsMutation;
       await orchestrator.summarizeTab(tab, info.selectionText || '', '');
     } catch (error) {
       await api.storage.local.set({ latestError: safeMessage(error?.message || error) });
@@ -28,15 +36,20 @@ export function installBackground({ api, orchestrator, listModels = listProvider
 
   async function handleMessage(message) {
     try {
-      if (message?.type === 'summarizeActiveTab') return orchestrator.summarizeActiveTab(message.targetLanguage || '');
+      if (message?.type === 'summarizeActiveTab') {
+        await settingsMutation;
+        return await orchestrator.summarizeActiveTab(message.targetLanguage || '');
+      }
       if (message?.type === 'summarizePayload') {
+        await settingsMutation;
         const page = {
           title: message.page?.title || '', description: message.page?.description || '',
           selection: message.page?.selection || '', text: message.page?.text || ''
         };
-        return orchestrator.summarizePayload(page, message.targetLanguage || '');
+        return await orchestrator.summarizePayload(page, message.targetLanguage || '');
       }
       if (message?.type === 'listModels') {
+        await settingsMutation;
         const settings = await orchestrator.readSettings();
         const provider = message.provider || settings.provider;
         if (!settings.providerConsent?.[provider]) return { ok: false, error: 'Allow this provider in Settings before refreshing models.' };
@@ -44,20 +57,24 @@ export function installBackground({ api, orchestrator, listModels = listProvider
         return { ok: true, models };
       }
       if (message?.type === 'getSummaryReadiness') {
+        await settingsMutation;
         const settings = await orchestrator.readSettings();
         const provider = settings.provider;
         return { ok: true, provider, configured: Boolean(settings.apiKeys[provider]), consented: Boolean(settings.providerConsent?.[provider]) };
       }
-      if (message?.type === 'setProviderConsent') {
+      if (message?.type === 'setProviderConsent') return await mutateSettings(async () => {
         const settings = normalizeSettings(await orchestrator.readSettings());
         const provider = String(message.provider || '');
         if (!Object.hasOwn(settings.providerConsent, provider)) return { ok: false, error: 'Unsupported provider.' };
         settings.providerConsent[provider] = message.allowed === true;
         await api.storage.local.set({ settings });
         return { ok: true, settings: publicSettings(settings) };
+      });
+      if (message?.type === 'getSettings') {
+        await settingsMutation;
+        return { ok: true, settings: publicSettings(await orchestrator.readSettings()) };
       }
-      if (message?.type === 'getSettings') return { ok: true, settings: publicSettings(await orchestrator.readSettings()) };
-      if (message?.type === 'saveSettings') {
+      if (message?.type === 'saveSettings') return await mutateSettings(async () => {
         const current = await orchestrator.readSettings();
         const settings = normalizeSettings({
           ...current,
@@ -73,19 +90,19 @@ export function installBackground({ api, orchestrator, listModels = listProvider
         }
         await api.storage.local.set({ settings });
         return { ok: true, settings: publicSettings(settings) };
-      }
-      if (message?.type === 'clearProviderKey') {
+      });
+      if (message?.type === 'clearProviderKey') return await mutateSettings(async () => {
         const settings = await orchestrator.readSettings();
         const provider = String(message.provider || '');
         if (!Object.hasOwn(settings.apiKeys, provider)) return { ok: false, error: 'Unsupported provider.' };
         settings.apiKeys[provider] = '';
         await api.storage.local.set({ settings });
         return { ok: true, settings: publicSettings(settings) };
-      }
-      if (message?.type === 'clearData') {
+      });
+      if (message?.type === 'clearData') return await mutateSettings(async () => {
         await api.storage.local.clear();
         return { ok: true };
-      }
+      });
       return { ok: false, error: 'Unsupported request.' };
     } catch (error) {
       return { ok: false, error: safeMessage(error?.message || error) };
